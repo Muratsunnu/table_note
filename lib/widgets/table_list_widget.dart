@@ -13,7 +13,7 @@ class TableListWidget extends StatelessWidget {
         
         return Column(
           children: [
-            // Tablo başlığı
+            // Tablo başlığı - Düzenleme özelliği eklendi
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(16),
@@ -23,12 +23,22 @@ class TableListWidget extends StatelessWidget {
                   Icon(Icons.table_chart, color: Colors.blue[700]),
                   SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      currentTable.tableName,
-                      style: TextStyle(
-                        fontSize: 20, 
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[700],
+                    child: GestureDetector(
+                      onTap: () => _showRenameDialog(context, provider),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              currentTable.tableName,
+                              style: TextStyle(
+                                fontSize: 20, 
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[700],
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.edit, size: 16, color: Colors.blue[600]),
+                        ],
                       ),
                     ),
                   ),
@@ -52,6 +62,47 @@ class TableListWidget extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  void _showRenameDialog(BuildContext context, TableProvider provider) {
+    final controller = TextEditingController(text: provider.currentTable!.tableName);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Tablo Adını Değiştir'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: 'Yeni Tablo Adı',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
+                final success = await provider.renameTable(
+                  provider.currentTableIndex,
+                  controller.text.trim(),
+                );
+                Navigator.pop(context);
+                if (!success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Tablo adı değiştirilemedi')),
+                  );
+                }
+              }
+            },
+            child: Text('Değiştir'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -87,10 +138,25 @@ class TableListWidget extends StatelessWidget {
               return DataColumn(
                 label: Container(
                   constraints: BoxConstraints(maxWidth: 120),
-                  child: Text(
-                    col,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          col.name,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (col.isNumeric) ...[
+                        SizedBox(width: 4),
+                        Icon(Icons.numbers, size: 16, color: Colors.green),
+                      ],
+                      if (col.autoFillOptions.isNotEmpty) ...[
+                        SizedBox(width: 4),
+                        Icon(Icons.auto_fix_high, size: 16, color: Colors.orange),
+                      ],
+                    ],
                   ),
                 ),
               );

@@ -1,7 +1,7 @@
 name: table_note
 description: Genel amaçlı tablo not alma uygulaması
 
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: '>=2.17.0 <4.0.0'
@@ -15,14 +15,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.4
-
-flutter_icons:
-  android: true
-  ios: true
-  image_path: "assets/icon/table_note_icon.png"
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/icon/table_note_icon.png

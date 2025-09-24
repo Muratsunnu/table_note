@@ -6,6 +6,8 @@ import '../widgets/empty_state_widget.dart';
 import '../widgets/create_table_dialog.dart';
 import '../widgets/table_selector_menu.dart';
 import '../widgets/add_row_dialog.dart';
+import '../widgets/template_management_dialog.dart';
+import '../widgets/column_sums_widget.dart';
 
 class TableScreen extends StatefulWidget {
   @override
@@ -29,7 +31,12 @@ class _TableScreenState extends State<TableScreen> {
             );
           }
 
-          return TableListWidget();
+          return Column(
+            children: [
+              Expanded(child: TableListWidget()),
+              ColumnSumsWidget(),
+            ],
+          );
         },
       ),
       floatingActionButton: _buildFloatingActionButton(),
@@ -41,6 +48,11 @@ class _TableScreenState extends State<TableScreen> {
       title: Text('Table Note'),
       backgroundColor: Colors.blue[700],
       actions: [
+        IconButton(
+          icon: Icon(Icons.article_outlined),
+          onPressed: () => _showTemplateDialog(context),
+          tooltip: 'Tablo Şablonları',
+        ),
         IconButton(
           icon: Icon(Icons.add_circle_outline),
           onPressed: () => _showCreateTableDialog(context),
@@ -76,6 +88,13 @@ class _TableScreenState extends State<TableScreen> {
     showDialog(
       context: context,
       builder: (context) => AddRowDialog(),
+    );
+  }
+
+  void _showTemplateDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => TemplateManagementDialog(),
     );
   }
 }

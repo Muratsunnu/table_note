@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:table_note/models/tabel_model.dart';
 import '../providers/table_provider.dart';
+
 
 class AddRowDialog extends StatefulWidget {
   @override
@@ -33,21 +35,82 @@ class _AddRowDialogState extends State<AddRowDialog> {
 
     return AlertDialog(
       title: Text('Yeni Kayıt Ekle'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: currentTable.columns.asMap().entries.map((entry) {
-            return Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
-              child: TextField(
-                controller: _controllers[entry.key],
-                decoration: InputDecoration(
-                  labelText: entry.value,
-                  border: OutlineInputBorder(),
+      content: Container(
+        width: MediaQuery.of(context).size.width * 0.8,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: currentTable.columns.asMap().entries.map((entry) {
+              int colIndex = entry.key;
+              ColumnModel column = entry.value;
+              
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _controllers[colIndex],
+                            decoration: InputDecoration(
+                              labelText: column.name,
+                              border: OutlineInputBorder(),
+                              suffixIcon: column.autoFillOptions.isNotEmpty 
+                                  ? PopupMenuButton<String>(
+                                      icon: Icon(Icons.arrow_drop_down),
+                                      tooltip: 'Hızlı Seç',
+                                      onSelected: (value) {
+                                        _controllers[colIndex].text = value;
+                                      },
+                                      itemBuilder: (context) {
+                                        return column.autoFillOptions.map((option) {
+                                          return PopupMenuItem<String>(
+                                            value: option,
+                                            child: Text(option),
+                                          );
+                                        }).toList();
+                                      },
+                                    )
+                                  : null,
+                            ),
+                            keyboardType: column.isNumeric 
+                                ? TextInputType.numberWithOptions(decimal: true)
+                                : TextInputType.text,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Otomatik doldurma seçenekleri
+                    if (column.autoFillOptions.isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: column.autoFillOptions.map((option) {
+                          return GestureDetector(
+                            onTap: () {
+                              _controllers[colIndex].text = option;
+                            },
+                            child: Chip(
+                              label: Text(
+                                option,
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              backgroundColor: Colors.blue[50],
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
       ),
       actions: [

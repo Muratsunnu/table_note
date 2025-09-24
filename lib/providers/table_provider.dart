@@ -35,12 +35,12 @@ class TableProvider extends ChangeNotifier {
   }
 
   // Yeni tablo oluştur
-  Future<bool> createTable(String tableName, List<String> columns) async {
+  Future<bool> createTable(String tableName, List<ColumnModel> columns) async {
     try {
       final newTable = TableModel(
         tableName: tableName.trim(),
-        columns: columns.map((col) => col.trim()).toList(),
-        rows: [],
+        columns: columns,
+        rows: [], id: '', name: '', createdAt: DateTime.now(),
       );
       
       _tables.add(newTable);
@@ -54,12 +54,52 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
+  // Tablo adını değiştir
+  Future<bool> renameTable(int tableIndex, String newName) async {
+    try {
+      if (tableIndex >= 0 && tableIndex < _tables.length && newName.trim().isNotEmpty) {
+        _tables[tableIndex].tableName = newName.trim();
+        await _saveTables();
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Tablo adı değiştirilirken hata: $e');
+      return false;
+    }
+  }
+
   // Aktif tabloyu değiştir
   void changeTable(int index) {
     if (index >= 0 && index < _tables.length) {
       _currentTableIndex = index;
       notifyListeners();
     }
+  }
+
+  // Sayısal sütunları topla
+  Map<String, double> calculateColumnSums() {
+    Map<String, double> sums = {};
+    
+    if (currentTable == null) return sums;
+
+    for (int colIndex = 0; colIndex < currentTable!.columns.length; colIndex++) {
+      final column = currentTable!.columns[colIndex];
+      
+      if (column.isNumeric) {
+        double sum = 0;
+        for (var row in currentTable!.rows) {
+          if (colIndex < row.length) {
+            final value = double.tryParse(row[colIndex]) ?? 0;
+            sum += value;
+          }
+        }
+        sums[column.name] = sum;
+      }
+    }
+    
+    return sums;
   }
 
   // Satır ekle
@@ -116,7 +156,6 @@ class TableProvider extends ChangeNotifier {
       if (tableIndex >= 0 && tableIndex < _tables.length) {
         _tables.removeAt(tableIndex);
         
-        // Aktif tablo indeksini ayarla
         if (_currentTableIndex >= _tables.length) {
           _currentTableIndex = _tables.length - 1;
         }
