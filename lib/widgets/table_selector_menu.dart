@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
+import 'edit_table_structure_dialog.dart';
 
 class TableSelectorMenu extends StatelessWidget {
   @override
@@ -36,7 +37,7 @@ class TableSelectorMenu extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${entry.value.rows.length} kayıt',
+                            '${entry.value.rows.length} kayıt • ${entry.value.columns.length} sütun',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -45,6 +46,19 @@ class TableSelectorMenu extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Düzenle butonu (sadece aktif tablo için)
+                    if (isActive)
+                      IconButton(
+                        icon: Icon(Icons.settings, color: Colors.blue, size: 16),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showEditStructureDialog(context);
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                        tooltip: 'Yapıyı Düzenle',
+                      ),
+                    SizedBox(width: 4),
                     IconButton(
                       icon: Icon(Icons.delete, color: Colors.red, size: 16),
                       onPressed: () {
@@ -61,6 +75,13 @@ class TableSelectorMenu extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  void _showEditStructureDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const EditTableStructureDialog(),
     );
   }
 

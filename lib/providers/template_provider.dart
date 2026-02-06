@@ -62,4 +62,23 @@ class TemplateProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  // Template güncelle
+  Future<bool> updateTemplate(int templateIndex, String newName, List<ColumnModel> newColumns) async {
+    try {
+      if (templateIndex >= 0 && templateIndex < _templates.length) {
+        _templates[templateIndex] = TemplateModel(
+          templateName: newName.trim(),
+          columns: newColumns,
+        );
+        await _saveTemplates();
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Template güncellenirken hata: $e');
+      return false;
+    }
+  }
 }

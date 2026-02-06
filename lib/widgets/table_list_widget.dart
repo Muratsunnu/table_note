@@ -1,63 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:table_note/models/tabel_model.dart';
+import '../models/tabel_model.dart';
 import '../providers/table_provider.dart';
+import '../theme/app_theme.dart';
 import 'edit_row_dialog.dart';
 
 class TableListWidget extends StatelessWidget {
+  const TableListWidget({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Consumer<TableProvider>(
       builder: (context, provider, child) {
         final currentTable = provider.currentTable!;
-        
+        final displayRows = provider.filteredRows;
+        final originalIndices = provider.isFiltering
+            ? provider.filteredRowIndices
+            : List.generate(currentTable.rows.length, (i) => i);
+
+        if (displayRows.isEmpty) {
+          return _buildEmptyState(provider);
+        }
+
         return Column(
           children: [
-            // Tablo başlığı - Düzenleme özelliği eklendi
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(16),
-              color: Colors.blue[50],
-              child: Row(
-                children: [
-                  Icon(Icons.table_chart, color: Colors.blue[700]),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => _showRenameDialog(context, provider),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              currentTable.tableName,
-                              style: TextStyle(
-                                fontSize: 20, 
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[700],
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.edit, size: 16, color: Colors.blue[600]),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${currentTable.rows.length} kayıt',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Tablo içeriği
+            // Filtre bilgisi
+            if (provider.isFiltering) _buildFilterInfo(context, provider),
+
+            // Tablo
             Expanded(
-              child: currentTable.rows.isEmpty
-                  ? _buildEmptyTableState(context)
-                  : _buildTableData(context, currentTable, provider),
+              child: _buildDataTable(context, currentTable, displayRows, originalIndices, provider),
             ),
           ],
         );
@@ -65,153 +37,322 @@ class TableListWidget extends StatelessWidget {
     );
   }
 
-  void _showRenameDialog(BuildContext context, TableProvider provider) {
-    final controller = TextEditingController(text: provider.currentTable!.tableName);
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Tablo Adını Değiştir'),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: 'Yeni Tablo Adı',
-            border: OutlineInputBorder(),
+  Widget _buildFilterInfo(BuildContext context, TableProvider provider) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      decoration: BoxDecoration(
+        color: AppTheme.warningLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.filter_list_rounded, size: 18, color: AppTheme.warning),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                children: [
+                  const TextSpan(text: 'Filtre: '),
+                  TextSpan(
+                    text: '"${provider.searchQuery}"',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(
+                    text: ' (${provider.filteredRowCount}/${provider.totalRowCount})',
+                    style: const TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('İptal'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                final success = await provider.renameTable(
-                  provider.currentTableIndex,
-                  controller.text.trim(),
-                );
-                Navigator.pop(context);
-                if (!success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Tablo adı değiştirilemedi')),
-                  );
-                }
-              }
-            },
-            child: Text('Değiştir'),
+          InkWell(
+            onTap: () => provider.clearSearch(),
+            borderRadius: BorderRadius.circular(4),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 18, color: AppTheme.warning),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyTableState(BuildContext context) {
+  Widget _buildEmptyState(TableProvider provider) {
+    if (provider.isFiltering) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.warningLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.search_off_rounded,
+                size: 48,
+                color: AppTheme.warning,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Sonuç bulunamadı',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '"${provider.searchQuery}" ile eşleşen kayıt yok',
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inbox, size: 60, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'Bu tabloda henüz kayıt yok',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.lightBlue,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.inbox_rounded,
+              size: 48,
+              color: AppTheme.primaryBlue,
+            ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'İlk kaydınızı eklemek için + butonuna dokunun',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          const SizedBox(height: 20),
+          const Text(
+            'Tablo boş',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'İlk kaydınızı eklemek için\naşağıdaki butona dokunun',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textSecondary,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTableData(BuildContext context, TableModel currentTable, TableProvider provider) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: 20,
-          columns: [
-            ...currentTable.columns.map((col) {
-              return DataColumn(
-                label: Container(
-                  constraints: BoxConstraints(maxWidth: 120),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          col.name,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (col.isNumeric) ...[
-                        SizedBox(width: 4),
-                        Icon(Icons.numbers, size: 16, color: Colors.green),
-                      ],
-                      if (col.autoFillOptions.isNotEmpty) ...[
-                        SizedBox(width: 4),
-                        Icon(Icons.auto_fix_high, size: 16, color: Colors.orange),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-            DataColumn(
-              label: Text(
-                'İşlemler',
-                style: TextStyle(fontWeight: FontWeight.bold),
+  Widget _buildDataTable(
+    BuildContext context,
+    TableModel currentTable,
+    List<List<String>> displayRows,
+    List<int> originalIndices,
+    TableProvider provider,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(AppTheme.lightBlue),
+              headingTextStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppTheme.darkBlue,
+                fontSize: 14,
               ),
+              dataTextStyle: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+              ),
+              columnSpacing: 24,
+              horizontalMargin: 16,
+              dividerThickness: 1,
+              columns: _buildColumns(currentTable),
+              rows: _buildRows(context, currentTable, displayRows, originalIndices, provider),
             ),
-          ],
-          rows: currentTable.rows.asMap().entries.map((entry) {
-            int rowIndex = entry.key;
-            List<String> row = entry.value;
-            
-            return DataRow(
-              cells: [
-                ...row.map((cell) {
-                  return DataCell(
-                    Container(
-                      constraints: BoxConstraints(maxWidth: 120),
-                      child: Text(
-                        cell,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    onTap: () => _showEditRowDialog(context, rowIndex, row),
-                  );
-                }).toList(),
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _showEditRowDialog(context, rowIndex, row),
-                        tooltip: 'Düzenle',
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _showDeleteConfirmDialog(context, rowIndex, provider),
-                        tooltip: 'Sil',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
+          ),
         ),
       ),
     );
   }
 
-  void _showEditRowDialog(BuildContext context, int rowIndex, List<String> currentData) {
+  List<DataColumn> _buildColumns(TableModel table) {
+    return [
+      ...table.columns.map((col) {
+        IconData? icon;
+        Color? iconColor;
+
+        if (col.isFormula) {
+          icon = Icons.functions_rounded;
+          iconColor = AppTheme.formula;
+        } else if (col.isConstant) {
+          icon = Icons.push_pin_rounded;
+          iconColor = AppTheme.warning;
+        } else if (col.isDate) {
+          icon = Icons.calendar_today_rounded;
+          iconColor = AppTheme.teal;
+        } else if (col.isTime) {
+          icon = Icons.access_time_rounded;
+          iconColor = Colors.indigo;
+        } else if (col.isAutoNumber) {
+          icon = Icons.tag_rounded;
+          iconColor = AppTheme.brown;
+        } else if (col.isNumeric) {
+          icon = Icons.numbers_rounded;
+          iconColor = AppTheme.success;
+        }
+
+        return DataColumn(
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: iconColor),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  col.name,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+      const DataColumn(
+        label: Text(''),
+      ),
+    ];
+  }
+
+  List<DataRow> _buildRows(
+    BuildContext context,
+    TableModel table,
+    List<List<String>> displayRows,
+    List<int> originalIndices,
+    TableProvider provider,
+  ) {
+    return displayRows.asMap().entries.map((entry) {
+      final displayIndex = entry.key;
+      final row = entry.value;
+      final originalIndex = originalIndices[displayIndex];
+
+      return DataRow(
+        color: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (displayIndex.isEven) return Colors.white;
+          return AppTheme.background;
+        }),
+        cells: [
+          ...row.asMap().entries.map((cellEntry) {
+            final value = cellEntry.value;
+            return DataCell(
+              _buildCellContent(value, provider.searchQuery),
+              onTap: () => _showEditDialog(context, originalIndex, row),
+            );
+          }),
+          DataCell(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  color: AppTheme.primaryBlue,
+                  onPressed: () => _showEditDialog(context, originalIndex, row),
+                  tooltip: 'Düzenle',
+                  visualDensity: VisualDensity.compact,
+                  splashRadius: 20,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  color: AppTheme.error,
+                  onPressed: () => _showDeleteDialog(context, originalIndex, provider),
+                  tooltip: 'Sil',
+                  visualDensity: VisualDensity.compact,
+                  splashRadius: 20,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }).toList();
+  }
+
+  Widget _buildCellContent(String text, String searchQuery) {
+    if (text.isEmpty) {
+      return const Text(
+        '-',
+        style: TextStyle(color: AppTheme.textSecondary),
+      );
+    }
+
+    if (searchQuery.isEmpty) {
+      return Text(text);
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = searchQuery.toLowerCase();
+    final startIndex = lowerText.indexOf(lowerQuery);
+
+    if (startIndex == -1) {
+      return Text(text);
+    }
+
+    final endIndex = startIndex + searchQuery.length;
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+        children: [
+          TextSpan(text: text.substring(0, startIndex)),
+          TextSpan(
+            text: text.substring(startIndex, endIndex),
+            style: TextStyle(
+              backgroundColor: Colors.yellow[300],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          TextSpan(text: text.substring(endIndex)),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, int rowIndex, List<String> currentData) {
     showDialog(
       context: context,
       builder: (context) => EditRowDialog(
@@ -221,24 +362,33 @@ class TableListWidget extends StatelessWidget {
     );
   }
 
-  void _showDeleteConfirmDialog(BuildContext context, int rowIndex, TableProvider provider) {
+  void _showDeleteDialog(BuildContext context, int rowIndex, TableProvider provider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Kaydı Sil'),
-        content: Text('Bu kaydı silmek istediğinizden emin misiniz?'),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_rounded, color: AppTheme.error),
+            SizedBox(width: 8),
+            Text('Kaydı Sil'),
+          ],
+        ),
+        content: const Text('Bu kaydı silmek istediğinizden emin misiniz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('İptal'),
+            child: const Text('İptal'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               await provider.deleteRow(rowIndex);
               Navigator.pop(context);
             },
-            child: Text('Sil', style: TextStyle(color: Colors.white)),
+            child: const Text('Sil'),
           ),
         ],
       ),
