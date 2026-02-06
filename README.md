@@ -1,16 +1,46 @@
-# table_note
+# Table Note
 
-A new Flutter project.
+Hızlı ve kolay tablo yönetimi uygulaması.
 
-## Getting Started
+<p align="center">
+  <img src="screenshots/1.png" width="200">
+  <img src="screenshots/2.png" width="200">
+  <img src="screenshots/3.png" width="200">
+</p>
 
-This project is a starting point for a Flutter application.
+## 📱 Özellikler
 
-A few resources to get you started if this is your first Flutter project:
+- ✅ Hızlı tablo oluşturma ve yönetim
+- ✅ Formül desteği (toplama, çıkarma, çarpma, bölme, yüzde)
+- ✅ Şablon sistemi
+- ✅ Tablo içi arama ve filtreleme
+- ✅ PDF ve CSV dışa aktarma
+- ✅ Otomatik sütun toplamları
+- ✅ Modern ve kullanıcı dostu arayüz
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 🛠️ Teknolojiler
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Flutter & Dart
+- Hive (yerel veritabanı)
+- Provider (state management)
+- Material Design 3
+
+## 📥 İndirme
+
+[Google Play Store](https://play.google.com/store/apps/details?id=com.muratstudio.tablenote) (Yakında)
+
+## 🚀 Kurulum
+```bash
+git clone https://github.com/Muratsunnu/table_note.git
+cd table_note
+flutter pub get
+flutter run
+```
+
+## 📄 Lisans
+
+MIT License
+
+## 👨‍💻 Geliştirici
+
+Murat Studio
