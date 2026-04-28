@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class ColumnSumsWidget extends StatelessWidget {
   const ColumnSumsWidget({Key? key}) : super(key: key);
@@ -59,13 +60,13 @@ class ColumnSumsWidget extends StatelessWidget {
                         size: 18,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isFiltering ? 'Filtrelenmiş Toplamlar' : 'Toplamlar',
+                            isFiltering ? AppLocalizations.of(context).filteredTotals : AppLocalizations.of(context).totals,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: darkColor,
@@ -74,7 +75,7 @@ class ColumnSumsWidget extends StatelessWidget {
                           ),
                           if (isFiltering)
                             Text(
-                              '"${provider.searchQuery}" araması',
+                              AppLocalizations.of(context).searchOf(provider.searchQuery),
                               style: TextStyle(
                                 color: darkColor.withOpacity(0.7),
                                 fontSize: 11,
@@ -92,7 +93,7 @@ class ColumnSumsWidget extends StatelessWidget {
                       child: Text(
                         isFiltering 
                             ? '${provider.filteredRowCount}/${provider.totalRowCount}'
-                            : '${provider.totalRowCount} kayıt',
+                            : AppLocalizations.of(context).nRecords(provider.totalRowCount),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,

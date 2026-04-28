@@ -4,6 +4,7 @@ import 'package:table_note/models/tabel_model.dart';
 import 'package:table_note/services/formula_service.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class AddRowDialog extends StatefulWidget {
   const AddRowDialog({Key? key}) : super(key: key);
@@ -106,10 +107,10 @@ class _AddRowDialogState extends State<AddRowDialog> {
             ),
             child: const Icon(Icons.add_rounded, color: AppTheme.success, size: 20),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
-              'Yeni Kayıt Ekle',
+              AppLocalizations.of(context).addNewRecord,
               style: TextStyle(fontSize: 18),
             ),
           ),
@@ -138,11 +139,11 @@ class _AddRowDialogState extends State<AddRowDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('İptal'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
         ElevatedButton.icon(
           icon: const Icon(Icons.add_rounded, size: 20),
-          label: const Text('Ekle'),
+          label: Text(AppLocalizations.of(context).add),
           onPressed: _addRow,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.success,
@@ -198,7 +199,7 @@ class _AddRowDialogState extends State<AddRowDialog> {
             suffixIcon: column.autoFillOptions.isNotEmpty
                 ? PopupMenuButton<String>(
                     icon: const Icon(Icons.arrow_drop_down),
-                    tooltip: 'Hızlı Seç',
+                    tooltip: AppLocalizations.of(context).quickSelect,
                     onSelected: (value) {
                       _controllers[colIndex].text = value;
                       _recalculateFormulas();
@@ -302,7 +303,7 @@ class _AddRowDialogState extends State<AddRowDialog> {
       child: Row(
         children: [
           Icon(Icons.functions, color: Colors.purple[700]),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,10 +315,10 @@ class _AddRowDialogState extends State<AddRowDialog> {
                     color: Colors.purple[800],
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   _controllers[colIndex].text.isEmpty
-                      ? 'Hesaplanıyor...'
+                      ? AppLocalizations.of(context).calculating
                       : _controllers[colIndex].text,
                   style: TextStyle(
                     fontSize: 18,
@@ -325,9 +326,9 @@ class _AddRowDialogState extends State<AddRowDialog> {
                     color: Colors.purple[900],
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
-                  'Formül: ${FormulaService.formatFormula(column.formula ?? '')}',
+                  '${AppLocalizations.of(context).formulaLabel}: ${FormulaService.formatFormula(column.formula ?? '')}',
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.purple[600],
@@ -344,7 +345,7 @@ class _AddRowDialogState extends State<AddRowDialog> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Otomatik',
+              AppLocalizations.of(context).autoLabel,
               style: TextStyle(
                 fontSize: 11,
                 color: Colors.purple[700],
@@ -373,16 +374,16 @@ class _AddRowDialogState extends State<AddRowDialog> {
                 _controllers[colIndex].text = _getCurrentDateFormatted();
                 setState(() {});
               },
-              tooltip: 'Bugün',
+              tooltip: AppLocalizations.of(context).today,
             ),
             IconButton(
               icon: const Icon(Icons.edit_calendar, color: Colors.teal),
               onPressed: () => _selectDate(colIndex),
-              tooltip: 'Tarih Seç',
+              tooltip: AppLocalizations.of(context).selectDate,
             ),
           ],
         ),
-        helperText: 'Bugünün tarihi otomatik geldi',
+        helperText: AppLocalizations.of(context).todaysDateAutoSet,
         helperStyle: TextStyle(color: Colors.teal[600]),
       ),
       readOnly: true,
@@ -406,16 +407,16 @@ class _AddRowDialogState extends State<AddRowDialog> {
                 _controllers[colIndex].text = _getCurrentTimeFormatted();
                 setState(() {});
               },
-              tooltip: 'Şu an',
+              tooltip: AppLocalizations.of(context).now,
             ),
             IconButton(
               icon: const Icon(Icons.more_time, color: Colors.indigo),
               onPressed: () => _selectTime(colIndex),
-              tooltip: 'Saat Seç',
+              tooltip: AppLocalizations.of(context).selectTime,
             ),
           ],
         ),
-        helperText: 'Şu anki saat otomatik geldi',
+        helperText: AppLocalizations.of(context).currentTimeAutoSet,
         helperStyle: TextStyle(color: Colors.indigo[600]),
       ),
       readOnly: true,
@@ -465,7 +466,7 @@ class _AddRowDialogState extends State<AddRowDialog> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Otomatik',
+              AppLocalizations.of(context).autoLabel,
               style: TextStyle(
                 fontSize: 11,
                 color: Colors.brown[700],
@@ -484,7 +485,7 @@ class _AddRowDialogState extends State<AddRowDialog> {
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      locale: const Locale('tr', 'TR'),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null) {
       _controllers[colIndex].text = 
@@ -528,7 +529,7 @@ class _AddRowDialogState extends State<AddRowDialog> {
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kayıt eklenemedi')),
+        SnackBar(content: Text(AppLocalizations.of(context).addFailed)),
       );
     }
   }

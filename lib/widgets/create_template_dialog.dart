@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
 import '../providers/template_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class CreateTemplateDialog extends StatefulWidget {
   const CreateTemplateDialog({Key? key}) : super(key: key);
@@ -79,10 +80,10 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                     ),
                     child: const Icon(Icons.article_rounded, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Text(
-                      'Yeni Şablon Oluştur',
+                      AppLocalizations.of(context).createNewTemplateTitle,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -108,13 +109,13 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                     TextField(
                       controller: _templateNameController,
                       decoration: InputDecoration(
-                        labelText: 'Şablon Adı',
-                        hintText: 'Örn: Sefer Kayıt Şablonu',
+                        labelText: AppLocalizations.of(context).templateName,
+                        hintText: AppLocalizations.of(context).templateNameHint,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         prefixIcon: const Icon(Icons.article_rounded),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Row(
                       children: [
                         Container(
@@ -125,19 +126,19 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                           ),
                           child: const Icon(Icons.view_column_rounded, size: 18, color: AppTheme.primaryBlue),
                         ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Sütunlar',
+                        SizedBox(width: 10),
+                        Text(
+                          AppLocalizations.of(context).columns,
                           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     ..._buildColumnWidgets(),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.add_rounded),
-                      label: const Text('Sütun Ekle'),
+                      label: Text(AppLocalizations.of(context).addColumn),
                       onPressed: _addColumn,
                     ),
                   ],
@@ -161,14 +162,14 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('İptal'),
+                      child: Text(AppLocalizations.of(context).cancel),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.save),
-                      label: const Text('Şablon Oluştur'),
+                      label: Text(AppLocalizations.of(context).templateCreate),
                       onPressed: _createTemplate,
                     ),
                   ),
@@ -200,8 +201,8 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                     child: TextField(
                       controller: _nameControllers[index],
                       decoration: InputDecoration(
-                        labelText: 'Sütun ${index + 1}',
-                        hintText: 'Sütun adı',
+                        labelText: AppLocalizations.of(context).columnN(index + 1),
+                        hintText: AppLocalizations.of(context).columnName,
                         border: const OutlineInputBorder(),
                         prefixIcon: _getColumnTypeIcon(column.columnType),
                       ),
@@ -253,12 +254,12 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTypeChip(index, column, ColumnType.normal, 'Normal', Icons.edit, Colors.blue),
-        _buildTypeChip(index, column, ColumnType.constant, 'Sabit', Icons.pin, Colors.orange),
-        _buildTypeChip(index, column, ColumnType.formula, 'Formül', Icons.functions, Colors.purple),
-        _buildTypeChip(index, column, ColumnType.date, 'Tarih', Icons.calendar_today, Colors.teal),
-        _buildTypeChip(index, column, ColumnType.time, 'Saat', Icons.access_time, Colors.indigo),
-        _buildTypeChip(index, column, ColumnType.autoNumber, 'Sıra No', Icons.format_list_numbered, Colors.brown),
+        _buildTypeChip(index, column, ColumnType.normal, AppLocalizations.of(context).normal, Icons.edit, Colors.blue),
+        _buildTypeChip(index, column, ColumnType.constant, AppLocalizations.of(context).constant, Icons.pin, Colors.orange),
+        _buildTypeChip(index, column, ColumnType.formula, AppLocalizations.of(context).formula, Icons.functions, Colors.purple),
+        _buildTypeChip(index, column, ColumnType.date, AppLocalizations.of(context).date, Icons.calendar_today, Colors.teal),
+        _buildTypeChip(index, column, ColumnType.time, AppLocalizations.of(context).time, Icons.access_time, Colors.indigo),
+        _buildTypeChip(index, column, ColumnType.autoNumber, AppLocalizations.of(context).autoNumber, Icons.format_list_numbered, Colors.brown),
       ],
     );
   }
@@ -340,10 +341,10 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       child: Row(
         children: [
           Icon(Icons.info_outline, size: 18, color: Colors.brown[700]),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Her yeni kayıt için otomatik artan numara (1, 2, 3...) atanır.',
+              AppLocalizations.of(context).autoNumberDescShort,
               style: TextStyle(fontSize: 12, color: Colors.brown[800]),
             ),
           ),
@@ -364,10 +365,10 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       child: Row(
         children: [
           Icon(Icons.info_outline, size: 18, color: Colors.teal[700]),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Kayıt eklerken bugünün tarihi otomatik gelir, değiştirilebilir.',
+              AppLocalizations.of(context).dateAutoDescShort,
               style: TextStyle(fontSize: 12, color: Colors.teal[800]),
             ),
           ),
@@ -388,10 +389,10 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       child: Row(
         children: [
           Icon(Icons.info_outline, size: 18, color: Colors.indigo[700]),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Kayıt eklerken şu anki saat otomatik gelir, değiştirilebilir.',
+              AppLocalizations.of(context).timeAutoDescShort,
               style: TextStyle(fontSize: 12, color: Colors.indigo[800]),
             ),
           ),
@@ -403,9 +404,9 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
   Widget _buildNormalSettings(int index, ColumnModel column) {
     return Column(
       children: [
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         CheckboxListTile(
-          title: const Text('Sayısal Sütun'),
+          title: Text(AppLocalizations.of(context).numericColumn),
           value: column.isNumeric,
           onChanged: (value) => setState(() => column.isNumeric = value ?? false),
           dense: true,
@@ -415,8 +416,8 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
           TextField(
             controller: _autoFillControllers[index],
             decoration: InputDecoration(
-              labelText: 'Hızlı Seçim Listesi',
-              hintText: 'Virgülle ayırın',
+              labelText: AppLocalizations.of(context).quickSelectionList,
+              hintText: AppLocalizations.of(context).quickSelectionHintShort,
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.clear),
@@ -440,7 +441,7 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
         ] else ...[
           OutlinedButton.icon(
             icon: const Icon(Icons.list, size: 16),
-            label: const Text('Hızlı Seçim Ekle'),
+            label: Text(AppLocalizations.of(context).quickSelectionAdd),
             onPressed: () => setState(() => _showAutoFillInput[index] = true),
           ),
         ],
@@ -451,12 +452,12 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
   Widget _buildConstantSettings(int index, ColumnModel column) {
     return Column(
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         TextField(
           controller: _constantValueControllers[index],
-          decoration: const InputDecoration(
-            labelText: 'Varsayılan Değer',
-            hintText: 'Örn: 0.2',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).defaultValue,
+            hintText: AppLocalizations.of(context).defaultValueHint,
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.pin, color: Colors.orange),
           ),
@@ -478,21 +479,21 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         TextField(
           controller: _formulaControllers[index],
-          decoration: const InputDecoration(
-            labelText: 'Formül',
-            hintText: 'Örn: {Kg}*{Birim Fiyat}',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).formulaLabel,
+            hintText: AppLocalizations.of(context).formulaHint,
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.functions, color: Colors.purple),
           ),
           onChanged: (value) => column.formula = value,
         ),
         if (availableColumns.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          const Text(
-            'Sütun ekle:',
+          SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context).addColumnLabel,
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 6),
@@ -517,9 +518,9 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
               )),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'İşlem ekle:',
+          SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context).addOperation,
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 6),
@@ -603,12 +604,12 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     final validColumns = _columns.where((col) => col.name.isNotEmpty).toList();
 
     if (templateName.isEmpty) {
-      _showError('Şablon adı boş olamaz');
+      _showError(AppLocalizations.of(context).templateNameEmpty);
       return;
     }
 
     if (validColumns.isEmpty) {
-      _showError('En az bir sütun eklemelisiniz');
+      _showError(AppLocalizations.of(context).atLeastOneColumn);
       return;
     }
 
@@ -618,7 +619,7 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     if (success) {
       Navigator.pop(context);
     } else {
-      _showError('Şablon oluşturulamadı');
+      _showError(AppLocalizations.of(context).templateCreateFailed);
     }
   }
 

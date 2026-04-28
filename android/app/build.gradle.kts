@@ -40,8 +40,8 @@ android {
         applicationId = "com.muratstudio.tablenote"
         minSdk = flutter.minSdkVersion
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.0.0"
+        versionCode = 8
+        versionName = "1.0.2"
     }
 
     buildTypes {

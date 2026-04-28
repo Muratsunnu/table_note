@@ -6,6 +6,7 @@ import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
 import 'create_template_dialog.dart';
 import 'edit_template_dialog.dart';
+import '../l10n/app_localizations.dart';
 
 class TemplateManagementDialog extends StatefulWidget {
   const TemplateManagementDialog({Key? key}) : super(key: key);
@@ -94,10 +95,10 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
             ),
             child: const Icon(Icons.article_rounded, color: Colors.white, size: 24),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
-              'Tablo Şablonları',
+              AppLocalizations.of(context).tableTemplates,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -108,7 +109,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           // Arama toggle butonu
           Consumer<TemplateProvider>(
             builder: (context, provider, child) {
-              if (!provider.hasTemplates) return const SizedBox();
+              if (!provider.hasTemplates) return SizedBox();
               return IconButton(
                 icon: Icon(
                   _isSearching ? Icons.search_off_rounded : Icons.search_rounded,
@@ -123,7 +124,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                     }
                   });
                 },
-                tooltip: _isSearching ? 'Aramayı Kapat' : 'Şablon Ara',
+                tooltip: _isSearching ? AppLocalizations.of(context).closeSearch : AppLocalizations.of(context).searchTemplate,
               );
             },
           ),
@@ -147,7 +148,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                 controller: _searchController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Şablon adı yazın...',
+                  hintText: AppLocalizations.of(context).typeTemplateName,
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -184,14 +185,14 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.article_outlined, size: 60, color: Colors.grey[400]),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
-            'Henüz şablon oluşturmadınız',
+            AppLocalizations.of(context).noTemplatesCreated,
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
-            'Sık kullandığınız tablo yapılarını şablon olarak kaydedin',
+            AppLocalizations.of(context).saveFrequentStructures,
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),
@@ -220,7 +221,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
             width: double.infinity,
             color: AppTheme.background,
             child: Text(
-              '${filteredTemplates.length} / ${provider.templates.length} şablon gösteriliyor',
+              AppLocalizations.of(context).showingTemplates(filteredTemplates.length, provider.templates.length),
               style: const TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -332,18 +333,18 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
             ),
             child: const Icon(Icons.search_off_rounded, size: 48, color: AppTheme.warning),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Sonuç bulunamadı',
+          SizedBox(height: 16),
+          Text(
+            AppLocalizations.of(context).noResults,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
-            '"$_searchQuery" ile eşleşen şablon yok',
+            AppLocalizations.of(context).deleteTemplateConfirm(_searchQuery),
             style: const TextStyle(
               fontSize: 14,
               color: AppTheme.textSecondary,
@@ -370,7 +371,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           Expanded(
             child: ElevatedButton.icon(
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Yeni Şablon Oluştur'),
+              label: Text(AppLocalizations.of(context).createNewTemplate),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -448,18 +449,18 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Şablondan Tablo Oluştur'),
+        title: Text(AppLocalizations.of(context).createTableFromTemplate),
         content: TextField(
           controller: tableNameController,
-          decoration: const InputDecoration(
-            labelText: 'Tablo Adı',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).tableName,
             border: OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -475,12 +476,12 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
 
                 if (!success) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tablo oluşturulamadı')),
+                    SnackBar(content: Text(AppLocalizations.of(context).tableCreateFailed)),
                   );
                 }
               }
             },
-            child: const Text('Oluştur'),
+            child: Text(AppLocalizations.of(context).create),
           ),
         ],
       ),
@@ -494,8 +495,8 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Şablonu Sil'),
-        content: Text('$templateName şablonunu silmek istediğinizden emin misiniz?'),
+        title: Text(AppLocalizations.of(context).deleteTemplate),
+        content: Text(AppLocalizations.of(context).deleteTemplateConfirm(templateName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -507,7 +508,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
               await provider.deleteTemplate(index);
               Navigator.pop(context);
             },
-            child: const Text('Sil', style: TextStyle(color: Colors.white)),
+            child: Text(AppLocalizations.of(context).delete, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -524,7 +525,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Sütunlar:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(AppLocalizations.of(context).columnsLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               ...template.columns.map((col) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
@@ -551,7 +552,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Kapat'),
+            child: Text(AppLocalizations.of(context).close),
           ),
         ],
       ),

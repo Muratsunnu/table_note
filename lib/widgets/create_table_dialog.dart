@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
-import 'package:table_note/services/formula_service.dart';
 import '../providers/table_provider.dart';
 import '../providers/template_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class CreateTableDialog extends StatefulWidget {
   const CreateTableDialog({Key? key}) : super(key: key);
@@ -30,13 +30,14 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _initializeControllersForColumn(_columns[0]);
   }
 
   void _initializeControllersForColumn(ColumnModel col) {
     _columnControllers.add(TextEditingController(text: col.name));
-    _autoFillControllers.add(TextEditingController(text: col.autoFillOptions.join(', ')));
+    _autoFillControllers
+        .add(TextEditingController(text: col.autoFillOptions.join(', ')));
     _constantValueControllers.add(TextEditingController(
       text: col.constantValue?.toString() ?? '',
     ));
@@ -105,12 +106,13 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                  child: const Icon(Icons.add_rounded,
+                      color: Colors.white, size: 24),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
+                SizedBox(width: 12),
+                Expanded(
                   child: Text(
-                    'Yeni Tablo Oluştur',
+                    AppLocalizations.of(context).createNewTable,
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -133,9 +135,9 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               unselectedLabelColor: AppTheme.textSecondary,
               indicatorColor: AppTheme.primaryBlue,
               indicatorWeight: 3,
-              tabs: const [
-                Tab(text: 'Manuel Oluştur'),
-                Tab(text: 'Şablondan Oluştur'),
+              tabs: [
+                Tab(text: AppLocalizations.of(context).manualCreate),
+                Tab(text: AppLocalizations.of(context).createFromTemplate),
               ],
             ),
           ),
@@ -154,10 +156,11 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           TextField(
             controller: _tableNameController,
             decoration: InputDecoration(
-              labelText: 'Tablo Adı',
-              hintText: 'Örn: Sefer Kayıtları',
+              labelText: AppLocalizations.of(context).tableName,
+              hintText: AppLocalizations.of(context).tableNameHint,
               prefixIcon: const Icon(Icons.table_chart_rounded),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
           const SizedBox(height: 24),
@@ -171,17 +174,18 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                   color: AppTheme.lightBlue,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.view_column_rounded, size: 18, color: AppTheme.primaryBlue),
+                child: const Icon(Icons.view_column_rounded,
+                    size: 18, color: AppTheme.primaryBlue),
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'Sütunlar',
+              SizedBox(width: 10),
+              Text(
+                AppLocalizations.of(context).columns,
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
               const Spacer(),
               TextButton.icon(
                 icon: const Icon(Icons.help_outline_rounded, size: 18),
-                label: const Text('Yardım'),
+                label: Text(AppLocalizations.of(context).help),
                 onPressed: _showHelpDialog,
               ),
             ],
@@ -199,15 +203,15 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               Expanded(
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.add),
-                  label: const Text('Sütun Ekle'),
+                  label: Text(AppLocalizations.of(context).addColumn),
                   onPressed: _addColumn,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.check),
-                  label: const Text('Tablo Oluştur'),
+                  label: Text(AppLocalizations.of(context).createTable),
                   onPressed: _createTable,
                 ),
               ),
@@ -244,8 +248,9 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                     child: TextField(
                       controller: _columnControllers[index],
                       decoration: InputDecoration(
-                        labelText: 'Sütun ${index + 1}',
-                        hintText: 'Sütun adı',
+                        labelText:
+                            AppLocalizations.of(context).columnN(index + 1),
+                        hintText: AppLocalizations.of(context).columnName,
                         border: const OutlineInputBorder(),
                         prefixIcon: _getColumnTypeIcon(column.columnType),
                       ),
@@ -255,11 +260,11 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                     ),
                   ),
                   if (_columns.length > 1) ...[
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () => _removeColumn(index),
-                      tooltip: 'Sütunu Sil',
+                      tooltip: AppLocalizations.of(context).deleteColumn,
                     ),
                   ],
                 ],
@@ -305,11 +310,11 @@ class _CreateTableDialogState extends State<CreateTableDialog>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Sütun Tipi:',
+          Text(
+            AppLocalizations.of(context).columnType,
             style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -318,55 +323,55 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 index: index,
                 column: column,
                 type: ColumnType.normal,
-                label: 'Normal',
+                label: AppLocalizations.of(context).normal,
                 icon: Icons.edit,
                 color: Colors.blue,
-                tooltip: 'Manuel veri girişi',
+                tooltip: AppLocalizations.of(context).manualInput,
               ),
               _buildTypeChip(
                 index: index,
                 column: column,
                 type: ColumnType.constant,
-                label: 'Sabit Değer',
+                label: AppLocalizations.of(context).constantValue,
                 icon: Icons.pin,
                 color: Colors.orange,
-                tooltip: 'Varsayılan değer gelir',
+                tooltip: AppLocalizations.of(context).defaultValueComes,
               ),
               _buildTypeChip(
                 index: index,
                 column: column,
                 type: ColumnType.formula,
-                label: 'Formül',
+                label: AppLocalizations.of(context).formula,
                 icon: Icons.functions,
                 color: Colors.purple,
-                tooltip: 'Otomatik hesaplanır',
+                tooltip: AppLocalizations.of(context).autoCalculated,
               ),
               _buildTypeChip(
                 index: index,
                 column: column,
                 type: ColumnType.date,
-                label: 'Tarih',
+                label: AppLocalizations.of(context).date,
                 icon: Icons.calendar_today,
                 color: Colors.teal,
-                tooltip: 'Bugünün tarihi otomatik gelir',
+                tooltip: AppLocalizations.of(context).todaysDateAuto,
               ),
               _buildTypeChip(
                 index: index,
                 column: column,
                 type: ColumnType.time,
-                label: 'Saat',
+                label: AppLocalizations.of(context).time,
                 icon: Icons.access_time,
                 color: Colors.indigo,
-                tooltip: 'Şu anki saat otomatik gelir',
+                tooltip: AppLocalizations.of(context).currentTimeAuto,
               ),
               _buildTypeChip(
                 index: index,
                 column: column,
                 type: ColumnType.autoNumber,
-                label: 'Sıra No',
+                label: AppLocalizations.of(context).autoNumber,
                 icon: Icons.format_list_numbered,
                 color: Colors.brown,
-                tooltip: 'Otomatik artan numara',
+                tooltip: AppLocalizations.of(context).autoIncrement,
               ),
             ],
           ),
@@ -458,8 +463,8 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         const SizedBox(height: 12),
         // Sayısal checkbox
         CheckboxListTile(
-          title: const Text('Sayısal Sütun'),
-          subtitle: const Text('Bu sütundaki değerler toplanabilir'),
+          title: Text(AppLocalizations.of(context).numericColumn),
+          subtitle: Text(AppLocalizations.of(context).numericColumnDesc),
           value: column.isNumeric,
           onChanged: (value) {
             setState(() => column.isNumeric = value ?? false);
@@ -470,12 +475,12 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
         // Otomatik doldurma seçenekleri
         if (column.autoFillOptions.isNotEmpty || _showAutoFill[index]) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _autoFillControllers[index],
             decoration: InputDecoration(
-              labelText: 'Hızlı Seçim Listesi',
-              hintText: 'Virgülle ayırın (örn: İstanbul, Ankara)',
+              labelText: AppLocalizations.of(context).quickSelectionList,
+              hintText: AppLocalizations.of(context).quickSelectionHint,
               border: const OutlineInputBorder(),
               prefixIcon: const Icon(Icons.list),
               suffixIcon: IconButton(
@@ -498,10 +503,10 @@ class _CreateTableDialogState extends State<CreateTableDialog>
             },
           ),
         ] else ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.list, size: 18),
-            label: const Text('Hızlı Seçim Listesi Ekle'),
+            label: Text(AppLocalizations.of(context).addQuickSelectionList),
             onPressed: () => setState(() => _showAutoFill[index] = true),
           ),
         ],
@@ -513,7 +518,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -527,25 +532,26 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               Row(
                 children: [
                   Icon(Icons.info_outline, size: 18, color: Colors.orange[700]),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Bu değer tüm satırlara varsayılan olarak gelir. Satır bazında değiştirilebilir.',
+                      AppLocalizations.of(context).defaultValueInfo,
                       style: TextStyle(fontSize: 12, color: Colors.orange[800]),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextField(
                 controller: _constantValueControllers[index],
-                decoration: const InputDecoration(
-                  labelText: 'Varsayılan Değer',
-                  hintText: 'Örn: 0.2',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).defaultValue,
+                  hintText: AppLocalizations.of(context).defaultValueHint,
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.pin),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (value) {
                   column.constantValue = double.tryParse(value);
                 },
@@ -569,7 +575,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -583,10 +589,10 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               Row(
                 children: [
                   Icon(Icons.info_outline, size: 18, color: Colors.purple[700]),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Bu sütun diğer sütunlardan otomatik hesaplanır.',
+                      AppLocalizations.of(context).formulaAutoCalcInfo,
                       style: TextStyle(fontSize: 12, color: Colors.purple[800]),
                     ),
                   ),
@@ -598,11 +604,11 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               TextField(
                 controller: _formulaControllers[index],
                 decoration: InputDecoration(
-                  labelText: 'Formül',
-                  hintText: 'Örn: {Kg}*{Birim Fiyat}',
+                  labelText: AppLocalizations.of(context).formulaLabel,
+                  hintText: AppLocalizations.of(context).formulaHint,
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.functions),
-                  helperText: 'İşlemler: + - * / % (yüzde)',
+                  helperText: AppLocalizations.of(context).operationsHint,
                   helperMaxLines: 2,
                 ),
                 onChanged: (value) {
@@ -613,8 +619,8 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
               // Kullanılabilir sütunlar
               if (availableColumns.isNotEmpty) ...[
-                const Text(
-                  'Sütun eklemek için tıklayın:',
+                Text(
+                  AppLocalizations.of(context).clickToAddColumn,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 8),
@@ -624,22 +630,26 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                   children: availableColumns.map((col) {
                     return ActionChip(
                       avatar: Icon(
-                        col.isEffectivelyNumeric ? Icons.numbers : Icons.text_fields,
+                        col.isEffectivelyNumeric
+                            ? Icons.numbers
+                            : Icons.text_fields,
                         size: 16,
                         color: AppTheme.primaryBlue,
                       ),
                       label: Text(
-                        col.name, 
+                        col.name,
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textPrimary,
                         ),
                       ),
                       backgroundColor: AppTheme.lightBlue,
-                      side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.3)),
+                      side: BorderSide(
+                          color: AppTheme.primaryBlue.withOpacity(0.3)),
                       onPressed: () {
                         final currentText = _formulaControllers[index].text;
-                        _formulaControllers[index].text = '$currentText{${col.name}}';
+                        _formulaControllers[index].text =
+                            '$currentText{${col.name}}';
                         column.formula = _formulaControllers[index].text;
                       },
                     );
@@ -649,22 +659,29 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               ],
 
               // İşlem butonları
-              const Text(
-                'İşlem ekle:',
+              Text(
+                AppLocalizations.of(context).addOperation,
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _buildOperatorChip(index, column, '+', 'Toplama'),
-                  _buildOperatorChip(index, column, '-', 'Çıkarma'),
-                  _buildOperatorChip(index, column, '*', 'Çarpma'),
-                  _buildOperatorChip(index, column, '/', 'Bölme'),
-                  _buildOperatorChip(index, column, '%', 'Yüzde'),
-                  _buildOperatorChip(index, column, '(', 'Parantez Aç'),
-                  _buildOperatorChip(index, column, ')', 'Parantez Kapat'),
+                  _buildOperatorChip(index, column, '+',
+                      AppLocalizations.of(context).addition),
+                  _buildOperatorChip(index, column, '-',
+                      AppLocalizations.of(context).subtraction),
+                  _buildOperatorChip(index, column, '*',
+                      AppLocalizations.of(context).multiplication),
+                  _buildOperatorChip(index, column, '/',
+                      AppLocalizations.of(context).division),
+                  _buildOperatorChip(index, column, '%',
+                      AppLocalizations.of(context).percentage),
+                  _buildOperatorChip(index, column, '(',
+                      AppLocalizations.of(context).openParen),
+                  _buildOperatorChip(index, column, ')',
+                      AppLocalizations.of(context).closeParen),
                 ],
               ),
             ],
@@ -674,14 +691,15 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     );
   }
 
-  Widget _buildOperatorChip(int index, ColumnModel column, String op, String tooltip) {
+  Widget _buildOperatorChip(
+      int index, ColumnModel column, String op, String tooltip) {
     return Tooltip(
       message: tooltip,
       child: ActionChip(
         label: Text(
           op,
           style: const TextStyle(
-            fontSize: 16, 
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppTheme.formula,
           ),
@@ -701,7 +719,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -712,35 +730,37 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           child: Row(
             children: [
               Icon(Icons.calendar_today, color: Colors.teal[700]),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Otomatik Tarih',
+                      AppLocalizations.of(context).autoDate,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.teal[800],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
-                      'Yeni kayıt eklerken bugünün tarihi otomatik gelir.\nİsterseniz değiştirebilirsiniz.',
+                      AppLocalizations.of(context).autoDateDesc,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.teal[700],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.teal[100],
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'Örnek: ${_getCurrentDateFormatted()}',
+                        AppLocalizations.of(context)
+                            .example(_getCurrentDateFormatted()),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
                           color: Colors.teal[900],
@@ -761,7 +781,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -772,35 +792,37 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           child: Row(
             children: [
               Icon(Icons.access_time, color: Colors.indigo[700]),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Otomatik Saat',
+                      AppLocalizations.of(context).autoTime,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.indigo[800],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
-                      'Yeni kayıt eklerken şu anki saat otomatik gelir.\nİsterseniz değiştirebilirsiniz.',
+                      AppLocalizations.of(context).autoTimeDesc,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.indigo[700],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.indigo[100],
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'Örnek: ${_getCurrentTimeFormatted()}',
+                        AppLocalizations.of(context)
+                            .example(_getCurrentTimeFormatted()),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
                           color: Colors.indigo[900],
@@ -821,7 +843,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -832,35 +854,36 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           child: Row(
             children: [
               Icon(Icons.format_list_numbered, color: Colors.brown[700]),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Otomatik Sıra Numarası',
+                      AppLocalizations.of(context).autoNumberTitle,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.brown[800],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
-                      'Her yeni kayıt için otomatik artan numara atanır.\n1, 2, 3, 4... şeklinde devam eder.',
+                      AppLocalizations.of(context).autoNumberDesc,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.brown[700],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.brown[100],
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'Örnek: 1, 2, 3, 4...',
+                        AppLocalizations.of(context).example('1, 2, 3, 4...'),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
                           color: Colors.brown[900],
@@ -920,7 +943,8 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
-      _columns[i].constantValue = double.tryParse(_constantValueControllers[i].text);
+      _columns[i].constantValue =
+          double.tryParse(_constantValueControllers[i].text);
       _columns[i].formula = _formulaControllers[i].text.trim().isEmpty
           ? null
           : _formulaControllers[i].text.trim();
@@ -930,25 +954,27 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
     // Validasyon
     if (tableName.isEmpty) {
-      _showErrorSnackBar('Tablo adı boş olamaz');
+      _showErrorSnackBar(AppLocalizations.of(context).tableNameEmpty);
       return;
     }
 
     final validColumns = _columns.where((col) => col.name.isNotEmpty).toList();
 
     if (validColumns.isEmpty) {
-      _showErrorSnackBar('En az bir sütun eklemelisiniz');
+      _showErrorSnackBar(AppLocalizations.of(context).atLeastOneColumn);
       return;
     }
 
     // Formül validasyonu
     for (final col in validColumns) {
       if (col.isFormula && (col.formula == null || col.formula!.isEmpty)) {
-        _showErrorSnackBar('${col.name} sütunu için formül girilmeli');
+        _showErrorSnackBar(
+            AppLocalizations.of(context).formulaRequired(col.name));
         return;
       }
       if (col.isConstant && col.constantValue == null) {
-        _showErrorSnackBar('${col.name} sütunu için varsayılan değer girilmeli');
+        _showErrorSnackBar(
+            AppLocalizations.of(context).defaultValueRequired(col.name));
         return;
       }
     }
@@ -960,7 +986,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     if (success) {
       Navigator.pop(context);
     } else {
-      _showErrorSnackBar('Tablo oluşturulamadı');
+      _showErrorSnackBar(AppLocalizations.of(context).tableCreateFailed);
     }
   }
 
@@ -977,9 +1003,9 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.article_outlined, size: 60, color: Colors.grey[400]),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
-                  'Henüz şablon yok',
+                  AppLocalizations.of(context).noTemplatesYet,
                   style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                 ),
               ],
@@ -1003,7 +1029,8 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                   template.templateName,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text('${template.columns.length} sütun'),
+                subtitle: Text(AppLocalizations.of(context)
+                    .nColumns(template.columns.length)),
                 onTap: () => _createTableFromTemplate(template),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               ),
@@ -1015,28 +1042,30 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   }
 
   void _createTableFromTemplate(TemplateModel template) {
-    final tableNameController = TextEditingController(text: template.templateName);
+    final tableNameController =
+        TextEditingController(text: template.templateName);
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Şablondan Tablo Oluştur'),
+        title: Text(AppLocalizations.of(context).createTableFromTemplate),
         content: TextField(
           controller: tableNameController,
-          decoration: const InputDecoration(
-            labelText: 'Tablo Adı',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).tableName,
             border: OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           ElevatedButton(
             onPressed: () async {
               if (tableNameController.text.trim().isNotEmpty) {
-                final tableProvider = Provider.of<TableProvider>(context, listen: false);
+                final tableProvider =
+                    Provider.of<TableProvider>(context, listen: false);
                 final success = await tableProvider.createTable(
                   tableNameController.text.trim(),
                   template.columns.map((c) => c.copyWith()).toList(),
@@ -1048,7 +1077,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 }
               }
             },
-            child: const Text('Oluştur'),
+            child: Text(AppLocalizations.of(context).create),
           ),
         ],
       ),
@@ -1062,8 +1091,8 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         title: Row(
           children: [
             Icon(Icons.help_outline, color: Colors.blue[700]),
-            const SizedBox(width: 8),
-            const Text('Sütun Tipleri'),
+            SizedBox(width: 8),
+            Text(AppLocalizations.of(context).columnTypes),
           ],
         ),
         content: SingleChildScrollView(
@@ -1074,22 +1103,21 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               _buildHelpItem(
                 icon: Icons.edit,
                 color: Colors.blue,
-                title: 'Normal Sütun',
-                description: 'Manuel veri girişi yapılır. Hızlı seçim listesi eklenebilir.',
+                title: AppLocalizations.of(context).normalColumn,
+                description: AppLocalizations.of(context).normalColumnDesc,
               ),
               const Divider(),
               _buildHelpItem(
                 icon: Icons.pin,
                 color: Colors.orange,
-                title: 'Sabit Değer Sütunu',
-                description:
-                    'Belirlediğiniz varsayılan değer tüm satırlara otomatik gelir. İsterseniz satır bazında değiştirebilirsiniz.',
+                title: AppLocalizations.of(context).constantColumnTitle,
+                description: AppLocalizations.of(context).constantColumnDesc,
               ),
               const Divider(),
               _buildHelpItem(
                 icon: Icons.functions,
                 color: Colors.purple,
-                title: 'Formül Sütunu',
+                title: AppLocalizations.of(context).formulaColumnTitle,
                 description:
                     'Diğer sütunlardan otomatik hesaplanır. Desteklenen işlemler:\n'
                     '• + (toplama)\n'
@@ -1099,22 +1127,26 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                     '• % (yüzde: {Fiyat}%18 = Fiyatın %18\'i)',
               ),
               const Divider(),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
-                'Örnek Formüller:',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                AppLocalizations.of(context).exampleFormulas,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.grey[700]),
               ),
-              const SizedBox(height: 8),
-              _buildFormulaExample('{Kg}*{Birim Fiyat}', 'Kg ile Birim Fiyatı çarp'),
-              _buildFormulaExample('{Fiyat}+{Fiyat}%18', 'Fiyat + KDV'),
-              _buildFormulaExample('{Brüt}-{Dara}', 'Net ağırlık'),
+              SizedBox(height: 8),
+              _buildFormulaExample('{Kg}*{Birim Fiyat}',
+                  AppLocalizations.of(context).multiplyKgPrice),
+              _buildFormulaExample(
+                  '{Fiyat}+{Fiyat}%18', AppLocalizations.of(context).priceVat),
+              _buildFormulaExample(
+                  '{Brüt}-{Dara}', AppLocalizations.of(context).netWeight),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Anladım'),
+            child: Text(AppLocalizations.of(context).understood),
           ),
         ],
       ),
@@ -1138,9 +1170,12 @@ class _CreateTableDialogState extends State<CreateTableDialog>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+                Text(title,
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, color: color)),
                 const SizedBox(height: 4),
-                Text(description, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                Text(description,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700])),
               ],
             ),
           ),

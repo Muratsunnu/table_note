@@ -6,6 +6,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/tabel_model.dart';
+import '../models/tally_model.dart';
+import '../l10n/app_localizations.dart';
 
 class ExportService {
   
@@ -246,6 +248,226 @@ class ExportService {
     );
   }
   
+  // ============== ÇETELE EXPORT ==============
+
+  /// Çetele tablosunu CSV formatında export
+  static Future<String> exportTallyCsv(TallyTableModel table) async {
+    final csv = StringBuffer();
+    final days = table.allDays;
+
+    // Başlık: Ad, 1/1, 2/1, ..., Durum1(Ç), Durum2(İ), ...
+    final headers = <String>['Ad'];
+    for (final day in days) {
+      headers.add('${day.day}/${day.month}');
+    }
+    for (final status in table.statuses) {
+      headers.add('${status.label} (${status.code})');
+    }
+    csv.writeln(headers.map((h) => _escapeCsvField(h)).join(','));
+
+    // Satırlar
+    for (final item in table.items) {
+      final row = <String>[item.name];
+      for (final day in days) {
+        final key = TallyTableModel.dateKey(day);
+        row.add(item.entries[key] ?? '');
+      }
+      final summary = item.getSummary(table.startDate, table.endDate, table.statuses);
+      for (final status in table.statuses) {
+        row.add((summary[status.code] ?? 0).toString());
+      }
+      csv.writeln(row.map((c) => _escapeCsvField(c)).join(','));
+    }
+
+    final directory = await getApplicationDocumentsDirectory();
+    final fileName = _sanitizeFileName(table.tableName);
+    final file = File('${directory.path}/${fileName}_tally.csv');
+    await file.writeAsString(csv.toString(), encoding: const Utf8Codec());
+    return file.path;
+  }
+
+  /// Çetele tablosunu PDF formatında export
+  static Future<String> exportTallyPdf(TallyTableModel table, {AppLocalizations? loc}) async {
+    final pdf = pw.Document();
+
+    final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+    final ttf = pw.Font.ttf(fontData);
+    final fontDataBold = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+    final ttfBold = pw.Font.ttf(fontDataBold);
+
+    final days = table.allDays;
+    final dateRange = '${table.startDate.day}/${table.startDate.month}/${table.startDate.year}'
+        ' - ${table.endDate.day}/${table.endDate.month}/${table.endDate.year}';
+
+    // Her sayfada max 20 gün sütunu
+    final daysPerPage = 20;
+    final totalDayPages = (days.length / daysPerPage).ceil().clamp(1, 999);
+
+    for (int pageIdx = 0; pageIdx < totalDayPages; pageIdx++) {
+      final startDay = pageIdx * daysPerPage;
+      final endDay = (startDay + daysPerPage > days.length) ? days.length : startDay + daysPerPage;
+      final pageDays = days.sublist(startDay, endDay);
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(20),
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(_convertTurkishChars(table.tableName),
+                        style: pw.TextStyle(font: ttfBold, fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(dateRange, style: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.grey700)),
+                  ],
+                ),
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  children: table.statuses.map((s) => pw.Container(
+                    margin: const pw.EdgeInsets.only(right: 12),
+                    child: pw.Text('${s.code} = ${_convertTurkishChars(s.label)}',
+                        style: pw.TextStyle(font: ttf, fontSize: 8, color: PdfColors.grey600)),
+                  )).toList(),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Expanded(
+                  child: pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400),
+                    children: [
+                      pw.TableRow(
+                        decoration: const pw.BoxDecoration(color: PdfColors.blue100),
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(4),
+                            child: pw.Text(loc?.tallyItemHeader ?? 'Ad',
+                                style: pw.TextStyle(font: ttfBold, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          ),
+                          ...pageDays.map((day) => pw.Padding(
+                                padding: const pw.EdgeInsets.all(3),
+                                child: pw.Text('${day.day}',
+                                    style: pw.TextStyle(font: ttfBold, fontSize: 8, fontWeight: pw.FontWeight.bold),
+                                    textAlign: pw.TextAlign.center),
+                              )),
+                        ],
+                      ),
+                      ...table.items.asMap().entries.map((entry) {
+                        final rowIdx = entry.key;
+                        final item = entry.value;
+                        return pw.TableRow(
+                          decoration: pw.BoxDecoration(color: rowIdx.isEven ? PdfColors.white : PdfColors.grey100),
+                          children: [
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.all(4),
+                              child: pw.Text(_convertTurkishChars(item.name), style: pw.TextStyle(font: ttf, fontSize: 8)),
+                            ),
+                            ...pageDays.map((day) {
+                              final key = TallyTableModel.dateKey(day);
+                              final code = item.entries[key] ?? '';
+                              return pw.Padding(
+                                padding: const pw.EdgeInsets.all(3),
+                                child: pw.Text(code,
+                                    style: pw.TextStyle(font: ttfBold, fontSize: 8, fontWeight: pw.FontWeight.bold),
+                                    textAlign: pw.TextAlign.center),
+                              );
+                            }),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(_getCurrentDateTime(), style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey500)),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
+    // Son sayfa: Özet tablosu (kimin kaç gün hangi durumda)
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(20),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('${_convertTurkishChars(table.tableName)} - ${loc?.tallySummary ?? 'Ozet'}',
+                  style: pw.TextStyle(font: ttfBold, fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text(dateRange, style: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.grey700)),
+              pw.SizedBox(height: 15),
+              pw.Expanded(
+                child: pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey400),
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(color: PdfColors.green100),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(6),
+                          child: pw.Text(loc?.tallyItemHeader ?? 'Ad',
+                              style: pw.TextStyle(font: ttfBold, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        ),
+                        ...table.statuses.map((s) => pw.Padding(
+                              padding: const pw.EdgeInsets.all(6),
+                              child: pw.Text('${_convertTurkishChars(s.label)} (${s.code})',
+                                  style: pw.TextStyle(font: ttfBold, fontSize: 9, fontWeight: pw.FontWeight.bold),
+                                  textAlign: pw.TextAlign.center),
+                            )),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(6),
+                          child: pw.Text(loc?.tallyEmpty ?? 'Bos',
+                              style: pw.TextStyle(font: ttfBold, fontSize: 9, fontWeight: pw.FontWeight.bold),
+                              textAlign: pw.TextAlign.center),
+                        ),
+                      ],
+                    ),
+                    ...table.items.asMap().entries.map((entry) {
+                      final rowIdx = entry.key;
+                      final item = entry.value;
+                      final summary = item.getSummary(table.startDate, table.endDate, table.statuses);
+                      final filledDays = summary.values.fold<int>(0, (a, b) => a + b);
+                      final emptyDays = table.dayCount - filledDays;
+                      return pw.TableRow(
+                        decoration: pw.BoxDecoration(color: rowIdx.isEven ? PdfColors.white : PdfColors.grey100),
+                        children: [
+                          pw.Padding(padding: const pw.EdgeInsets.all(6),
+                              child: pw.Text(_convertTurkishChars(item.name), style: pw.TextStyle(font: ttf, fontSize: 10))),
+                          ...table.statuses.map((s) => pw.Padding(
+                                padding: const pw.EdgeInsets.all(6),
+                                child: pw.Text('${summary[s.code] ?? 0}',
+                                    style: pw.TextStyle(font: ttfBold, fontSize: 11, fontWeight: pw.FontWeight.bold),
+                                    textAlign: pw.TextAlign.center),
+                              )),
+                          pw.Padding(padding: const pw.EdgeInsets.all(6),
+                              child: pw.Text('$emptyDays', style: pw.TextStyle(font: ttf, fontSize: 11), textAlign: pw.TextAlign.center)),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              pw.Text(_getCurrentDateTime(), style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey500)),
+            ],
+          );
+        },
+      ),
+    );
+
+    final directory = await getApplicationDocumentsDirectory();
+    final fileName = _sanitizeFileName(table.tableName);
+    final file = File('${directory.path}/${fileName}_tally.pdf');
+    await file.writeAsBytes(await pdf.save());
+    return file.path;
+  }
+
   /// Dosyayı paylaş
   static Future<void> shareFile(String filePath, String subject) async {
     await Share.shareXFiles(

@@ -7,7 +7,7 @@ class TableProvider extends ChangeNotifier {
   int _currentTableIndex = 0;
   bool _isLoading = false;
   
-  // Filtreleme için yeni state
+  // Filtreleme için state
   String _searchQuery = '';
   List<int> _filteredRowIndices = [];
 
@@ -49,6 +49,17 @@ class TableProvider extends ChangeNotifier {
     
     _tables = await StorageService.loadTables();
     
+    // Son açılan tablo indexini yükle
+    if (_tables.isNotEmpty) {
+      final lastIndex = await StorageService.loadLastOpenedTableIndex();
+      // Index geçerli mi kontrol et
+      if (lastIndex >= 0 && lastIndex < _tables.length) {
+        _currentTableIndex = lastIndex;
+      } else {
+        _currentTableIndex = 0;
+      }
+    }
+    
     _isLoading = false;
     notifyListeners();
   }
@@ -56,6 +67,11 @@ class TableProvider extends ChangeNotifier {
   // Tabloları kaydet
   Future<void> _saveTables() async {
     await StorageService.saveTables(_tables);
+  }
+
+  // Son açılan tablo indexini kaydet
+  Future<void> _saveLastOpenedTableIndex() async {
+    await StorageService.saveLastOpenedTableIndex(_currentTableIndex);
   }
 
   // === FİLTRELEME FONKSİYONLARI ===
@@ -111,13 +127,11 @@ class TableProvider extends ChangeNotifier {
       final column = currentTable!.columns[colIndex];
       
       // Sabit değer sütunlarını toplama dahil etme
-      // (birim fiyat, katsayı gibi değerler toplanmamalı)
       if (column.isConstant) {
         continue;
       }
       
       // Sıra numarası sütunlarını toplama dahil etme
-      // (1+2+3+4... toplamı anlamsız)
       if (column.isAutoNumber) {
         continue;
       }
@@ -149,8 +163,9 @@ class TableProvider extends ChangeNotifier {
       
       _tables.add(newTable);
       _currentTableIndex = _tables.length - 1;
-      clearSearch(); // Yeni tabloya geçince aramayı temizle
+      clearSearch();
       await _saveTables();
+      await _saveLastOpenedTableIndex();
       notifyListeners();
       return true;
     } catch (e) {
@@ -175,103 +190,17 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
-  // Tablo yapısını güncelle (sütun adları değiştirme ve yeni sütun ekleme)
-  Future<bool> updateTableStructure(
-    String newTableName,
-    List<ColumnModel> newColumns,
-    int originalColumnCount,
-  ) async {
-    try {
-      if (currentTable == null) return false;
-
-      // Tablo adını güncelle
-      _tables[_currentTableIndex].tableName = newTableName.trim();
-
-      // Mevcut sütun adlarını güncelle
-      for (int i = 0; i < originalColumnCount && i < newColumns.length; i++) {
-        _tables[_currentTableIndex].columns[i].name = newColumns[i].name.trim();
-      }
-
-      // Yeni sütunları ekle
-      if (newColumns.length > originalColumnCount) {
-        final newColumnsToAdd = newColumns.sublist(originalColumnCount);
-        
-        for (var newColumn in newColumnsToAdd) {
-          // Sütunu tabloya ekle
-          _tables[_currentTableIndex].columns.add(newColumn);
-          
-          // Mevcut satırlara yeni sütun için varsayılan değer ekle
-          final defaultValue = _getDefaultValueForColumn(newColumn, _tables[_currentTableIndex].rows.length);
-          
-          for (int rowIndex = 0; rowIndex < _tables[_currentTableIndex].rows.length; rowIndex++) {
-            String value = '';
-            
-            if (newColumn.isAutoNumber) {
-              value = (rowIndex + 1).toString();
-            } else if (newColumn.isConstant && newColumn.constantValue != null) {
-              value = _formatNumber(newColumn.constantValue!);
-            } else if (newColumn.isDate) {
-              value = _getCurrentDateFormatted();
-            } else if (newColumn.isTime) {
-              value = _getCurrentTimeFormatted();
-            }
-            // Formül sütunları için değer sonradan hesaplanacak
-            
-            _tables[_currentTableIndex].rows[rowIndex].add(value);
-          }
-        }
-      }
-
-      await _saveTables();
-      notifyListeners();
-      return true;
-    } catch (e) {
-      print('Tablo yapısı güncellenirken hata: $e');
-      return false;
-    }
-  }
-
-  // Sütun tipi için varsayılan değer
-  String _getDefaultValueForColumn(ColumnModel column, int rowCount) {
-    if (column.isAutoNumber) {
-      return (rowCount + 1).toString();
-    } else if (column.isConstant && column.constantValue != null) {
-      return _formatNumber(column.constantValue!);
-    } else if (column.isDate) {
-      return _getCurrentDateFormatted();
-    } else if (column.isTime) {
-      return _getCurrentTimeFormatted();
-    }
-    return '';
-  }
-
-  String _formatNumber(double value) {
-    if (value == value.truncate()) {
-      return value.truncate().toString();
-    }
-    return value.toStringAsFixed(2);
-  }
-
-  String _getCurrentDateFormatted() {
-    final now = DateTime.now();
-    return '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
-  }
-
-  String _getCurrentTimeFormatted() {
-    final now = DateTime.now();
-    return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-  }
-
   // Aktif tabloyu değiştir
   void changeTable(int index) {
     if (index >= 0 && index < _tables.length) {
       _currentTableIndex = index;
-      clearSearch(); // Tablo değişince aramayı temizle
+      clearSearch();
+      _saveLastOpenedTableIndex(); // Son açılan tabloyu kaydet
       notifyListeners();
     }
   }
 
-  // Sayısal sütunları topla (tüm satırlar için - eski fonksiyon, geriye uyumluluk)
+  // Sayısal sütunları topla (geriye uyumluluk)
   Map<String, double> calculateColumnSums() {
     return calculateFilteredColumnSums();
   }
@@ -281,7 +210,7 @@ class TableProvider extends ChangeNotifier {
     try {
       if (currentTable != null) {
         _tables[_currentTableIndex].rows.add(rowData);
-        _applyFilter(); // Yeni satır eklenince filtreyi güncelle
+        _applyFilter();
         await _saveTables();
         notifyListeners();
         return true;
@@ -298,7 +227,7 @@ class TableProvider extends ChangeNotifier {
     try {
       if (currentTable != null && rowIndex < currentTable!.rows.length) {
         _tables[_currentTableIndex].rows[rowIndex] = newRowData;
-        _applyFilter(); // Satır güncellenince filtreyi güncelle
+        _applyFilter();
         await _saveTables();
         notifyListeners();
         return true;
@@ -315,11 +244,7 @@ class TableProvider extends ChangeNotifier {
     try {
       if (currentTable != null && rowIndex < currentTable!.rows.length) {
         _tables[_currentTableIndex].rows.removeAt(rowIndex);
-        
-        // Sıra numarası sütunlarını yeniden düzenle
-        _recalculateAutoNumbers();
-        
-        _applyFilter(); // Satır silinince filtreyi güncelle
+        _applyFilter();
         await _saveTables();
         notifyListeners();
         return true;
@@ -328,25 +253,6 @@ class TableProvider extends ChangeNotifier {
     } catch (e) {
       print('Satır silinirken hata: $e');
       return false;
-    }
-  }
-
-  // Sıra numarası sütunlarını yeniden hesapla (1, 2, 3, 4...)
-  void _recalculateAutoNumbers() {
-    if (currentTable == null) return;
-    
-    // AutoNumber tipindeki sütunları bul
-    for (int colIndex = 0; colIndex < currentTable!.columns.length; colIndex++) {
-      final column = currentTable!.columns[colIndex];
-      
-      if (column.isAutoNumber) {
-        // Her satır için sıra numarasını güncelle
-        for (int rowIndex = 0; rowIndex < currentTable!.rows.length; rowIndex++) {
-          if (colIndex < currentTable!.rows[rowIndex].length) {
-            _tables[_currentTableIndex].rows[rowIndex][colIndex] = (rowIndex + 1).toString();
-          }
-        }
-      }
     }
   }
 
@@ -361,8 +267,9 @@ class TableProvider extends ChangeNotifier {
         }
         if (_currentTableIndex < 0) _currentTableIndex = 0;
         
-        clearSearch(); // Tablo silinince aramayı temizle
+        clearSearch();
         await _saveTables();
+        await _saveLastOpenedTableIndex();
         notifyListeners();
         return true;
       }
@@ -384,6 +291,61 @@ class TableProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       print('Tüm veriler temizlenirken hata: $e');
+      return false;
+    }
+  }
+
+  // Tablo yapısını güncelle (mevcut projede kullanılan imza)
+  Future<bool> updateTableStructure(String newName, List<ColumnModel> newColumns, int originalColumnCount) async {
+    try {
+      if (currentTable == null) return false;
+      
+      final table = currentTable!;
+      final oldColumns = table.columns;
+      
+      // Tablo adını güncelle
+      table.tableName = newName.trim();
+      
+      // Mevcut sütunların eşleştirilmesi
+      Map<int, int> columnMapping = {};
+      for (int newIdx = 0; newIdx < newColumns.length && newIdx < originalColumnCount; newIdx++) {
+        columnMapping[newIdx] = newIdx;
+      }
+      
+      // Satırları yeni yapıya göre düzenle
+      List<List<String>> newRows = [];
+      for (var oldRow in table.rows) {
+        List<String> newRow = List.filled(newColumns.length, '');
+        
+        // Mevcut sütunları kopyala
+        for (int i = 0; i < originalColumnCount && i < oldRow.length && i < newColumns.length; i++) {
+          newRow[i] = oldRow[i];
+        }
+        
+        // Yeni sütunlar için varsayılan değerler
+        for (int i = originalColumnCount; i < newColumns.length; i++) {
+          final col = newColumns[i];
+          if (col.isConstant && col.constantValue != null) {
+            newRow[i] = col.constantValue.toString();
+          } else if (col.isAutoNumber) {
+            newRow[i] = (newRows.length + 1).toString();
+          } else {
+            newRow[i] = '';
+          }
+        }
+        
+        newRows.add(newRow);
+      }
+      
+      // Tabloyu güncelle
+      table.columns = newColumns;
+      table.rows = newRows;
+      
+      await _saveTables();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Tablo yapısı güncellenirken hata: $e');
       return false;
     }
   }

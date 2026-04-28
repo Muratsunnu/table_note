@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class TableSearchDialog extends StatefulWidget {
   const TableSearchDialog({Key? key}) : super(key: key);
@@ -53,10 +54,10 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                     ),
                     child: const Icon(Icons.search_rounded, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Text(
-                      'Tablo Ara',
+                      AppLocalizations.of(context).searchTable,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -79,7 +80,7 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                 controller: _searchController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Tablo adı yazın...',
+                  hintText: AppLocalizations.of(context).typeTableName,
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -117,16 +118,16 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                   if (provider.tables.isEmpty) {
                     return _buildEmptyState(
                       icon: Icons.table_chart_outlined,
-                      title: 'Henüz tablo yok',
-                      subtitle: 'İlk tablonuzu oluşturun',
+                      title: AppLocalizations.of(context).noTablesCreated,
+                      subtitle: AppLocalizations.of(context).createYourFirst,
                     );
                   }
 
                   if (filteredTables.isEmpty && _searchQuery.isNotEmpty) {
                     return _buildEmptyState(
                       icon: Icons.search_off_rounded,
-                      title: 'Sonuç bulunamadı',
-                      subtitle: '"$_searchQuery" ile eşleşen tablo yok',
+                      title: AppLocalizations.of(context).noResults,
+                      subtitle: AppLocalizations.of(context).noMatchingTable(_searchQuery),
                     );
                   }
 
@@ -163,7 +164,7 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              '${table.rows.length} kayıt • ${table.columns.length} sütun',
+                              AppLocalizations.of(context).recordsAndColumns(table.rows.length, table.columns.length),
                               style: const TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 13,
@@ -180,8 +181,8 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                                     color: AppTheme.successLight,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: const Text(
-                                    'Aktif',
+                                  child: Text(
+                                    AppLocalizations.of(context).active,
                                     style: TextStyle(
                                       color: AppTheme.success,
                                       fontSize: 12,
@@ -223,11 +224,11 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textSecondary),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
                         _searchQuery.isEmpty
-                            ? 'Toplam $totalCount tablo'
-                            : '$filteredCount / $totalCount tablo gösteriliyor',
+                            ? AppLocalizations.of(context).totalNTables(totalCount)
+                            : AppLocalizations.of(context).showingNofM(filteredCount, totalCount),
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 13,

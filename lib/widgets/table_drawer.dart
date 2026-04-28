@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
+import '../providers/tally_provider.dart';
 import '../theme/app_theme.dart';
 import 'create_table_dialog.dart';
 import 'edit_table_structure_dialog.dart';
 import 'template_management_dialog.dart';
+import 'create_tally_dialog.dart';
+import '../l10n/app_localizations.dart';
+import '../screens/settings_screen.dart';
 
 class TableDrawer extends StatelessWidget {
-  const TableDrawer({Key? key}) : super(key: key);
+  final ValueChanged<int>? onTabChanged;
+
+  const TableDrawer({Key? key, this.onTabChanged}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -15,22 +21,25 @@ class TableDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // Header
             _buildHeader(context),
-            
-            // Tablo listesi
             Expanded(
-              child: Consumer<TableProvider>(
-                builder: (context, provider, child) {
-                  if (!provider.hasTables) {
-                    return _buildEmptyState(context);
-                  }
-                  return _buildTableList(context, provider);
-                },
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Normal Tablolar bölümü
+                    _buildSectionHeader(context, Icons.table_chart_rounded, AppLocalizations.of(context).tableNote),
+                    _buildNormalTableList(context),
+                    
+                    const Divider(height: 24),
+                    
+                    // Çetele Tabloları bölümü
+                    _buildSectionHeader(context, Icons.grid_on_rounded, AppLocalizations.of(context).tallyTab),
+                    _buildTallyTableList(context),
+                  ],
+                ),
               ),
             ),
-            
-            // Alt butonlar
             _buildFooter(context),
           ],
         ),
@@ -43,256 +52,248 @@ class TableDrawer extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: AppTheme.gradientDecoration(radius: 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.table_chart_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tablolarım',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Tablo seçin veya yeni oluşturun',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.table_chart_rounded, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(AppLocalizations.of(context).myTables, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 2),
+                Text(AppLocalizations.of(context).selectOrCreateTable, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.table_chart_outlined,
-              size: 64,
-              color: AppTheme.textSecondary.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Henüz tablo yok',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'İlk tablonuzu oluşturun',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                showDialog(
-                  context: context,
-                  builder: (context) => CreateTableDialog(),
-                );
-              },
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Tablo Oluştur'),
-            ),
-          ],
-        ),
+  Widget _buildSectionHeader(BuildContext context, IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.textSecondary),
+          const SizedBox(width: 8),
+          Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary, letterSpacing: 0.5)),
+        ],
       ),
     );
   }
 
-  Widget _buildTableList(BuildContext context, TableProvider provider) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: provider.tables.length,
-      itemBuilder: (context, index) {
-        final table = provider.tables[index];
-        final isActive = index == provider.currentTableIndex;
+  // ============== NORMAL TABLOLAR ==============
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: isActive ? AppTheme.lightBlue : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: isActive 
-                ? Border.all(color: AppTheme.primaryBlue.withOpacity(0.3))
-                : null,
-          ),
-          child: ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
+  Widget _buildNormalTableList(BuildContext context) {
+    return Consumer<TableProvider>(
+      builder: (context, provider, _) {
+        if (!provider.hasTables) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(AppLocalizations.of(context).noTablesYet, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          );
+        }
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: provider.tables.length,
+          itemBuilder: (context, index) {
+            final table = provider.tables[index];
+            final isActive = index == provider.currentTableIndex;
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
               decoration: BoxDecoration(
-                color: isActive 
-                    ? AppTheme.primaryBlue 
-                    : AppTheme.textSecondary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: isActive ? AppTheme.lightBlue : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: isActive ? Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.3)) : null,
               ),
-              child: Icon(
-                Icons.table_chart_rounded,
-                color: isActive ? Colors.white : AppTheme.textSecondary,
-                size: 20,
-              ),
-            ),
-            title: Text(
-              table.tableName,
-              style: TextStyle(
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                color: isActive ? AppTheme.primaryBlue : AppTheme.textPrimary,
-              ),
-            ),
-            subtitle: Text(
-              '${table.rows.length} kayıt • ${table.columns.length} sütun',
-              style: TextStyle(
-                fontSize: 12,
-                color: isActive 
-                    ? AppTheme.primaryBlue.withOpacity(0.7) 
-                    : AppTheme.textSecondary,
-              ),
-            ),
-            trailing: isActive 
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Düzenle
-                      IconButton(
-                        icon: const Icon(Icons.settings_outlined, size: 20),
+              child: ListTile(
+                dense: true,
+                leading: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isActive ? AppTheme.primaryBlue : AppTheme.textSecondary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(Icons.table_chart_rounded, color: isActive ? Colors.white : AppTheme.textSecondary, size: 18),
+                ),
+                title: Text(table.tableName, style: TextStyle(fontWeight: isActive ? FontWeight.w600 : FontWeight.normal, color: isActive ? AppTheme.primaryBlue : AppTheme.textPrimary, fontSize: 14)),
+                subtitle: Text(AppLocalizations.of(context).recordsAndColumns(table.rows.length, table.columns.length),
+                    style: TextStyle(fontSize: 11, color: isActive ? AppTheme.primaryBlue.withValues(alpha: 0.7) : AppTheme.textSecondary)),
+                trailing: isActive
+                    ? IconButton(
+                        icon: const Icon(Icons.settings_outlined, size: 18),
                         color: AppTheme.primaryBlue,
                         onPressed: () {
                           Navigator.pop(context);
-                          showDialog(
-                            context: context,
-                            builder: (context) => const EditTableStructureDialog(),
-                          );
+                          showDialog(context: context, builder: (_) => const EditTableStructureDialog());
                         },
-                        tooltip: 'Yapıyı Düzenle',
-                      ),
-                    ],
-                  )
-                : null,
-            onTap: () {
-              provider.changeTable(index);
-              Navigator.pop(context);
-            },
-            onLongPress: () => _showTableOptions(context, provider, index),
-          ),
+                        tooltip: AppLocalizations.of(context).editStructure,
+                      )
+                    : null,
+                onTap: () {
+                  provider.changeTable(index);
+                  onTabChanged?.call(0); // Tablo tab'ına geç
+                  Navigator.pop(context);
+                },
+                onLongPress: () => _showTableOptions(context, provider, index),
+              ),
+            );
+          },
         );
       },
     );
   }
 
+  // ============== ÇETELE TABLOLARI ==============
+
+  Widget _buildTallyTableList(BuildContext context) {
+    return Consumer<TallyProvider>(
+      builder: (context, provider, _) {
+        if (!provider.hasTables) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(AppLocalizations.of(context).tallyNoItems, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          );
+        }
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: provider.tables.length,
+          itemBuilder: (context, index) {
+            final table = provider.tables[index];
+            final isActive = index == provider.currentIndex;
+            final dateRange = '${table.startDate.day}/${table.startDate.month} - ${table.endDate.day}/${table.endDate.month}';
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              decoration: BoxDecoration(
+                color: isActive ? Colors.teal.withValues(alpha: 0.08) : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: isActive ? Border.all(color: Colors.teal.withValues(alpha: 0.3)) : null,
+              ),
+              child: ListTile(
+                dense: true,
+                leading: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.teal : AppTheme.textSecondary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(Icons.grid_on_rounded, color: isActive ? Colors.white : AppTheme.textSecondary, size: 18),
+                ),
+                title: Text(table.tableName, style: TextStyle(fontWeight: isActive ? FontWeight.w600 : FontWeight.normal, color: isActive ? Colors.teal : AppTheme.textPrimary, fontSize: 14)),
+                subtitle: Text('${table.items.length} ${AppLocalizations.of(context).tallyItems} • $dateRange',
+                    style: TextStyle(fontSize: 11, color: isActive ? Colors.teal.withValues(alpha: 0.7) : AppTheme.textSecondary)),
+                onTap: () {
+                  provider.changeTable(index);
+                  onTabChanged?.call(1); // Çetele tab'ına geç
+                  Navigator.pop(context);
+                },
+                onLongPress: () => _showTallyOptions(context, provider, index),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ============== TABLO SEÇENEKLERİ ==============
+
   void _showTableOptions(BuildContext context, TableProvider provider, int index) {
     final table = provider.tables[index];
-    
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              
-              // Tablo adı
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.table_chart_rounded, color: AppTheme.primaryBlue),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        table.tableName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                child: Row(children: [
+                  const Icon(Icons.table_chart_rounded, color: AppTheme.primaryBlue),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(table.tableName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+                ]),
               ),
-              
               const Divider(height: 24),
-              
-              // Seçenekler
               ListTile(
                 leading: const Icon(Icons.check_circle_outline, color: AppTheme.success),
-                title: const Text('Tabloya Geç'),
-                onTap: () {
-                  provider.changeTable(index);
-                  Navigator.pop(context); // Bottom sheet
-                  Navigator.pop(context); // Drawer
-                },
+                title: Text(AppLocalizations.of(context).switchToTable),
+                onTap: () { provider.changeTable(index); Navigator.pop(context); Navigator.pop(context); },
               ),
               ListTile(
                 leading: const Icon(Icons.settings_outlined, color: AppTheme.primaryBlue),
-                title: const Text('Yapıyı Düzenle'),
+                title: Text(AppLocalizations.of(context).editStructure),
                 onTap: () {
                   provider.changeTable(index);
-                  Navigator.pop(context); // Bottom sheet
-                  Navigator.pop(context); // Drawer
-                  showDialog(
-                    context: context,
-                    builder: (context) => const EditTableStructureDialog(),
-                  );
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                  showDialog(context: context, builder: (_) => const EditTableStructureDialog());
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: AppTheme.error),
-                title: const Text('Tabloyu Sil', style: TextStyle(color: AppTheme.error)),
+                title: Text(AppLocalizations.of(context).deleteTable, style: const TextStyle(color: AppTheme.error)),
+                onTap: () { Navigator.pop(context); _showDeleteConfirmation(context, provider, index); },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showTallyOptions(BuildContext context, TallyProvider provider, int index) {
+    final table = provider.tables[index];
+    final loc = AppLocalizations.of(context);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(children: [
+                  const Icon(Icons.grid_on_rounded, color: Colors.teal),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(table.tableName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+                ]),
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.check_circle_outline, color: AppTheme.success),
+                title: Text(loc.switchToTable),
                 onTap: () {
-                  Navigator.pop(context); // Bottom sheet
-                  _showDeleteConfirmation(context, provider, index);
+                  provider.changeTable(index);
+                  onTabChanged?.call(1);
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: AppTheme.error),
+                title: Text(loc.tallyDeleteTable, style: const TextStyle(color: AppTheme.error)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDeleteTallyConfirmation(context, provider, index);
                 },
               ),
             ],
@@ -304,108 +305,112 @@ class TableDrawer extends StatelessWidget {
 
   void _showDeleteConfirmation(BuildContext context, TableProvider provider, int index) {
     final table = provider.tables[index];
-    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.warning_rounded, color: AppTheme.error),
-            SizedBox(width: 8),
-            Text('Tabloyu Sil'),
-          ],
-        ),
+        title: Row(children: [
+          const Icon(Icons.warning_rounded, color: AppTheme.error),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context).deleteTable),
+        ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '"${table.tableName}" tablosunu silmek istediğinizden emin misiniz?',
-            ),
+            Text(AppLocalizations.of(context).deleteTableConfirm(table.tableName)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: AppTheme.coloredCardDecoration(AppTheme.error),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: AppTheme.error, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${table.rows.length} kayıt kalıcı olarak silinecek.',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.error,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: Row(children: [
+                const Icon(Icons.info_outline, color: AppTheme.error, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(AppLocalizations.of(context).nRecordsPermanentDelete(table.rows.length), style: const TextStyle(fontSize: 13, color: AppTheme.error))),
+              ]),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context).cancel)),
           ElevatedButton(
-            onPressed: () async {
-              await provider.deleteTable(index);
-              Navigator.pop(context); // Dialog
-              Navigator.pop(context); // Drawer
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Sil'),
+            onPressed: () async { await provider.deleteTable(index); Navigator.pop(context); Navigator.pop(context); },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error, foregroundColor: Colors.white),
+            child: Text(AppLocalizations.of(context).delete),
           ),
         ],
       ),
     );
   }
 
+  void _showDeleteTallyConfirmation(BuildContext context, TallyProvider provider, int index) {
+    final table = provider.tables[index];
+    final loc = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(children: [
+          const Icon(Icons.warning_rounded, color: AppTheme.error),
+          const SizedBox(width: 8),
+          Text(loc.tallyDeleteTable),
+        ]),
+        content: Text(loc.deleteTableConfirm(table.tableName)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(loc.cancel)),
+          ElevatedButton(
+            onPressed: () async { await provider.deleteTable(index); Navigator.pop(context); Navigator.pop(context); },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error, foregroundColor: Colors.white),
+            child: Text(loc.delete),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============== FOOTER ==============
+
   Widget _buildFooter(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey[200]!),
-        ),
-      ),
+      decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey[200]!))),
       child: Column(
         children: [
-          // Yeni tablo oluştur
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                showDialog(
-                  context: context,
-                  builder: (context) => CreateTableDialog(),
-                );
-              },
+              onPressed: () { Navigator.pop(context); showDialog(context: context, builder: (_) => CreateTableDialog()); },
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Yeni Tablo'),
+              label: Text(AppLocalizations.of(context).newTable),
             ),
           ),
           const SizedBox(height: 8),
-          // Şablonlar
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () { Navigator.pop(context); showDialog(context: context, builder: (_) => const TemplateManagementDialog()); },
+                  icon: const Icon(Icons.article_outlined, size: 18),
+                  label: Text(AppLocalizations.of(context).templates, style: const TextStyle(fontSize: 13)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () { Navigator.pop(context); showDialog(context: context, builder: (_) => const CreateTallyDialog()); },
+                  icon: const Icon(Icons.grid_on_rounded, size: 18),
+                  label: Text(AppLocalizations.of(context).tallyTab, style: const TextStyle(fontSize: 13)),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.teal, side: const BorderSide(color: Colors.teal)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                showDialog(
-                  context: context,
-                  builder: (context) => const TemplateManagementDialog(),
-                );
-              },
-              icon: const Icon(Icons.article_outlined),
-              label: const Text('Şablonlar'),
+            child: TextButton.icon(
+              onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())); },
+              icon: const Icon(Icons.settings_outlined, size: 20),
+              label: Text(AppLocalizations.of(context).settings),
+              style: TextButton.styleFrom(foregroundColor: AppTheme.textSecondary),
             ),
           ),
         ],

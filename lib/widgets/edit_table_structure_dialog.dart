@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/tabel_model.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class EditTableStructureDialog extends StatefulWidget {
   const EditTableStructureDialog({Key? key}) : super(key: key);
@@ -71,10 +72,10 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
             ),
             child: const Icon(Icons.settings_rounded, color: AppTheme.primaryBlue, size: 20),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
-              'Tablo Yapısını Düzenle',
+              AppLocalizations.of(context).editTableStructure,
               style: TextStyle(fontSize: 18),
               overflow: TextOverflow.ellipsis,
             ),
@@ -95,7 +96,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
               TextField(
                 controller: _tableNameController,
                 decoration: InputDecoration(
-                  labelText: 'Tablo Adı',
+                  labelText: AppLocalizations.of(context).tableName,
                   border: const OutlineInputBorder(),
                   prefixIcon: Icon(Icons.table_chart, color: Colors.blue[700]),
                 ),
@@ -109,7 +110,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Sütunlar (${_columns.length})',
+                    '${AppLocalizations.of(context).columns} (${_columns.length})',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -118,7 +119,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                   ElevatedButton.icon(
                     onPressed: _addNewColumn,
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Yeni Sütun'),
+                    label: Text(AppLocalizations.of(context).newColumn),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
@@ -138,12 +139,12 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('İptal'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
         ElevatedButton.icon(
           onPressed: _saveChanges,
           icon: const Icon(Icons.save),
-          label: const Text('Kaydet'),
+          label: Text(AppLocalizations.of(context).save),
         ),
       ],
     );
@@ -167,10 +168,10 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
               Row(
                 children: [
                   _getColumnTypeIcon(column.columnType),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Sütun ${index + 1}',
+                      AppLocalizations.of(context).columnN(index + 1),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -181,17 +182,17 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                         color: Colors.green,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Yeni',
+                      child: Text(
+                        AppLocalizations.of(context).newBadge,
                         style: TextStyle(color: Colors.white, fontSize: 11),
                       ),
                     ),
                   if (isNewColumn) ...[
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                       onPressed: () => _removeNewColumn(index),
-                      tooltip: 'Sütunu Kaldır',
+                      tooltip: AppLocalizations.of(context).removeColumn,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -205,7 +206,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
               TextField(
                 controller: _nameControllers[index],
                 decoration: InputDecoration(
-                  labelText: 'Sütun Adı',
+                  labelText: AppLocalizations.of(context).columnNameLabel,
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.label),
                 ),
@@ -219,7 +220,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                 _buildColumnTypeSettings(index, column),
               ] else ...[
                 // Mevcut sütunlar için sadece tip gösterimi
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -229,9 +230,9 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                   child: Row(
                     children: [
                       Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text(
-                        'Tip: ${_getColumnTypeName(column.columnType)}',
+                        AppLocalizations.of(context).typeName(_getColumnTypeName(column.columnType)),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[700],
@@ -239,7 +240,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                       ),
                       const Spacer(),
                       Text(
-                        '(değiştirilemez)',
+                        AppLocalizations.of(context).cannotChange,
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.grey[500],
@@ -277,17 +278,17 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
   String _getColumnTypeName(ColumnType type) {
     switch (type) {
       case ColumnType.normal:
-        return 'Normal';
+        return AppLocalizations.of(context).normal;
       case ColumnType.constant:
-        return 'Sabit Değer';
+        return AppLocalizations.of(context).constantValue;
       case ColumnType.formula:
-        return 'Formül';
+        return AppLocalizations.of(context).formula;
       case ColumnType.date:
-        return 'Tarih';
+        return AppLocalizations.of(context).date;
       case ColumnType.time:
-        return 'Saat';
+        return AppLocalizations.of(context).time;
       case ColumnType.autoNumber:
-        return 'Sıra No';
+        return AppLocalizations.of(context).autoNumber;
     }
   }
 
@@ -301,21 +302,21 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Sütun Tipi:',
+          Text(
+            AppLocalizations.of(context).columnType,
             style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
-              _buildTypeChip(index, column, ColumnType.normal, 'Normal', Icons.edit, Colors.blue),
-              _buildTypeChip(index, column, ColumnType.constant, 'Sabit', Icons.pin, Colors.orange),
-              _buildTypeChip(index, column, ColumnType.formula, 'Formül', Icons.functions, Colors.purple),
-              _buildTypeChip(index, column, ColumnType.date, 'Tarih', Icons.calendar_today, Colors.teal),
-              _buildTypeChip(index, column, ColumnType.time, 'Saat', Icons.access_time, Colors.indigo),
-              _buildTypeChip(index, column, ColumnType.autoNumber, 'Sıra No', Icons.format_list_numbered, Colors.brown),
+              _buildTypeChip(index, column, ColumnType.normal, AppLocalizations.of(context).normal, Icons.edit, Colors.blue),
+              _buildTypeChip(index, column, ColumnType.constant, AppLocalizations.of(context).constant, Icons.pin, Colors.orange),
+              _buildTypeChip(index, column, ColumnType.formula, AppLocalizations.of(context).formula, Icons.functions, Colors.purple),
+              _buildTypeChip(index, column, ColumnType.date, AppLocalizations.of(context).date, Icons.calendar_today, Colors.teal),
+              _buildTypeChip(index, column, ColumnType.time, AppLocalizations.of(context).time, Icons.access_time, Colors.indigo),
+              _buildTypeChip(index, column, ColumnType.autoNumber, AppLocalizations.of(context).autoNumber, Icons.format_list_numbered, Colors.brown),
             ],
           ),
         ],
@@ -389,9 +390,9 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
   Widget _buildNormalSettings(int index, ColumnModel column) {
     return Column(
       children: [
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         CheckboxListTile(
-          title: const Text('Sayısal Sütun', style: TextStyle(fontSize: 13)),
+          title: Text(AppLocalizations.of(context).numericColumn, style: const TextStyle(fontSize: 13)),
           value: column.isNumeric,
           onChanged: (value) => setState(() => column.isNumeric = value ?? false),
           dense: true,
@@ -404,11 +405,11 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
   Widget _buildConstantSettings(int index, ColumnModel column) {
     return Column(
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         TextField(
           controller: _constantValueControllers[index],
-          decoration: const InputDecoration(
-            labelText: 'Varsayılan Değer',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).defaultValue,
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.pin, color: Colors.orange),
           ),
@@ -433,20 +434,20 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         TextField(
           controller: _formulaControllers[index],
-          decoration: const InputDecoration(
-            labelText: 'Formül',
-            hintText: 'Örn: {Kg}*{Birim Fiyat}',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).formulaLabel,
+            hintText: AppLocalizations.of(context).formulaHint,
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.functions, color: Colors.purple),
           ),
           onChanged: (value) => column.formula = value,
         ),
         if (availableColumns.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          const Text('Sütun ekle:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          SizedBox(height: 8),
+          Text(AppLocalizations.of(context).addColumnLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -470,8 +471,8 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 8),
-          const Text('İşlem ekle:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          SizedBox(height: 8),
+          Text(AppLocalizations.of(context).addOperation, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -530,7 +531,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     _tableName = _tableNameController.text.trim();
     if (_tableName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tablo adı boş olamaz')),
+        SnackBar(content: Text(AppLocalizations.of(context).tableNameEmpty)),
       );
       return;
     }
@@ -541,7 +542,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       
       if (_columns[i].name.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sütun ${i + 1} adı boş olamaz')),
+          SnackBar(content: Text(AppLocalizations.of(context).columnNameEmpty(i + 1))),
         );
         return;
       }
@@ -570,15 +571,15 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     if (success) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tablo yapısı güncellendi'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).tableStructureUpdated),
           backgroundColor: Colors.green,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tablo güncellenirken hata oluştu'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).tableUpdateError),
           backgroundColor: Colors.red,
         ),
       );

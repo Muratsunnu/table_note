@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/tabel_model.dart';
 import '../providers/template_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class EditTemplateDialog extends StatefulWidget {
   final int templateIndex;
@@ -65,10 +66,10 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
             ),
             child: const Icon(Icons.edit_rounded, color: AppTheme.formula, size: 20),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
-              'Şablonu Düzenle',
+              AppLocalizations.of(context).editTemplate,
               style: TextStyle(fontSize: 18),
               overflow: TextOverflow.ellipsis,
             ),
@@ -89,7 +90,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
               TextField(
                 controller: _templateNameController,
                 decoration: InputDecoration(
-                  labelText: 'Şablon Adı',
+                  labelText: AppLocalizations.of(context).templateName,
                   border: const OutlineInputBorder(),
                   prefixIcon: Icon(Icons.article, color: Colors.blue[700]),
                 ),
@@ -102,7 +103,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Sütunlar (${_columns.length})',
+                    '${AppLocalizations.of(context).columns} (${_columns.length})',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -111,7 +112,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
                   ElevatedButton.icon(
                     onPressed: _addColumn,
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Yeni Sütun'),
+                    label: Text(AppLocalizations.of(context).newColumn),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
@@ -131,12 +132,12 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('İptal'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
         ElevatedButton.icon(
           onPressed: _saveTemplate,
           icon: const Icon(Icons.save),
-          label: const Text('Kaydet'),
+          label: Text(AppLocalizations.of(context).save),
         ),
       ],
     );
@@ -158,10 +159,10 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
               Row(
                 children: [
                   _getColumnTypeIcon(column.columnType),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Sütun ${index + 1}',
+                      AppLocalizations.of(context).columnN(index + 1),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -169,7 +170,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                       onPressed: () => _removeColumn(index),
-                      tooltip: 'Sütunu Sil',
+                      tooltip: AppLocalizations.of(context).deleteColumn,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -181,8 +182,8 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
               // Sütun adı
               TextField(
                 controller: _nameControllers[index],
-                decoration: const InputDecoration(
-                  labelText: 'Sütun Adı',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).columnNameLabel,
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.label),
                 ),
@@ -230,21 +231,21 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Sütun Tipi:',
+          Text(
+            AppLocalizations.of(context).columnType,
             style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
-              _buildTypeChip(index, column, ColumnType.normal, 'Normal', Icons.edit, Colors.blue),
-              _buildTypeChip(index, column, ColumnType.constant, 'Sabit', Icons.pin, Colors.orange),
-              _buildTypeChip(index, column, ColumnType.formula, 'Formül', Icons.functions, Colors.purple),
-              _buildTypeChip(index, column, ColumnType.date, 'Tarih', Icons.calendar_today, Colors.teal),
-              _buildTypeChip(index, column, ColumnType.time, 'Saat', Icons.access_time, Colors.indigo),
-              _buildTypeChip(index, column, ColumnType.autoNumber, 'Sıra No', Icons.format_list_numbered, Colors.brown),
+              _buildTypeChip(index, column, ColumnType.normal, AppLocalizations.of(context).normal, Icons.edit, Colors.blue),
+              _buildTypeChip(index, column, ColumnType.constant, AppLocalizations.of(context).constant, Icons.pin, Colors.orange),
+              _buildTypeChip(index, column, ColumnType.formula, AppLocalizations.of(context).formula, Icons.functions, Colors.purple),
+              _buildTypeChip(index, column, ColumnType.date, AppLocalizations.of(context).date, Icons.calendar_today, Colors.teal),
+              _buildTypeChip(index, column, ColumnType.time, AppLocalizations.of(context).time, Icons.access_time, Colors.indigo),
+              _buildTypeChip(index, column, ColumnType.autoNumber, AppLocalizations.of(context).autoNumber, Icons.format_list_numbered, Colors.brown),
             ],
           ),
         ],
@@ -309,11 +310,11 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
       case ColumnType.formula:
         return _buildFormulaSettings(index, column);
       case ColumnType.date:
-        return _buildInfoBox('Kayıt eklerken bugünün tarihi otomatik gelir.', Colors.teal);
+        return _buildInfoBox(AppLocalizations.of(context).dateAutoDescShort, Colors.teal);
       case ColumnType.time:
-        return _buildInfoBox('Kayıt eklerken şu anki saat otomatik gelir.', Colors.indigo);
+        return _buildInfoBox(AppLocalizations.of(context).timeAutoDescShort, Colors.indigo);
       case ColumnType.autoNumber:
-        return _buildInfoBox('Her kayıt için otomatik artan numara (1, 2, 3...) atanır.', Colors.brown);
+        return _buildInfoBox(AppLocalizations.of(context).autoNumberDescShort, Colors.brown);
     }
   }
 
@@ -344,21 +345,21 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
   Widget _buildNormalSettings(int index, ColumnModel column) {
     return Column(
       children: [
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         CheckboxListTile(
-          title: const Text('Sayısal Sütun', style: TextStyle(fontSize: 13)),
-          subtitle: const Text('Bu sütundaki değerler toplanabilir', style: TextStyle(fontSize: 11)),
+          title: Text(AppLocalizations.of(context).numericColumn, style: const TextStyle(fontSize: 13)),
+          subtitle: Text(AppLocalizations.of(context).numericColumnDesc, style: const TextStyle(fontSize: 11)),
           value: column.isNumeric,
           onChanged: (value) => setState(() => column.isNumeric = value ?? false),
           dense: true,
           contentPadding: EdgeInsets.zero,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         TextField(
           controller: _autoFillControllers[index],
-          decoration: const InputDecoration(
-            labelText: 'Hızlı Seçim Listesi (opsiyonel)',
-            hintText: 'Virgülle ayırın: Ankara, İstanbul, İzmir',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).quickSelectionListOptional,
+            hintText: AppLocalizations.of(context).quickSelectionHintShort,
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.list),
           ),
@@ -377,12 +378,12 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
   Widget _buildConstantSettings(int index, ColumnModel column) {
     return Column(
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         TextField(
           controller: _constantValueControllers[index],
-          decoration: const InputDecoration(
-            labelText: 'Varsayılan Değer',
-            hintText: 'Örn: 0.2',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).defaultValue,
+            hintText: AppLocalizations.of(context).defaultValueHint,
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.pin, color: Colors.orange),
           ),
@@ -406,21 +407,21 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         TextField(
           controller: _formulaControllers[index],
-          decoration: const InputDecoration(
-            labelText: 'Formül',
-            hintText: 'Örn: {Kg}*{Birim Fiyat}',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).formulaLabel,
+            hintText: AppLocalizations.of(context).formulaHint,
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.functions, color: Colors.purple),
-            helperText: 'İşlemler: + - * / % (yüzde)',
+            helperText: AppLocalizations.of(context).operationsHint,
           ),
           onChanged: (value) => column.formula = value,
         ),
         if (availableColumns.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          const Text('Sütun ekle:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          SizedBox(height: 8),
+          Text(AppLocalizations.of(context).addColumnLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -445,8 +446,8 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 8),
-          const Text('İşlem ekle:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          SizedBox(height: 8),
+          Text(AppLocalizations.of(context).addOperation, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -509,7 +510,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
     
     if (templateName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şablon adı boş olamaz')),
+        SnackBar(content: Text(AppLocalizations.of(context).templateNameEmptyError)),
       );
       return;
     }
@@ -520,7 +521,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
       
       if (_columns[i].name.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sütun ${i + 1} adı boş olamaz')),
+          SnackBar(content: Text(AppLocalizations.of(context).columnNameEmpty(i + 1))),
         );
         return;
       }
@@ -553,15 +554,15 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
     if (success) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Şablon güncellendi'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).templateUpdated),
           backgroundColor: Colors.green,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Şablon güncellenirken hata oluştu'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).templateUpdateFailed),
           backgroundColor: Colors.red,
         ),
       );

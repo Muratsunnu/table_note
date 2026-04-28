@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class EmptyStateWidget extends StatelessWidget {
   final VoidCallback onCreateTable;
@@ -33,8 +34,8 @@ class EmptyStateWidget extends StatelessWidget {
             const SizedBox(height: 24),
             
             // Başlık
-            const Text(
-              'Hoş Geldiniz!',
+            Text(
+              AppLocalizations.of(context).welcome,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -45,7 +46,7 @@ class EmptyStateWidget extends StatelessWidget {
             
             // Alt başlık
             Text(
-              'Verilerinizi düzenlemek için\nilk tablonuzu oluşturun',
+              AppLocalizations.of(context).createFirstTable,
               style: TextStyle(
                 fontSize: 15,
                 color: AppTheme.textSecondary,
@@ -58,7 +59,7 @@ class EmptyStateWidget extends StatelessWidget {
             // Buton
             ElevatedButton.icon(
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Tablo Oluştur'),
+              label: Text(AppLocalizations.of(context).createTable),
               onPressed: onCreateTable,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
@@ -73,7 +74,7 @@ class EmptyStateWidget extends StatelessWidget {
             // Şablon butonu
             TextButton.icon(
               icon: const Icon(Icons.article_outlined, size: 20),
-              label: const Text('veya Şablonlardan Seç'),
+              label: Text(AppLocalizations.of(context).orSelectFromTemplates),
               onPressed: () {
                 // Şablon dialogunu aç
               },

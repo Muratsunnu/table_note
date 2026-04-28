@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
 import '../services/export_service.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class ExportDialog extends StatefulWidget {
   const ExportDialog({Key? key}) : super(key: key);
@@ -32,10 +33,10 @@ class _ExportDialogState extends State<ExportDialog> {
             ),
             child: const Icon(Icons.download_rounded, color: AppTheme.primaryBlue, size: 20),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
-              'Çıktı Al',
+              AppLocalizations.of(context).exportTitle,
               style: TextStyle(fontSize: 18),
               overflow: TextOverflow.ellipsis,
             ),
@@ -59,7 +60,7 @@ class _ExportDialogState extends State<ExportDialog> {
               child: Row(
                 children: [
                   const Icon(Icons.table_chart_rounded, color: AppTheme.primaryBlue),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,9 +73,9 @@ class _ExportDialogState extends State<ExportDialog> {
                             color: AppTheme.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
-                          '${table.rows.length} kayıt • ${table.columns.length} sütun',
+                          AppLocalizations.of(context).recordsAndColumns(table.rows.length, table.columns.length),
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 13,
@@ -91,8 +92,8 @@ class _ExportDialogState extends State<ExportDialog> {
 
             // Export seçenekleri
             if (_exportedFilePath == null) ...[
-              const Text(
-                'Format Seçin:',
+              Text(
+                AppLocalizations.of(context).selectFormat,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
@@ -104,7 +105,7 @@ class _ExportDialogState extends State<ExportDialog> {
               _buildFormatOption(
                 icon: Icons.description,
                 title: 'CSV',
-                subtitle: 'Excel ve diğer uygulamalarda açılabilir',
+                subtitle: AppLocalizations.of(context).csvDesc,
                 color: Colors.green,
                 onTap: () => _export('csv'),
               ),
@@ -115,7 +116,7 @@ class _ExportDialogState extends State<ExportDialog> {
               _buildFormatOption(
                 icon: Icons.picture_as_pdf,
                 title: 'PDF',
-                subtitle: 'Yazdırılabilir profesyonel rapor',
+                subtitle: AppLocalizations.of(context).pdfDesc,
                 color: Colors.red,
                 onTap: () => _export('pdf'),
               ),
@@ -133,9 +134,9 @@ class _ExportDialogState extends State<ExportDialog> {
                 child: Column(
                   children: [
                     Icon(Icons.check_circle, color: Colors.green[600], size: 48),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(
-                      '${_exportFormat!.toUpperCase()} dosyası oluşturuldu!',
+                      AppLocalizations.of(context).fileCreated(_exportFormat!.toUpperCase()),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.green[800],
@@ -150,7 +151,7 @@ class _ExportDialogState extends State<ExportDialog> {
                       child: ElevatedButton.icon(
                         onPressed: _share,
                         icon: const Icon(Icons.share),
-                        label: const Text('Paylaş (WhatsApp, Mail, vb.)'),
+                        label: Text(AppLocalizations.of(context).shareWhatsApp),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
@@ -167,7 +168,7 @@ class _ExportDialogState extends State<ExportDialog> {
                       child: OutlinedButton.icon(
                         onPressed: _saveToDevice,
                         icon: const Icon(Icons.save_alt),
-                        label: const Text('Cihaza Kaydet'),
+                        label: Text(AppLocalizations.of(context).saveToDevice),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -184,7 +185,7 @@ class _ExportDialogState extends State<ExportDialog> {
                           _exportFormat = null;
                         });
                       },
-                      child: const Text('Başka format seç'),
+                      child: Text(AppLocalizations.of(context).selectAnotherFormat),
                     ),
                   ],
                 ),
@@ -198,9 +199,9 @@ class _ExportDialogState extends State<ExportDialog> {
                 child: Column(
                   children: [
                     const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text(
-                      'Dosya oluşturuluyor...',
+                      AppLocalizations.of(context).creatingFile,
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                   ],
@@ -212,7 +213,7 @@ class _ExportDialogState extends State<ExportDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(_exportedFilePath != null ? 'Kapat' : 'İptal'),
+          child: Text(_exportedFilePath != null ? AppLocalizations.of(context).close : AppLocalizations.of(context).cancel),
         ),
       ],
     );
@@ -318,7 +319,7 @@ class _ExportDialogState extends State<ExportDialog> {
       final provider = Provider.of<TableProvider>(context, listen: false);
       await ExportService.shareFile(
         _exportedFilePath!,
-        '${provider.currentTable!.tableName} - Tablo Verisi',
+        '${provider.currentTable!.tableName} - ${AppLocalizations.of(context).tableData}',
       );
     }
   }
@@ -333,9 +334,9 @@ class _ExportDialogState extends State<ExportDialog> {
             content: Row(
               children: [
                 const Icon(Icons.check, color: Colors.white),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
-                  child: Text('Dosya kaydedildi: ${savedPath.split('/').last}'),
+                  child: Text(AppLocalizations.of(context).fileSaved(savedPath.split('/').last)),
                 ),
               ],
             ),

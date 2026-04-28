@@ -4,6 +4,7 @@ import '../models/tabel_model.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
 import 'edit_row_dialog.dart';
+import '../l10n/app_localizations.dart';
 
 class TableListWidget extends StatelessWidget {
   const TableListWidget({Key? key}) : super(key: key);
@@ -19,7 +20,7 @@ class TableListWidget extends StatelessWidget {
             : List.generate(currentTable.rows.length, (i) => i);
 
         if (displayRows.isEmpty) {
-          return _buildEmptyState(provider);
+          return _buildEmptyState(context, provider);
         }
 
         return Column(
@@ -50,13 +51,13 @@ class TableListWidget extends StatelessWidget {
       child: Row(
         children: [
           const Icon(Icons.filter_list_rounded, size: 18, color: AppTheme.warning),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: RichText(
               text: TextSpan(
                 style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                 children: [
-                  const TextSpan(text: 'Filtre: '),
+                  TextSpan(text: '${AppLocalizations.of(context).filter}: '),
                   TextSpan(
                     text: '"${provider.searchQuery}"',
                     style: const TextStyle(fontWeight: FontWeight.bold),
@@ -82,7 +83,7 @@ class TableListWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(TableProvider provider) {
+  Widget _buildEmptyState(BuildContext context, TableProvider provider) {
     if (provider.isFiltering) {
       return Center(
         child: Column(
@@ -100,18 +101,18 @@ class TableListWidget extends StatelessWidget {
                 color: AppTheme.warning,
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Sonuç bulunamadı',
+            SizedBox(height: 20),
+            Text(
+              AppLocalizations.of(context).noResults,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
-              '"${provider.searchQuery}" ile eşleşen kayıt yok',
+              AppLocalizations.of(context).noMatchingRecord(provider.searchQuery),
               style: const TextStyle(
                 fontSize: 14,
                 color: AppTheme.textSecondary,
@@ -138,18 +139,18 @@ class TableListWidget extends StatelessWidget {
               color: AppTheme.primaryBlue,
             ),
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'Tablo boş',
+          SizedBox(height: 20),
+          Text(
+            AppLocalizations.of(context).tableEmpty,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'İlk kaydınızı eklemek için\naşağıdaki butona dokunun',
+          SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context).tapToAddFirst,
             style: TextStyle(
               fontSize: 14,
               color: AppTheme.textSecondary,
@@ -292,7 +293,7 @@ class TableListWidget extends StatelessWidget {
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   color: AppTheme.primaryBlue,
                   onPressed: () => _showEditDialog(context, originalIndex, row),
-                  tooltip: 'Düzenle',
+                  tooltip: AppLocalizations.of(context).edit,
                   visualDensity: VisualDensity.compact,
                   splashRadius: 20,
                 ),
@@ -300,7 +301,7 @@ class TableListWidget extends StatelessWidget {
                   icon: const Icon(Icons.delete_outline_rounded, size: 20),
                   color: AppTheme.error,
                   onPressed: () => _showDeleteDialog(context, originalIndex, provider),
-                  tooltip: 'Sil',
+                  tooltip: AppLocalizations.of(context).delete,
                   visualDensity: VisualDensity.compact,
                   splashRadius: 20,
                 ),
@@ -366,18 +367,18 @@ class TableListWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.delete_rounded, color: AppTheme.error),
             SizedBox(width: 8),
-            Text('Kaydı Sil'),
+            Text(AppLocalizations.of(context).deleteRecord),
           ],
         ),
-        content: const Text('Bu kaydı silmek istediğinizden emin misiniz?'),
+        content: Text(AppLocalizations.of(context).deleteRecordConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -388,7 +389,7 @@ class TableListWidget extends StatelessWidget {
               await provider.deleteRow(rowIndex);
               Navigator.pop(context);
             },
-            child: const Text('Sil'),
+            child: Text(AppLocalizations.of(context).delete),
           ),
         ],
       ),

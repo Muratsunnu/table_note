@@ -4,6 +4,7 @@ import 'package:table_note/models/tabel_model.dart';
 import 'package:table_note/services/formula_service.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class EditRowDialog extends StatefulWidget {
   final int rowIndex;
@@ -100,10 +101,10 @@ class _EditRowDialogState extends State<EditRowDialog> {
             ),
             child: const Icon(Icons.edit_rounded, color: AppTheme.primaryBlue, size: 20),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Kayıt #${widget.rowIndex + 1}',
+              AppLocalizations.of(context).recordN(widget.rowIndex + 1),
               style: const TextStyle(fontSize: 18),
             ),
           ),
@@ -132,11 +133,11 @@ class _EditRowDialogState extends State<EditRowDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('İptal'),
+          child: Text(AppLocalizations.of(context).cancel),
         ),
         ElevatedButton.icon(
           icon: const Icon(Icons.check_rounded, size: 20),
-          label: const Text('Güncelle'),
+          label: Text(AppLocalizations.of(context).update),
           onPressed: _updateRow,
         ),
       ],
@@ -187,7 +188,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
             suffixIcon: column.autoFillOptions.isNotEmpty
                 ? PopupMenuButton<String>(
                     icon: const Icon(Icons.arrow_drop_down),
-                    tooltip: 'Hızlı Seç',
+                    tooltip: AppLocalizations.of(context).quickSelect,
                     onSelected: (value) {
                       _controllers[colIndex].text = value;
                       _recalculateFormulas();
@@ -289,7 +290,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
       child: Row(
         children: [
           Icon(Icons.functions, color: Colors.purple[700]),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,10 +302,10 @@ class _EditRowDialogState extends State<EditRowDialog> {
                     color: Colors.purple[800],
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   _controllers[colIndex].text.isEmpty
-                      ? 'Hesaplanıyor...'
+                      ? AppLocalizations.of(context).calculating
                       : _controllers[colIndex].text,
                   style: TextStyle(
                     fontSize: 18,
@@ -312,9 +313,9 @@ class _EditRowDialogState extends State<EditRowDialog> {
                     color: Colors.purple[900],
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
-                  'Formül: ${FormulaService.formatFormula(column.formula ?? '')}',
+                  '${AppLocalizations.of(context).formulaLabel}: ${FormulaService.formatFormula(column.formula ?? '')}',
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.purple[600],
@@ -331,7 +332,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Otomatik',
+              AppLocalizations.of(context).autoLabel,
               style: TextStyle(
                 fontSize: 11,
                 color: Colors.purple[700],
@@ -360,12 +361,12 @@ class _EditRowDialogState extends State<EditRowDialog> {
                 _controllers[colIndex].text = _getCurrentDateFormatted();
                 setState(() {});
               },
-              tooltip: 'Bugün',
+              tooltip: AppLocalizations.of(context).today,
             ),
             IconButton(
               icon: const Icon(Icons.edit_calendar, color: Colors.teal),
               onPressed: () => _selectDate(colIndex),
-              tooltip: 'Tarih Seç',
+              tooltip: AppLocalizations.of(context).selectDate,
             ),
           ],
         ),
@@ -391,12 +392,12 @@ class _EditRowDialogState extends State<EditRowDialog> {
                 _controllers[colIndex].text = _getCurrentTimeFormatted();
                 setState(() {});
               },
-              tooltip: 'Şu an',
+              tooltip: AppLocalizations.of(context).now,
             ),
             IconButton(
               icon: const Icon(Icons.more_time, color: Colors.indigo),
               onPressed: () => _selectTime(colIndex),
-              tooltip: 'Saat Seç',
+              tooltip: AppLocalizations.of(context).selectTime,
             ),
           ],
         ),
@@ -467,7 +468,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      locale: const Locale('tr', 'TR'),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null) {
       _controllers[colIndex].text = 
@@ -510,7 +511,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kayıt güncellenemedi')),
+        SnackBar(content: Text(AppLocalizations.of(context).updateFailed)),
       );
     }
   }
