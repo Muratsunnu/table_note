@@ -96,7 +96,7 @@ class SettingsScreen extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primaryBlue.withOpacity(0.1)
+              ? AppTheme.primaryBlue.withValues(alpha: 0.1)
               : AppTheme.background,
           borderRadius: BorderRadius.circular(8),
         ),
@@ -119,7 +119,7 @@ class SettingsScreen extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           color: isSelected
-              ? AppTheme.primaryBlue.withOpacity(0.7)
+              ? AppTheme.primaryBlue.withValues(alpha: 0.7)
               : AppTheme.textSecondary,
         ),
       ),

@@ -27,10 +27,10 @@ class ColumnSumsWidget extends StatelessWidget {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: accentColor.withOpacity(0.3)),
+            border: Border.all(color: accentColor.withValues(alpha: 0.3)),
             boxShadow: [
               BoxShadow(
-                color: accentColor.withOpacity(0.1),
+                color: accentColor.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -43,7 +43,7 @@ class ColumnSumsWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.15),
+                  color: accentColor.withValues(alpha: 0.15),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
                 ),
                 child: Row(
@@ -51,7 +51,7 @@ class ColumnSumsWidget extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.2),
+                        color: accentColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -77,7 +77,7 @@ class ColumnSumsWidget extends StatelessWidget {
                             Text(
                               AppLocalizations.of(context).searchOf(provider.searchQuery),
                               style: TextStyle(
-                                color: darkColor.withOpacity(0.7),
+                                color: darkColor.withValues(alpha: 0.7),
                                 fontSize: 11,
                               ),
                             ),
@@ -117,7 +117,7 @@ class ColumnSumsWidget extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: accentColor.withOpacity(0.2)),
+                        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -125,7 +125,7 @@ class ColumnSumsWidget extends StatelessWidget {
                           Text(
                             entry.key,
                             style: TextStyle(
-                              color: darkColor.withOpacity(0.7),
+                              color: darkColor.withValues(alpha: 0.7),
                               fontSize: 13,
                             ),
                           ),

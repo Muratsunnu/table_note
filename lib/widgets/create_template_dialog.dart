@@ -75,7 +75,7 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.article_rounded, color: Colors.white, size: 24),
@@ -510,7 +510,7 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                   ),
                 ),
                 backgroundColor: AppTheme.lightBlue,
-                side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.3)),
+                side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
                 onPressed: () {
                   _formulaControllers[index].text += '{${col.name}}';
                   column.formula = _formulaControllers[index].text;
@@ -551,7 +551,7 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
         ),
       ),
       backgroundColor: AppTheme.formulaLight,
-      side: BorderSide(color: AppTheme.formula.withOpacity(0.3)),
+      side: BorderSide(color: AppTheme.formula.withValues(alpha: 0.3)),
       onPressed: () => _addOperator(index, column, op),
     );
   }

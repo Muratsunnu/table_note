@@ -462,7 +462,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                   ),
                 ),
                 backgroundColor: AppTheme.lightBlue,
-                side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.3)),
+                side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
                 onPressed: () {
                   final current = _formulaControllers[index].text;
                   _formulaControllers[index].text = '$current{${col.name}}';
@@ -488,7 +488,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                   ),
                 ),
                 backgroundColor: AppTheme.formulaLight,
-                side: BorderSide(color: AppTheme.formula.withOpacity(0.3)),
+                side: BorderSide(color: AppTheme.formula.withValues(alpha: 0.3)),
                 onPressed: () {
                   final current = _formulaControllers[index].text;
                   _formulaControllers[index].text = '$current$op';

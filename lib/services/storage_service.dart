@@ -9,6 +9,7 @@ class StorageService {
   static const String _lastOpenedTableIndexKey = 'last_opened_table_index';
   static const String _tallyTablesKey = 'tally_tables';
   static const String _lastOpenedTallyIndexKey = 'last_opened_tally_index';
+  static const String _tallyTemplatesKey = 'tally_templates';
   static const String _lastTabKey = 'last_active_tab';
 
   // Tabloları yükle
@@ -161,8 +162,37 @@ class StorageService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tallyTablesKey);
       await prefs.remove(_lastOpenedTallyIndexKey);
+      await prefs.remove(_tallyTemplatesKey);
       return true;
     } catch (e) {
+      return false;
+    }
+  }
+
+  // ============== ÇETELE ŞABLONLARI ==============
+
+  static Future<List<TallyTemplateModel>> loadTallyTemplates() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_tallyTemplatesKey);
+      if (data != null) {
+        final List<dynamic> list = json.decode(data);
+        return list.map((t) => TallyTemplateModel.fromJson(t)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Çetele şablonları yüklenirken hata: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> saveTallyTemplates(List<TallyTemplateModel> templates) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = json.encode(templates.map((t) => t.toJson()).toList());
+      return await prefs.setString(_tallyTemplatesKey, data);
+    } catch (e) {
+      print('Çetele şablonları kaydedilirken hata: $e');
       return false;
     }
   }

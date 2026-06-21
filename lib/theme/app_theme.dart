@@ -38,7 +38,6 @@ class AppTheme {
         primary: primaryBlue,
         secondary: accentBlue,
         surface: white,
-        background: background,
         error: error,
       ),
       
@@ -62,7 +61,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: cardBackground,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.1),
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -254,7 +253,7 @@ class AppTheme {
     borderRadius: BorderRadius.circular(12),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.05),
+        color: Colors.black.withValues(alpha: 0.05),
         blurRadius: 10,
         offset: const Offset(0, 2),
       ),
@@ -271,8 +270,8 @@ class AppTheme {
   );
 
   static BoxDecoration coloredCardDecoration(Color color, {double radius = 10}) => BoxDecoration(
-    color: color.withOpacity(0.1),
+    color: color.withValues(alpha: 0.1),
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: color.withOpacity(0.3)),
+    border: Border.all(color: color.withValues(alpha: 0.3)),
   );
 }

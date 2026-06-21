@@ -4,7 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../models/tally_model.dart';
 import '../providers/tally_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/create_tally_dialog.dart';
+import '../widgets/edit_tally_dialog.dart';
 import '../widgets/tally_summary_dialog.dart';
 
 class TallyScreen extends StatefulWidget {
@@ -15,13 +15,26 @@ class TallyScreen extends StatefulWidget {
 }
 
 class _TallyScreenState extends State<TallyScreen> {
-  final ScrollController _horizontalScroll = ScrollController();
-  final ScrollController _verticalScroll = ScrollController();
+  // Yatay: gün başlıkları, gün hücreleri gövdesini takip eder (tek yön sync)
+  final ScrollController _bodyHScroll = ScrollController();
+  final ScrollController _headerHScroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _bodyHScroll.addListener(_syncHeaderH);
+  }
+
+  void _syncHeaderH() {
+    if (_headerHScroll.hasClients && _headerHScroll.offset != _bodyHScroll.offset) {
+      _headerHScroll.jumpTo(_bodyHScroll.offset);
+    }
+  }
 
   @override
   void dispose() {
-    _horizontalScroll.dispose();
-    _verticalScroll.dispose();
+    _bodyHScroll.dispose();
+    _headerHScroll.dispose();
     super.dispose();
   }
 
@@ -71,11 +84,15 @@ class _TallyScreenState extends State<TallyScreen> {
             Text(loc.tallyEmptyTitle, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
             const SizedBox(height: 8),
             Text(loc.tallyEmptySubtitle, style: const TextStyle(fontSize: 15, color: AppTheme.textSecondary), textAlign: TextAlign.center),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add_rounded),
-              label: Text(loc.tallyCreate),
-              onPressed: () => _showCreateDialog(context),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.menu_rounded, size: 18, color: AppTheme.textSecondary),
+                const SizedBox(width: 6),
+                Text(loc.openMenuToCreate,
+                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              ],
             ),
           ],
         ),
@@ -110,6 +127,11 @@ class _TallyScreenState extends State<TallyScreen> {
                     style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_rounded, color: AppTheme.primaryBlue),
+            tooltip: loc.edit,
+            onPressed: () => _showEditDialog(context),
           ),
         ],
       ),
@@ -158,116 +180,246 @@ class _TallyScreenState extends State<TallyScreen> {
       );
     }
 
+    const double seqColWidth = 36;
+    const double nameColWidth = 120;
+    const double dayColWidth = 44;
+    const double rowHeight = 44;
+    const double headerHeight = 48;
+
+    Widget seqCell(int itemIndex) {
+      return Container(
+        width: seqColWidth,
+        height: rowHeight,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: itemIndex.isEven ? Colors.white : AppTheme.background,
+          border: Border(
+            bottom: BorderSide(color: AppTheme.divider.withValues(alpha: 0.3)),
+            right: BorderSide(color: AppTheme.divider.withValues(alpha: 0.3)),
+          ),
+        ),
+        child: Text(
+          '${itemIndex + 1}',
+          style: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+        ),
+      );
+    }
+
+    Widget nameCell(int itemIndex, TallyItemModel item) {
+      return GestureDetector(
+        onTap: () => _showSummary(context, provider, itemIndex),
+        onLongPress: () => _showItemOptions(context, provider, itemIndex, item),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: nameColWidth,
+          height: rowHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: itemIndex.isEven ? Colors.white : AppTheme.background,
+            border: Border(bottom: BorderSide(color: AppTheme.divider.withValues(alpha: 0.3))),
+          ),
+          child: Text(item.name,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis),
+        ),
+      );
+    }
+
+    Widget dayHeaderCell(DateTime day) {
+      return Container(
+        width: dayColWidth,
+        height: headerHeight,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: AppTheme.divider.withValues(alpha: 0.5))),
+          color: day.weekday >= 6 ? Colors.orange.withValues(alpha: 0.08) : AppTheme.lightBlue,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('${day.day}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkBlue)),
+            Text(_shortDayName(day, context),
+                style: TextStyle(
+                    fontSize: 9,
+                    color: day.weekday >= 6 ? Colors.orange : AppTheme.textSecondary)),
+          ],
+        ),
+      );
+    }
+
+    Widget dayCell(int itemIndex, DateTime day) {
+      final key = TallyTableModel.dateKey(day);
+      final code = items[itemIndex].entries[key];
+      final status = code != null ? table.getStatusByCode(code) : null;
+
+      return GestureDetector(
+        onTap: () => provider.cycleCellStatus(itemIndex, day),
+        onLongPress: () => _showStatusPicker(context, provider, itemIndex, day),
+        child: Container(
+          width: dayColWidth,
+          height: rowHeight,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: AppTheme.divider.withValues(alpha: 0.3))),
+            color: status != null ? Color(status.colorValue).withValues(alpha: 0.15) : null,
+          ),
+          child: status != null
+              ? Text(status.code,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(status.colorValue),
+                  ))
+              : null,
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          controller: _horizontalScroll,
-          child: SizedBox(
-            width: 120.0 + days.length * 44.0,
-            child: Column(
-              children: [
-                // Header satırı: isim + günler
-                Container(
-                  color: AppTheme.lightBlue,
-                  height: 48,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 120,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        alignment: Alignment.centerLeft,
-                        child: Text(AppLocalizations.of(context).tallyItemHeader,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.darkBlue)),
+        child: Column(
+          children: [
+            // === ÜST BAŞLIK SATIRI (dikey kaymaz) ===
+            SizedBox(
+              height: headerHeight,
+              child: Row(
+                children: [
+                  // Sıra başlığı (sticky)
+                  Container(
+                    width: seqColWidth,
+                    height: headerHeight,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.lightBlue,
+                      border: Border(
+                        right: BorderSide(color: Color(0x33000000), width: 0.5),
                       ),
-                      ...days.map((day) => Container(
-                            width: 44,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              border: Border(left: BorderSide(color: AppTheme.divider.withValues(alpha: 0.5))),
-                              color: day.weekday >= 6 ? Colors.orange.withValues(alpha: 0.08) : null,
+                    ),
+                    child: const Text(
+                      '#',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.darkBlue),
+                    ),
+                  ),
+                  // İsim başlığı (sticky)
+                  Container(
+                    width: nameColWidth,
+                    height: headerHeight,
+                    color: AppTheme.lightBlue,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      AppLocalizations.of(context).tallyItemHeader,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.darkBlue),
+                    ),
+                  ),
+                  // Gün başlıkları (yatay scroll, gövdeyi takip eder)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      controller: _headerHScroll,
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Row(
+                        children: days.map(dayHeaderCell).toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // === GÖVDE: TEK DİKEY SCROLL (her iki sütunu da kapsar) ===
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Sol: sabit sıra + isim sütunları (yatay kaymaz)
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right: BorderSide(
+                                color: AppTheme.divider.withValues(alpha: 0.6), width: 1),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 4,
+                              offset: const Offset(2, 0),
                             ),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              width: seqColWidth,
+                              child: Column(
+                                children: [
+                                  for (int i = 0; i < items.length; i++) seqCell(i),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: nameColWidth,
+                              child: Column(
+                                children: [
+                                  for (int i = 0; i < items.length; i++) nameCell(i, items[i]),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Sağ: günler (yatay scroll). Dikey scroll dışarıdan geliyor.
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          controller: _bodyHScroll,
+                          child: SizedBox(
+                            width: days.length * dayColWidth,
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('${day.day}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkBlue)),
-                                Text(_shortDayName(day, context), style: TextStyle(fontSize: 9, color: day.weekday >= 6 ? Colors.orange : AppTheme.textSecondary)),
+                                for (int itemIndex = 0; itemIndex < items.length; itemIndex++)
+                                  Container(
+                                    height: rowHeight,
+                                    decoration: BoxDecoration(
+                                      color: itemIndex.isEven
+                                          ? Colors.white
+                                          : AppTheme.background,
+                                      border: Border(
+                                          bottom: BorderSide(
+                                              color: AppTheme.divider.withValues(alpha: 0.3))),
+                                    ),
+                                    child: Row(
+                                      children: days.map((day) => dayCell(itemIndex, day)).toList(),
+                                    ),
+                                  ),
                               ],
                             ),
-                          )),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                // Veri satırları
-                Expanded(
-                  child: ListView.builder(
-                    controller: _verticalScroll,
-                    itemCount: items.length,
-                    itemBuilder: (context, itemIndex) {
-                      final item = items[itemIndex];
-                      return Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: itemIndex.isEven ? Colors.white : AppTheme.background,
-                          border: Border(bottom: BorderSide(color: AppTheme.divider.withValues(alpha: 0.3))),
-                        ),
-                        child: Row(
-                          children: [
-                            // Öğe ismi
-                            GestureDetector(
-                              onTap: () => _showSummary(context, provider, itemIndex),
-                              onLongPress: () => _showItemOptions(context, provider, itemIndex, item),
-                              child: Container(
-                                width: 120,
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                alignment: Alignment.centerLeft,
-                                child: Text(item.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
-                              ),
-                            ),
-                            // Günler
-                            ...days.map((day) {
-                              final key = TallyTableModel.dateKey(day);
-                              final code = item.entries[key];
-                              final status = code != null ? table.getStatusByCode(code) : null;
-
-                              return GestureDetector(
-                                onTap: () => provider.cycleCellStatus(itemIndex, day),
-                                onLongPress: () => _showStatusPicker(context, provider, itemIndex, day),
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    border: Border(left: BorderSide(color: AppTheme.divider.withValues(alpha: 0.3))),
-                                    color: status != null ? Color(status.colorValue).withValues(alpha: 0.15) : null,
-                                  ),
-                                  child: status != null
-                                      ? Text(status.code,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                            color: Color(status.colorValue),
-                                          ))
-                                      : null,
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -300,8 +452,8 @@ class _TallyScreenState extends State<TallyScreen> {
 
   // ============== DİALOGLAR ==============
 
-  void _showCreateDialog(BuildContext context) {
-    showDialog(context: context, builder: (_) => const CreateTallyDialog());
+  void _showEditDialog(BuildContext context) {
+    showDialog(context: context, builder: (_) => const EditTallyDialog());
   }
 
   void _showAddItemDialog(BuildContext context, TallyProvider provider, AppLocalizations loc) {
@@ -437,7 +589,6 @@ class _TallyScreenState extends State<TallyScreen> {
   }
 
   String _shortDayName(DateTime date, BuildContext context) {
-    final loc = AppLocalizations.of(context);
     final isEn = Localizations.localeOf(context).languageCode == 'en';
     const trDays = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
     const enDays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];

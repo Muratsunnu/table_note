@@ -323,9 +323,9 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -334,7 +334,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
           Expanded(
             child: Text(
               text,
-              style: TextStyle(fontSize: 12, color: color.withOpacity(0.8)),
+              style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.8)),
             ),
           ),
         ],
@@ -436,7 +436,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
                   ),
                 ),
                 backgroundColor: AppTheme.lightBlue,
-                side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.3)),
+                side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
                 onPressed: () {
                   final current = _formulaControllers[index].text;
                   _formulaControllers[index].text = '$current{${col.name}}';
@@ -463,7 +463,7 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
                   ),
                 ),
                 backgroundColor: AppTheme.formulaLight,
-                side: BorderSide(color: AppTheme.formula.withOpacity(0.3)),
+                side: BorderSide(color: AppTheme.formula.withValues(alpha: 0.3)),
                 onPressed: () {
                   final current = _formulaControllers[index].text;
                   _formulaControllers[index].text = '$current$op';

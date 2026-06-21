@@ -46,6 +46,7 @@ class AppLocalizations {
   String get languageSettings => _t('languageSettings');
   String get selectLanguage => _t('selectLanguage');
   String get menu => _t('menu');
+  String get openMenuToCreate => _t('openMenuToCreate');
 
   // ============== TABLE SCREEN ==============
   String get tableNote => _t('tableNote');
@@ -316,6 +317,31 @@ class AppLocalizations {
   String get tallyItemNameHint => _t('tallyItemNameHint');
   String get tallyNoItems => _t('tallyNoItems');
   String get tallyItemHeader => _t('tallyItemHeader');
+  String get tallyEditTitle => _t('tallyEditTitle');
+  String get tallyUpdateFailed => _t('tallyUpdateFailed');
+  String get tallyDeleteStatusWarning => _t('tallyDeleteStatusWarning');
+
+  // ============== TALLY TEMPLATES ==============
+  String get tallyTemplates => _t('tallyTemplates');
+  String get tallyTemplateCreate => _t('tallyTemplateCreate');
+  String get tallyTemplateEdit => _t('tallyTemplateEdit');
+  String get tallyTemplateName => _t('tallyTemplateName');
+  String get tallyTemplateNameHint => _t('tallyTemplateNameHint');
+  String get tallyTemplateNameRequired => _t('tallyTemplateNameRequired');
+  String get tallyTemplateCreateFailed => _t('tallyTemplateCreateFailed');
+  String get tallyTemplateUpdateFailed => _t('tallyTemplateUpdateFailed');
+  String get tallyTemplateDelete => _t('tallyTemplateDelete');
+  String tallyTemplateDeleteConfirm(String name) => _t('tallyTemplateDeleteConfirm').replaceAll('{name}', name);
+  String get tallyNoTemplates => _t('tallyNoTemplates');
+  String get tallyNoTemplatesHint => _t('tallyNoTemplatesHint');
+  String get tallyCreateNewTemplate => _t('tallyCreateNewTemplate');
+  String get tallyFromTemplate => _t('tallyFromTemplate');
+  String get tallyCreateFromTemplate => _t('tallyCreateFromTemplate');
+  String tallyTemplateStatusItemCount(int s, int i) => _t('tallyTemplateStatusItemCount')
+      .replaceAll('{s}', s.toString())
+      .replaceAll('{i}', i.toString());
+  String get tallyIncludeItems => _t('tallyIncludeItems');
+  String get tallyIncludeItemsHint => _t('tallyIncludeItemsHint');
 
   // ============== TÜRKÇE ==============
   static const Map<String, String> _tr = {
@@ -341,6 +367,7 @@ class AppLocalizations {
     'languageSettings': 'Dil Ayarları',
     'selectLanguage': 'Dil Seçin',
     'menu': 'Menü',
+    'openMenuToCreate': 'Yeni tablo veya çetele için menüyü açın',
     'tableNote': 'Table Note',
     'findTable': 'Tablo Bul',
     'exportData': 'Çıktı Al',
@@ -569,6 +596,27 @@ class AppLocalizations {
     'tallyItemNameHint': 'Örn: Ali, Ürün A',
     'tallyNoItems': 'Henüz öğe eklenmemiş',
     'tallyItemHeader': 'Ad',
+    'tallyEditTitle': 'Çeteleyi Düzenle',
+    'tallyUpdateFailed': 'Çetele güncellenemedi',
+    'tallyDeleteStatusWarning': 'Sildiğiniz durumların hücrelerdeki verileri de silinecek',
+    'tallyTemplates': 'Çetele Şablonları',
+    'tallyTemplateCreate': 'Şablon Oluştur',
+    'tallyTemplateEdit': 'Şablonu Düzenle',
+    'tallyTemplateName': 'Şablon Adı',
+    'tallyTemplateNameHint': 'Örn: Aylık Puantaj Şablonu',
+    'tallyTemplateNameRequired': 'Şablon adı boş olamaz',
+    'tallyTemplateCreateFailed': 'Şablon oluşturulamadı',
+    'tallyTemplateUpdateFailed': 'Şablon güncellenemedi',
+    'tallyTemplateDelete': 'Şablonu Sil',
+    'tallyTemplateDeleteConfirm': '"{name}" şablonunu silmek istediğinizden emin misiniz?',
+    'tallyNoTemplates': 'Henüz çetele şablonu yok',
+    'tallyNoTemplatesHint': 'Sık kullandığınız durum ve öğeleri şablon olarak kaydedin',
+    'tallyCreateNewTemplate': 'Yeni Şablon Oluştur',
+    'tallyFromTemplate': 'Şablondan Oluştur',
+    'tallyCreateFromTemplate': 'Şablondan Çetele Oluştur',
+    'tallyTemplateStatusItemCount': '{s} durum • {i} öğe',
+    'tallyIncludeItems': 'Öğeleri de yükle',
+    'tallyIncludeItemsHint': 'Şablondaki öğe adları yeni çeteleye eklenir',
   };
 
   // ============== ENGLISH ==============
@@ -595,6 +643,7 @@ class AppLocalizations {
     'languageSettings': 'Language Settings',
     'selectLanguage': 'Select Language',
     'menu': 'Menu',
+    'openMenuToCreate': 'Open the menu to create a table or tally',
     'tableNote': 'Table Note',
     'findTable': 'Find Table',
     'exportData': 'Export',
@@ -823,6 +872,27 @@ class AppLocalizations {
     'tallyItemNameHint': 'e.g. Ali, Product A',
     'tallyNoItems': 'No items added yet',
     'tallyItemHeader': 'Name',
+    'tallyEditTitle': 'Edit Tally',
+    'tallyUpdateFailed': 'Failed to update tally',
+    'tallyDeleteStatusWarning': 'Data in cells using deleted statuses will be removed',
+    'tallyTemplates': 'Tally Templates',
+    'tallyTemplateCreate': 'Create Template',
+    'tallyTemplateEdit': 'Edit Template',
+    'tallyTemplateName': 'Template Name',
+    'tallyTemplateNameHint': 'e.g. Monthly Attendance Template',
+    'tallyTemplateNameRequired': 'Template name cannot be empty',
+    'tallyTemplateCreateFailed': 'Failed to create template',
+    'tallyTemplateUpdateFailed': 'Failed to update template',
+    'tallyTemplateDelete': 'Delete Template',
+    'tallyTemplateDeleteConfirm': 'Are you sure you want to delete "{name}" template?',
+    'tallyNoTemplates': 'No tally templates yet',
+    'tallyNoTemplatesHint': 'Save your frequently used statuses and items as templates',
+    'tallyCreateNewTemplate': 'Create New Template',
+    'tallyFromTemplate': 'From Template',
+    'tallyCreateFromTemplate': 'Create Tally from Template',
+    'tallyTemplateStatusItemCount': '{s} statuses • {i} items',
+    'tallyIncludeItems': 'Include items',
+    'tallyIncludeItemsHint': 'Item names from the template will be added to the new tally',
   };
 }
 

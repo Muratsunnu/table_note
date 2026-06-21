@@ -30,7 +30,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _initializeControllersForColumn(_columns[0]);
   }
 
@@ -103,7 +103,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.add_rounded,
@@ -645,7 +645,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       ),
                       backgroundColor: AppTheme.lightBlue,
                       side: BorderSide(
-                          color: AppTheme.primaryBlue.withOpacity(0.3)),
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
                       onPressed: () {
                         final currentText = _formulaControllers[index].text;
                         _formulaControllers[index].text =
@@ -705,7 +705,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           ),
         ),
         backgroundColor: AppTheme.formulaLight,
-        side: BorderSide(color: AppTheme.formula.withOpacity(0.3)),
+        side: BorderSide(color: AppTheme.formula.withValues(alpha: 0.3)),
         onPressed: () {
           final currentText = _formulaControllers[index].text;
           _formulaControllers[index].text = '$currentText$op';
@@ -999,16 +999,25 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
         if (!provider.hasTemplates) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.article_outlined, size: 60, color: Colors.grey[400]),
-                SizedBox(height: 16),
-                Text(
-                  AppLocalizations.of(context).noTemplatesYet,
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.article_outlined, size: 60, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    AppLocalizations.of(context).noTemplatesYet,
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.edit_rounded),
+                    label: Text(AppLocalizations.of(context).manualCreate),
+                    onPressed: () => _tabController.animateTo(0),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -1042,46 +1051,30 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   }
 
   void _createTableFromTemplate(TemplateModel template) {
-    final tableNameController =
-        TextEditingController(text: template.templateName);
+    // Şablonu manuel sekmeye yükle: ad + sütunları doldur, sekmeyi değiştir.
+    // Kullanıcı düzenleyip tek "Oluştur" butonuyla tabloyu oluşturur.
+    setState(() {
+      // Eski controller'ları temizle
+      for (var c in _columnControllers) c.dispose();
+      for (var c in _autoFillControllers) c.dispose();
+      for (var c in _constantValueControllers) c.dispose();
+      for (var c in _formulaControllers) c.dispose();
+      _columnControllers.clear();
+      _autoFillControllers.clear();
+      _constantValueControllers.clear();
+      _formulaControllers.clear();
+      _showAutoFill.clear();
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(AppLocalizations.of(context).createTableFromTemplate),
-        content: TextField(
-          controller: tableNameController,
-          decoration: InputDecoration(
-            labelText: AppLocalizations.of(context).tableName,
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context).cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (tableNameController.text.trim().isNotEmpty) {
-                final tableProvider =
-                    Provider.of<TableProvider>(context, listen: false);
-                final success = await tableProvider.createTable(
-                  tableNameController.text.trim(),
-                  template.columns.map((c) => c.copyWith()).toList(),
-                );
-                Navigator.pop(ctx);
-                Navigator.pop(context);
-                if (!success) {
-                  _showErrorSnackBar('Tablo oluşturulamadı');
-                }
-              }
-            },
-            child: Text(AppLocalizations.of(context).create),
-          ),
-        ],
-      ),
-    );
+      // Şablon verisini yükle
+      _tableNameController.text = template.templateName;
+      _columns
+        ..clear()
+        ..addAll(template.columns.map((c) => c.copyWith()));
+      for (final col in _columns) {
+        _initializeControllersForColumn(col);
+      }
+    });
+    _tabController.animateTo(0);
   }
 
   void _showHelpDialog() {

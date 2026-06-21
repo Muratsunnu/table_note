@@ -6,6 +6,7 @@ import 'providers/table_provider.dart';
 import 'providers/template_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/tally_provider.dart';
+import 'providers/tally_template_provider.dart';
 import 'screens/table_screen.dart';
 import 'theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
@@ -26,6 +27,7 @@ void main() {
         ChangeNotifierProvider(create: (context) => TableProvider()),
         ChangeNotifierProvider(create: (context) => TemplateProvider()),
         ChangeNotifierProvider(create: (context) => TallyProvider()),
+        ChangeNotifierProvider(create: (context) => TallyTemplateProvider()),
         ChangeNotifierProvider(create: (context) => LocaleProvider()),
       ],
       child: const TableNoteApp(),

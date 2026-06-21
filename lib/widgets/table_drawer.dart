@@ -5,8 +5,9 @@ import '../providers/tally_provider.dart';
 import '../theme/app_theme.dart';
 import 'create_table_dialog.dart';
 import 'edit_table_structure_dialog.dart';
-import 'template_management_dialog.dart';
 import 'create_tally_dialog.dart';
+import 'template_management_dialog.dart';
+import 'tally_template_management_dialog.dart';
 import '../l10n/app_localizations.dart';
 import '../screens/settings_screen.dart';
 
@@ -369,36 +370,79 @@ class TableDrawer extends StatelessWidget {
   // ============== FOOTER ==============
 
   Widget _buildFooter(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey[200]!))),
       child: Column(
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () { Navigator.pop(context); showDialog(context: context, builder: (_) => CreateTableDialog()); },
-              icon: const Icon(Icons.add_rounded),
-              label: Text(AppLocalizations.of(context).newTable),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showDialog(context: context, builder: (_) => CreateTableDialog());
+                  },
+                  icon: const Icon(Icons.table_chart_rounded, size: 18),
+                  label: Text(loc.newTable, style: const TextStyle(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showDialog(context: context, builder: (_) => const CreateTallyDialog());
+                  },
+                  icon: const Icon(Icons.grid_on_rounded, size: 18),
+                  label: Text(loc.tallyCreate, style: const TextStyle(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () { Navigator.pop(context); showDialog(context: context, builder: (_) => const TemplateManagementDialog()); },
-                  icon: const Icon(Icons.article_outlined, size: 18),
-                  label: Text(AppLocalizations.of(context).templates, style: const TextStyle(fontSize: 13)),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showDialog(context: context, builder: (_) => const TemplateManagementDialog());
+                  },
+                  icon: const Icon(Icons.article_outlined, size: 16),
+                  label: Text(loc.templates, style: const TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    foregroundColor: AppTheme.primaryBlue,
+                    side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.4)),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () { Navigator.pop(context); showDialog(context: context, builder: (_) => const CreateTallyDialog()); },
-                  icon: const Icon(Icons.grid_on_rounded, size: 18),
-                  label: Text(AppLocalizations.of(context).tallyTab, style: const TextStyle(fontSize: 13)),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.teal, side: const BorderSide(color: Colors.teal)),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showDialog(context: context, builder: (_) => const TallyTemplateManagementDialog());
+                  },
+                  icon: const Icon(Icons.article_outlined, size: 16),
+                  label: Text(loc.tallyTemplates, style: const TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    foregroundColor: Colors.teal,
+                    side: BorderSide(color: Colors.teal.withValues(alpha: 0.4)),
+                  ),
                 ),
               ),
             ],
@@ -409,7 +453,7 @@ class TableDrawer extends StatelessWidget {
             child: TextButton.icon(
               onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())); },
               icon: const Icon(Icons.settings_outlined, size: 20),
-              label: Text(AppLocalizations.of(context).settings),
+              label: Text(loc.settings),
               style: TextButton.styleFrom(foregroundColor: AppTheme.textSecondary),
             ),
           ),

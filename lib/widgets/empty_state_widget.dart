@@ -3,25 +3,20 @@ import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 
 class EmptyStateWidget extends StatelessWidget {
-  final VoidCallback onCreateTable;
-
-  const EmptyStateWidget({
-    Key? key,
-    required this.onCreateTable,
-  }) : super(key: key);
+  const EmptyStateWidget({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // İkon container
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.lightBlue,
                 shape: BoxShape.circle,
               ),
@@ -32,55 +27,35 @@ class EmptyStateWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            
-            // Başlık
             Text(
-              AppLocalizations.of(context).welcome,
-              style: TextStyle(
+              loc.welcome,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            
-            // Alt başlık
             Text(
-              AppLocalizations.of(context).createFirstTable,
-              style: TextStyle(
+              loc.createFirstTable,
+              style: const TextStyle(
                 fontSize: 15,
                 color: AppTheme.textSecondary,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
-            
-            // Buton
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add_rounded),
-              label: Text(AppLocalizations.of(context).createTable),
-              onPressed: onCreateTable,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.menu_rounded, size: 18, color: AppTheme.textSecondary),
+                const SizedBox(width: 6),
+                Text(
+                  loc.openMenuToCreate,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Şablon butonu
-            TextButton.icon(
-              icon: const Icon(Icons.article_outlined, size: 20),
-              label: Text(AppLocalizations.of(context).orSelectFromTemplates),
-              onPressed: () {
-                // Şablon dialogunu aç
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.textSecondary,
-              ),
+              ],
             ),
           ],
         ),

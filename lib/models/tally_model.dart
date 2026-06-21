@@ -125,3 +125,30 @@ class TallyTableModel {
     items: (json['items'] as List?)?.map((i) => TallyItemModel.fromJson(i)).toList(),
   );
 }
+
+/// Çetele şablonu — durumlar ve öğe adları (giriş verisi yok)
+class TallyTemplateModel {
+  String templateName;
+  List<TallyStatus> statuses;
+  List<String> itemNames;
+
+  TallyTemplateModel({
+    required this.templateName,
+    required this.statuses,
+    List<String>? itemNames,
+  }) : itemNames = itemNames ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'templateName': templateName,
+        'statuses': statuses.map((s) => s.toJson()).toList(),
+        'itemNames': itemNames,
+      };
+
+  factory TallyTemplateModel.fromJson(Map<String, dynamic> json) => TallyTemplateModel(
+        templateName: json['templateName'] ?? '',
+        statuses: (json['statuses'] as List? ?? [])
+            .map((s) => TallyStatus.fromJson(s))
+            .toList(),
+        itemNames: List<String>.from(json['itemNames'] ?? const []),
+      );
+}

@@ -5,14 +5,12 @@ import '../providers/tally_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/table_list_widget.dart';
 import '../widgets/empty_state_widget.dart';
-import '../widgets/create_table_dialog.dart';
 import '../widgets/add_row_dialog.dart';
 import '../widgets/template_management_dialog.dart';
 import '../widgets/column_sums_widget.dart';
 import '../widgets/table_search_dialog.dart';
 import '../widgets/export_dialog.dart';
 import '../widgets/table_drawer.dart';
-import '../widgets/create_tally_dialog.dart';
 import '../services/export_service.dart';
 import '../services/storage_service.dart';
 import '../l10n/app_localizations.dart';
@@ -88,8 +86,7 @@ class _TableScreenState extends State<TableScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (!provider.hasTables) {
-          return EmptyStateWidget(
-              onCreateTable: () => _showCreateTableDialog(context));
+          return const EmptyStateWidget();
         }
         return Column(
           children: [
@@ -129,30 +126,10 @@ class _TableScreenState extends State<TableScreen> {
                   onPressed: () => _showExportDialog(context),
                   tooltip: AppLocalizations.of(context).exportData,
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded),
-                  tooltip: AppLocalizations.of(context).settings,
-                  onSelected: (value) => _handleMenuAction(value),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'new_table',
-                      child: ListTile(
-                        leading: Icon(Icons.add_circle_outline),
-                        title: Text(AppLocalizations.of(context).newTable),
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'templates',
-                      child: ListTile(
-                        leading: Icon(Icons.article_outlined),
-                        title: Text(AppLocalizations.of(context).templates),
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
-                    ),
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.article_outlined),
+                  onPressed: () => _showTemplateDialog(context),
+                  tooltip: AppLocalizations.of(context).templates,
                 ),
               ],
             );
@@ -179,13 +156,6 @@ class _TableScreenState extends State<TableScreen> {
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.add_rounded),
-                  onPressed: () => showDialog(
-                      context: context,
-                      builder: (_) => const CreateTallyDialog()),
-                  tooltip: loc.tallyCreate,
-                ),
                 if (provider.hasTables)
                   IconButton(
                     icon: const Icon(Icons.download_rounded),
@@ -588,7 +558,7 @@ class _TableScreenState extends State<TableScreen> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: _isSearching
-                      ? AppTheme.primaryBlue.withOpacity(0.1)
+                      ? AppTheme.primaryBlue.withValues(alpha: 0.1)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -649,11 +619,11 @@ class _TableScreenState extends State<TableScreen> {
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: AppTheme.primaryBlue.withOpacity(0.3))),
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.3))),
                   enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: AppTheme.primaryBlue.withOpacity(0.3))),
+                          color: AppTheme.primaryBlue.withValues(alpha: 0.3))),
                   focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
@@ -707,21 +677,8 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
-  void _handleMenuAction(String action) {
-    switch (action) {
-      case 'new_table':
-        _showCreateTableDialog(context);
-        break;
-      case 'templates':
-        _showTemplateDialog(context);
-        break;
-    }
-  }
-
   void _showSearchDialog(BuildContext context) =>
       showDialog(context: context, builder: (_) => TableSearchDialog());
-  void _showCreateTableDialog(BuildContext context) =>
-      showDialog(context: context, builder: (_) => CreateTableDialog());
   void _showAddRowDialog(BuildContext context) =>
       showDialog(context: context, builder: (_) => AddRowDialog());
   void _showTemplateDialog(BuildContext context) => showDialog(

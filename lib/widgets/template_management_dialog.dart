@@ -90,7 +90,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.article_rounded, color: Colors.white, size: 24),
@@ -515,47 +515,4 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     );
   }
 
-  void _showTemplateDetails(BuildContext context, TemplateModel template) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(template.templateName),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(AppLocalizations.of(context).columnsLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              ...template.columns.map((col) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      col.isNumeric ? Icons.numbers : Icons.text_fields,
-                      size: 18,
-                      color: col.isNumeric ? Colors.green : Colors.blue,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(col.name)),
-                    if (col.autoFillOptions.isNotEmpty)
-                      Tooltip(
-                        message: col.autoFillOptions.join(', '),
-                        child: Icon(Icons.auto_fix_high, size: 18, color: Colors.orange),
-                      ),
-                  ],
-                ),
-              )).toList(),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context).close),
-          ),
-        ],
-      ),
-    );
-  }
 }

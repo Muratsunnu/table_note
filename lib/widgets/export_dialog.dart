@@ -55,7 +55,7 @@ class _ExportDialogState extends State<ExportDialog> {
               decoration: BoxDecoration(
                 color: AppTheme.lightBlue,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
+                border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -242,7 +242,7 @@ class _ExportDialogState extends State<ExportDialog> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 28),

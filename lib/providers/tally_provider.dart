@@ -59,6 +59,50 @@ class TallyProvider extends ChangeNotifier {
     }
   }
 
+  /// Mevcut tabloyu güncelle. [codeRemap] eski kod -> yeni kod (null=silindi).
+  /// Yalnızca remap edilmiş kodlar dokunulur; haritada olmayan kodlar olduğu gibi kalır.
+  Future<bool> updateCurrentTable({
+    required String tableName,
+    required DateTime startDate,
+    required DateTime endDate,
+    required List<TallyStatus> newStatuses,
+    Map<String, String?> codeRemap = const {},
+  }) async {
+    if (currentTable == null) return false;
+    try {
+      final t = currentTable!;
+      t.tableName = tableName.trim();
+      t.startDate = startDate;
+      t.endDate = endDate;
+      t.statuses = newStatuses;
+
+      if (codeRemap.isNotEmpty) {
+        for (final item in t.items) {
+          final updated = <String, String>{};
+          item.entries.forEach((dateKey, oldCode) {
+            if (codeRemap.containsKey(oldCode)) {
+              final newCode = codeRemap[oldCode];
+              if (newCode != null) updated[dateKey] = newCode;
+              // null => durum silindi, hücre boşaltıldı
+            } else {
+              updated[dateKey] = oldCode;
+            }
+          });
+          item.entries
+            ..clear()
+            ..addAll(updated);
+        }
+      }
+
+      await _save();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Çetele güncelleme hatası: $e');
+      return false;
+    }
+  }
+
   Future<bool> deleteTable(int index) async {
     try {
       if (index >= 0 && index < _tables.length) {

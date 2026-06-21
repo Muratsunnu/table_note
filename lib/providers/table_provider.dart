@@ -301,8 +301,7 @@ class TableProvider extends ChangeNotifier {
       if (currentTable == null) return false;
       
       final table = currentTable!;
-      final oldColumns = table.columns;
-      
+
       // Tablo adını güncelle
       table.tableName = newName.trim();
       
