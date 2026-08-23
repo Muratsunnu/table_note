@@ -39,7 +39,7 @@ android {
     defaultConfig {
         applicationId = "com.muratstudio.tablenote"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
+        targetSdk = flutter.targetSdkVersion
         versionCode = 9
         versionName = "1.2.0"
     }
