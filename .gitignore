@@ -46,3 +46,9 @@ app.*.map.json
 
 # Local analysis output
 hatalar.txt
+
+# Signing — asla commitleme
+*.jks
+*.keystore
+key.properties
+**/key.properties
