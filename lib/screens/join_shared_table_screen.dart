@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -57,13 +56,16 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
     final loc = AppLocalizations.of(context);
     final auth = context.read<AuthProvider>();
     final tables = context.read<TableProvider>();
+    // Bildirim tasiyicisi da await'lerden once yakalanir: basarili
+    // katilimdan sonra bu ekran zaten kapaniyor.
+    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _isBusy = true;
       _errorCode = null;
     });
     try {
       if (!await auth.ensureAnonymousSession()) {
-        setState(() => _errorCode = 'authentication_required');
+        if (mounted) setState(() => _errorCode = 'authentication_required');
         return;
       }
       final repository = CloudRepository();
@@ -82,7 +84,7 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
           .where((item) => item.id == join.tableId)
           .firstOrNull;
       if (entry == null) {
-        setState(() => _errorCode = 'table_not_found');
+        if (mounted) setState(() => _errorCode = 'table_not_found');
         return;
       }
       final joined = TableModel.fromJson(entry.payload);
@@ -92,19 +94,21 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
       await tables.setSharedRole(joined.id, 'editor');
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(loc.joinedTable(entry.name))));
+      messenger.showSnackBar(
+        SnackBar(content: Text(loc.joinedTable(entry.name))),
+      );
     } on SharedTableException catch (error) {
       // Beklenmeyen bir sunucu kodu kullaniciya ham haliyle gosterilmez ama
       // teshis edilemez de kalmamali.
       if (!error.isKnown) debugPrint('Bilinmeyen katilim kodu: ${error.code}');
-      setState(() => _errorCode = error.isKnown ? error.code : 'unknown');
+      if (mounted) {
+        setState(() => _errorCode = error.isKnown ? error.code : 'unknown');
+      }
     } catch (error) {
       // Beklenmeyen hatayi yutmak teshisi imkansiz kilar; kullaniciya genel
       // mesaj gosterilir ama sebep loga yazilir.
       debugPrint('Tabloya katilinamadi: $error');
-      setState(() => _errorCode = 'unknown');
+      if (mounted) setState(() => _errorCode = 'unknown');
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
