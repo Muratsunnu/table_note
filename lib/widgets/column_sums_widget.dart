@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 
 class ColumnSumsWidget extends StatelessWidget {
-  const ColumnSumsWidget({Key? key}) : super(key: key);
+  const ColumnSumsWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +18,16 @@ class ColumnSumsWidget extends StatelessWidget {
         if (sums.isEmpty) return const SizedBox();
 
         final isFiltering = provider.isFiltering;
-        final bgColor = isFiltering ? AppTheme.warningLight : AppTheme.successLight;
+        final bgColor = AppTheme.tintedSurface(
+          context,
+          isFiltering ? AppTheme.warning : AppTheme.success,
+        );
         final accentColor = isFiltering ? AppTheme.warning : AppTheme.success;
-        final darkColor = isFiltering ? const Color(0xFFE65100) : const Color(0xFF2E7D32);
+        final darkColor = Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.readableAccent(context, accentColor)
+            : isFiltering
+            ? const Color(0xFFE65100)
+            : const Color(0xFF2E7D32);
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -41,10 +48,15 @@ class ColumnSumsWidget extends StatelessWidget {
             children: [
               // Başlık
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.15),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(15),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -55,18 +67,22 @@ class ColumnSumsWidget extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        isFiltering ? Icons.filter_list_rounded : Icons.functions_rounded,
+                        isFiltering
+                            ? Icons.filter_list_rounded
+                            : Icons.functions_rounded,
                         color: darkColor,
                         size: 18,
                       ),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isFiltering ? AppLocalizations.of(context).filteredTotals : AppLocalizations.of(context).totals,
+                            isFiltering
+                                ? AppLocalizations.of(context).filteredTotals
+                                : AppLocalizations.of(context).totals,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: darkColor,
@@ -75,7 +91,9 @@ class ColumnSumsWidget extends StatelessWidget {
                           ),
                           if (isFiltering)
                             Text(
-                              AppLocalizations.of(context).searchOf(provider.searchQuery),
+                              AppLocalizations.of(
+                                context,
+                              ).searchOf(provider.searchQuery),
                               style: TextStyle(
                                 color: darkColor.withValues(alpha: 0.7),
                                 fontSize: 11,
@@ -85,15 +103,20 @@ class ColumnSumsWidget extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: accentColor,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        isFiltering 
+                        isFiltering
                             ? '${provider.filteredRowCount}/${provider.totalRowCount}'
-                            : AppLocalizations.of(context).nRecords(provider.totalRowCount),
+                            : AppLocalizations.of(
+                                context,
+                              ).nRecords(provider.totalRowCount),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -104,7 +127,7 @@ class ColumnSumsWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Toplamlar
               Padding(
                 padding: const EdgeInsets.all(12),
@@ -113,11 +136,16 @@ class ColumnSumsWidget extends StatelessWidget {
                   runSpacing: 8,
                   children: sums.entries.map((entry) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: accentColor.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -131,7 +159,11 @@ class ColumnSumsWidget extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _formatNumber(entry.value),
+                            _formatNumber(
+                              entry.value,
+                              Localizations.localeOf(context).languageCode ==
+                                  'tr',
+                            ),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: darkColor,
@@ -151,19 +183,18 @@ class ColumnSumsWidget extends StatelessWidget {
     );
   }
 
-  String _formatNumber(double value) {
-    if (value == value.roundToDouble()) {
-      return value.toInt().toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (Match m) => '${m[1]}.',
-      );
-    }
-    
+  String _formatNumber(double value, bool useTurkishSeparators) {
+    if (!value.isFinite) return value.toString();
     final parts = value.toStringAsFixed(2).split('.');
-    final intPart = parts[0].replaceAllMapped(
+    final grouping = useTurkishSeparators ? '.' : ',';
+    final decimal = useTurkishSeparators ? ',' : '.';
+    final integer = parts[0].replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
+      (match) => '${match[1]}$grouping',
     );
-    return '$intPart,${parts[1]}';
+    final fraction = parts.length > 1
+        ? parts[1].replaceFirst(RegExp(r'0+$'), '')
+        : '';
+    return fraction.isEmpty ? integer : '$integer$decimal$fraction';
   }
 }

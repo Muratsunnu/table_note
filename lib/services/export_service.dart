@@ -8,57 +8,64 @@ import 'package:share_plus/share_plus.dart';
 import '../models/tabel_model.dart';
 import '../models/tally_model.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/number_display.dart';
 
 class ExportService {
-  
   /// CSV formatında export
   static Future<String> exportToCsv(TableModel table) async {
     final StringBuffer csv = StringBuffer();
-    
+
     // Başlık satırı
-    final headers = table.columns.map((col) => _escapeCsvField(col.name)).join(',');
+    final headers = table.columns
+        .map((col) => _escapeCsvField(col.name))
+        .join(',');
     csv.writeln(headers);
-    
+
     // Veri satırları
     for (var row in table.rows) {
       final rowData = row.map((cell) => _escapeCsvField(cell)).join(',');
       csv.writeln(rowData);
     }
-    
+
     // Dosyayı kaydet
     final directory = await getApplicationDocumentsDirectory();
     final fileName = _sanitizeFileName(table.tableName);
     final file = File('${directory.path}/$fileName.csv');
     await file.writeAsString(csv.toString(), encoding: const Utf8Codec());
-    
+
     return file.path;
   }
-  
+
   /// PDF formatında export
-  static Future<String> exportToPdf(TableModel table, {Map<String, double>? columnSums}) async {
+  static Future<String> exportToPdf(
+    TableModel table, {
+    required AppLocalizations loc,
+    Map<String, double>? columnSums,
+  }) async {
+    final language = loc.locale.languageCode;
     final pdf = pw.Document();
-    
+
     // Türkçe karakter desteği için font yükle
     final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
     final ttf = pw.Font.ttf(fontData);
     final fontDataBold = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
     final ttfBold = pw.Font.ttf(fontDataBold);
-    
+
     // Sayfa boyutuna göre sütun genişliklerini hesapla
     final columnCount = table.columns.length;
-    
+
     // Verileri sayfalara böl (her sayfada max 25 satır)
     final rowsPerPage = 25;
     final totalPages = (table.rows.length / rowsPerPage).ceil().clamp(1, 999);
-    
+
     for (int page = 0; page < totalPages; page++) {
       final startRow = page * rowsPerPage;
-      final endRow = (startRow + rowsPerPage > table.rows.length) 
-          ? table.rows.length 
+      final endRow = (startRow + rowsPerPage > table.rows.length)
+          ? table.rows.length
           : startRow + rowsPerPage;
       final pageRows = table.rows.sublist(startRow, endRow);
       final isLastPage = page == totalPages - 1;
-      
+
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4.landscape,
@@ -80,7 +87,7 @@ class ExportService {
                       ),
                     ),
                     pw.Text(
-                      'Toplam: ${table.rows.length} kayit',
+                      loc.totalNRecords(table.rows.length),
                       style: pw.TextStyle(
                         font: ttf,
                         fontSize: 12,
@@ -89,9 +96,9 @@ class ExportService {
                     ),
                   ],
                 ),
-                
+
                 pw.SizedBox(height: 15),
-                
+
                 // Tablo
                 pw.Expanded(
                   child: pw.Table(
@@ -107,7 +114,7 @@ class ExportService {
                           return pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
                             child: pw.Text(
-                              _convertTurkishChars(col.name),
+                              col.name,
                               style: pw.TextStyle(
                                 font: ttfBold,
                                 fontWeight: pw.FontWeight.bold,
@@ -124,15 +131,28 @@ class ExportService {
                         final row = entry.value;
                         return pw.TableRow(
                           decoration: pw.BoxDecoration(
-                            color: rowIndex % 2 == 0 
-                                ? PdfColors.white 
+                            color: rowIndex % 2 == 0
+                                ? PdfColors.white
                                 : PdfColors.grey100,
                           ),
-                          children: row.map((cell) {
+                          children: row.asMap().entries.map((cellEntry) {
+                            final column = cellEntry.key < table.columns.length
+                                ? table.columns[cellEntry.key]
+                                : null;
+                            // Quantities read the way they do in the app; row
+                            // numbers and text are printed exactly as entered.
+                            final text =
+                                column != null && showsGroupedNumbers(column)
+                                ? formatNumericCell(
+                                        cellEntry.value,
+                                        language: language,
+                                      ) ??
+                                      cellEntry.value
+                                : cellEntry.value;
                             return pw.Padding(
                               padding: const pw.EdgeInsets.all(5),
                               child: pw.Text(
-                                _convertTurkishChars(cell),
+                                text,
                                 style: pw.TextStyle(font: ttf, fontSize: 9),
                                 textAlign: pw.TextAlign.center,
                               ),
@@ -143,15 +163,15 @@ class ExportService {
                     ],
                   ),
                 ),
-                
+
                 pw.SizedBox(height: 10),
-                
+
                 // Toplamlar (sadece son sayfada)
                 if (isLastPage && columnSums != null && columnSums.isNotEmpty)
-                  _buildSumsSection(columnSums, ttf, ttfBold),
-                
+                  _buildSumsSection(columnSums, ttf, ttfBold, loc, language),
+
                 pw.SizedBox(height: 10),
-                
+
                 // Alt bilgi
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -166,7 +186,7 @@ class ExportService {
                     ),
                     if (totalPages > 1)
                       pw.Text(
-                        'Sayfa ${page + 1} / $totalPages',
+                        loc.pageNofM(page + 1, totalPages),
                         style: pw.TextStyle(
                           font: ttf,
                           fontSize: 8,
@@ -181,18 +201,24 @@ class ExportService {
         ),
       );
     }
-    
+
     // Dosyayı kaydet
     final directory = await getApplicationDocumentsDirectory();
     final fileName = _sanitizeFileName(table.tableName);
     final file = File('${directory.path}/$fileName.pdf');
     await file.writeAsBytes(await pdf.save());
-    
+
     return file.path;
   }
-  
+
   /// Toplamlar bölümünü oluştur
-  static pw.Widget _buildSumsSection(Map<String, double> sums, pw.Font ttf, pw.Font ttfBold) {
+  static pw.Widget _buildSumsSection(
+    Map<String, double> sums,
+    pw.Font ttf,
+    pw.Font ttfBold,
+    AppLocalizations loc,
+    String language,
+  ) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
@@ -204,7 +230,7 @@ class ExportService {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(
-            'TOPLAMLAR',
+            loc.totalsLabel,
             style: pw.TextStyle(
               font: ttfBold,
               fontSize: 11,
@@ -218,7 +244,10 @@ class ExportService {
             runSpacing: 4,
             children: sums.entries.map((entry) {
               return pw.Container(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
                 decoration: pw.BoxDecoration(
                   color: PdfColors.white,
                   borderRadius: pw.BorderRadius.circular(4),
@@ -227,11 +256,11 @@ class ExportService {
                   mainAxisSize: pw.MainAxisSize.min,
                   children: [
                     pw.Text(
-                      '${_convertTurkishChars(entry.key)}: ',
+                      '${entry.key}: ',
                       style: pw.TextStyle(font: ttf, fontSize: 9),
                     ),
                     pw.Text(
-                      _formatNumber(entry.value),
+                      formatGroupedNumber(entry.value, language),
                       style: pw.TextStyle(
                         font: ttfBold,
                         fontSize: 10,
@@ -247,7 +276,7 @@ class ExportService {
       ),
     );
   }
-  
+
   // ============== ÇETELE EXPORT ==============
 
   /// Çetele tablosunu CSV formatında export
@@ -272,7 +301,11 @@ class ExportService {
         final key = TallyTableModel.dateKey(day);
         row.add(item.entries[key] ?? '');
       }
-      final summary = item.getSummary(table.startDate, table.endDate, table.statuses);
+      final summary = item.getSummary(
+        table.startDate,
+        table.endDate,
+        table.statuses,
+      );
       for (final status in table.statuses) {
         row.add((summary[status.code] ?? 0).toString());
       }
@@ -287,7 +320,10 @@ class ExportService {
   }
 
   /// Çetele tablosunu PDF formatında export
-  static Future<String> exportTallyPdf(TallyTableModel table, {AppLocalizations? loc}) async {
+  static Future<String> exportTallyPdf(
+    TallyTableModel table, {
+    required AppLocalizations loc,
+  }) async {
     final pdf = pw.Document();
 
     final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
@@ -296,7 +332,8 @@ class ExportService {
     final ttfBold = pw.Font.ttf(fontDataBold);
 
     final days = table.allDays;
-    final dateRange = '${table.startDate.day}/${table.startDate.month}/${table.startDate.year}'
+    final dateRange =
+        '${table.startDate.day}/${table.startDate.month}/${table.startDate.year}'
         ' - ${table.endDate.day}/${table.endDate.month}/${table.endDate.year}';
 
     // Her sayfada max 20 gün sütunu
@@ -305,7 +342,9 @@ class ExportService {
 
     for (int pageIdx = 0; pageIdx < totalDayPages; pageIdx++) {
       final startDay = pageIdx * daysPerPage;
-      final endDay = (startDay + daysPerPage > days.length) ? days.length : startDay + daysPerPage;
+      final endDay = (startDay + daysPerPage > days.length)
+          ? days.length
+          : startDay + daysPerPage;
       final pageDays = days.sublist(startDay, endDay);
 
       pdf.addPage(
@@ -319,18 +358,41 @@ class ExportService {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(_convertTurkishChars(table.tableName),
-                        style: pw.TextStyle(font: ttfBold, fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(dateRange, style: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.grey700)),
+                    pw.Text(
+                      table.tableName,
+                      style: pw.TextStyle(
+                        font: ttfBold,
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      dateRange,
+                      style: pw.TextStyle(
+                        font: ttf,
+                        fontSize: 10,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
                   ],
                 ),
                 pw.SizedBox(height: 4),
                 pw.Row(
-                  children: table.statuses.map((s) => pw.Container(
-                    margin: const pw.EdgeInsets.only(right: 12),
-                    child: pw.Text('${s.code} = ${_convertTurkishChars(s.label)}',
-                        style: pw.TextStyle(font: ttf, fontSize: 8, color: PdfColors.grey600)),
-                  )).toList(),
+                  children: table.statuses
+                      .map(
+                        (s) => pw.Container(
+                          margin: const pw.EdgeInsets.only(right: 12),
+                          child: pw.Text(
+                            '${s.code} = ${s.label}',
+                            style: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 8,
+                              color: PdfColors.grey600,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
                 pw.SizedBox(height: 10),
                 pw.Expanded(
@@ -338,39 +400,68 @@ class ExportService {
                     border: pw.TableBorder.all(color: PdfColors.grey400),
                     children: [
                       pw.TableRow(
-                        decoration: const pw.BoxDecoration(color: PdfColors.blue100),
+                        decoration: const pw.BoxDecoration(
+                          color: PdfColors.blue100,
+                        ),
                         children: [
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(4),
-                            child: pw.Text(loc?.tallyItemHeader ?? 'Ad',
-                                style: pw.TextStyle(font: ttfBold, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                            child: pw.Text(
+                              loc.tallyItemHeader,
+                              style: pw.TextStyle(
+                                font: ttfBold,
+                                fontSize: 8,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
                           ),
-                          ...pageDays.map((day) => pw.Padding(
-                                padding: const pw.EdgeInsets.all(3),
-                                child: pw.Text('${day.day}',
-                                    style: pw.TextStyle(font: ttfBold, fontSize: 8, fontWeight: pw.FontWeight.bold),
-                                    textAlign: pw.TextAlign.center),
-                              )),
+                          ...pageDays.map(
+                            (day) => pw.Padding(
+                              padding: const pw.EdgeInsets.all(3),
+                              child: pw.Text(
+                                '${day.day}',
+                                style: pw.TextStyle(
+                                  font: ttfBold,
+                                  fontSize: 8,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                                textAlign: pw.TextAlign.center,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                       ...table.items.asMap().entries.map((entry) {
                         final rowIdx = entry.key;
                         final item = entry.value;
                         return pw.TableRow(
-                          decoration: pw.BoxDecoration(color: rowIdx.isEven ? PdfColors.white : PdfColors.grey100),
+                          decoration: pw.BoxDecoration(
+                            color: rowIdx.isEven
+                                ? PdfColors.white
+                                : PdfColors.grey100,
+                          ),
                           children: [
                             pw.Padding(
                               padding: const pw.EdgeInsets.all(4),
-                              child: pw.Text(_convertTurkishChars(item.name), style: pw.TextStyle(font: ttf, fontSize: 8)),
+                              child: pw.Text(
+                                item.name,
+                                style: pw.TextStyle(font: ttf, fontSize: 8),
+                              ),
                             ),
                             ...pageDays.map((day) {
                               final key = TallyTableModel.dateKey(day);
                               final code = item.entries[key] ?? '';
                               return pw.Padding(
                                 padding: const pw.EdgeInsets.all(3),
-                                child: pw.Text(code,
-                                    style: pw.TextStyle(font: ttfBold, fontSize: 8, fontWeight: pw.FontWeight.bold),
-                                    textAlign: pw.TextAlign.center),
+                                child: pw.Text(
+                                  code,
+                                  style: pw.TextStyle(
+                                    font: ttfBold,
+                                    fontSize: 8,
+                                    fontWeight: pw.FontWeight.bold,
+                                  ),
+                                  textAlign: pw.TextAlign.center,
+                                ),
                               );
                             }),
                           ],
@@ -380,7 +471,14 @@ class ExportService {
                   ),
                 ),
                 pw.SizedBox(height: 8),
-                pw.Text(_getCurrentDateTime(), style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey500)),
+                pw.Text(
+                  _getCurrentDateTime(),
+                  style: pw.TextStyle(
+                    font: ttf,
+                    fontSize: 7,
+                    color: PdfColors.grey500,
+                  ),
+                ),
               ],
             );
           },
@@ -397,56 +495,121 @@ class ExportService {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text('${_convertTurkishChars(table.tableName)} - ${loc?.tallySummary ?? 'Ozet'}',
-                  style: pw.TextStyle(font: ttfBold, fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Text(
+                '${table.tableName} - ${loc.tallySummary}',
+                style: pw.TextStyle(
+                  font: ttfBold,
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
               pw.SizedBox(height: 4),
-              pw.Text(dateRange, style: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.grey700)),
+              pw.Text(
+                dateRange,
+                style: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 10,
+                  color: PdfColors.grey700,
+                ),
+              ),
               pw.SizedBox(height: 15),
               pw.Expanded(
                 child: pw.Table(
                   border: pw.TableBorder.all(color: PdfColors.grey400),
                   children: [
                     pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.green100),
+                      decoration: const pw.BoxDecoration(
+                        color: PdfColors.green100,
+                      ),
                       children: [
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(loc?.tallyItemHeader ?? 'Ad',
-                              style: pw.TextStyle(font: ttfBold, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          child: pw.Text(
+                            loc.tallyItemHeader,
+                            style: pw.TextStyle(
+                              font: ttfBold,
+                              fontSize: 10,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        ...table.statuses.map((s) => pw.Padding(
-                              padding: const pw.EdgeInsets.all(6),
-                              child: pw.Text('${_convertTurkishChars(s.label)} (${s.code})',
-                                  style: pw.TextStyle(font: ttfBold, fontSize: 9, fontWeight: pw.FontWeight.bold),
-                                  textAlign: pw.TextAlign.center),
-                            )),
+                        ...table.statuses.map(
+                          (s) => pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text(
+                              '${s.label} (${s.code})',
+                              style: pw.TextStyle(
+                                font: ttfBold,
+                                fontSize: 9,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                              textAlign: pw.TextAlign.center,
+                            ),
+                          ),
+                        ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text(loc?.tallyEmpty ?? 'Bos',
-                              style: pw.TextStyle(font: ttfBold, fontSize: 9, fontWeight: pw.FontWeight.bold),
-                              textAlign: pw.TextAlign.center),
+                          child: pw.Text(
+                            loc.tallyEmpty,
+                            style: pw.TextStyle(
+                              font: ttfBold,
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                          ),
                         ),
                       ],
                     ),
                     ...table.items.asMap().entries.map((entry) {
                       final rowIdx = entry.key;
                       final item = entry.value;
-                      final summary = item.getSummary(table.startDate, table.endDate, table.statuses);
-                      final filledDays = summary.values.fold<int>(0, (a, b) => a + b);
+                      final summary = item.getSummary(
+                        table.startDate,
+                        table.endDate,
+                        table.statuses,
+                      );
+                      final filledDays = summary.values.fold<int>(
+                        0,
+                        (a, b) => a + b,
+                      );
                       final emptyDays = table.dayCount - filledDays;
                       return pw.TableRow(
-                        decoration: pw.BoxDecoration(color: rowIdx.isEven ? PdfColors.white : PdfColors.grey100),
+                        decoration: pw.BoxDecoration(
+                          color: rowIdx.isEven
+                              ? PdfColors.white
+                              : PdfColors.grey100,
+                        ),
                         children: [
-                          pw.Padding(padding: const pw.EdgeInsets.all(6),
-                              child: pw.Text(_convertTurkishChars(item.name), style: pw.TextStyle(font: ttf, fontSize: 10))),
-                          ...table.statuses.map((s) => pw.Padding(
-                                padding: const pw.EdgeInsets.all(6),
-                                child: pw.Text('${summary[s.code] ?? 0}',
-                                    style: pw.TextStyle(font: ttfBold, fontSize: 11, fontWeight: pw.FontWeight.bold),
-                                    textAlign: pw.TextAlign.center),
-                              )),
-                          pw.Padding(padding: const pw.EdgeInsets.all(6),
-                              child: pw.Text('$emptyDays', style: pw.TextStyle(font: ttf, fontSize: 11), textAlign: pw.TextAlign.center)),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text(
+                              item.name,
+                              style: pw.TextStyle(font: ttf, fontSize: 10),
+                            ),
+                          ),
+                          ...table.statuses.map(
+                            (s) => pw.Padding(
+                              padding: const pw.EdgeInsets.all(6),
+                              child: pw.Text(
+                                '${summary[s.code] ?? 0}',
+                                style: pw.TextStyle(
+                                  font: ttfBold,
+                                  fontSize: 11,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                                textAlign: pw.TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(6),
+                            child: pw.Text(
+                              '$emptyDays',
+                              style: pw.TextStyle(font: ttf, fontSize: 11),
+                              textAlign: pw.TextAlign.center,
+                            ),
+                          ),
                         ],
                       );
                     }),
@@ -454,7 +617,14 @@ class ExportService {
                 ),
               ),
               pw.SizedBox(height: 8),
-              pw.Text(_getCurrentDateTime(), style: pw.TextStyle(font: ttf, fontSize: 7, color: PdfColors.grey500)),
+              pw.Text(
+                _getCurrentDateTime(),
+                style: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 7,
+                  color: PdfColors.grey500,
+                ),
+              ),
             ],
           );
         },
@@ -470,17 +640,14 @@ class ExportService {
 
   /// Dosyayı paylaş
   static Future<void> shareFile(String filePath, String subject) async {
-    await Share.shareXFiles(
-      [XFile(filePath)],
-      subject: subject,
-    );
+    await Share.shareXFiles([XFile(filePath)], subject: subject);
   }
-  
+
   /// Dosyayı cihaza kaydet (Downloads klasörüne)
   static Future<String?> saveToDownloads(String sourcePath) async {
     try {
       final fileName = sourcePath.split('/').last;
-      
+
       // Android için Downloads klasörü
       Directory? downloadsDir;
       if (Platform.isAndroid) {
@@ -491,23 +658,24 @@ class ExportService {
       } else {
         downloadsDir = await getDownloadsDirectory();
       }
-      
+
       if (downloadsDir == null) {
         return null;
       }
-      
+
       final newPath = '${downloadsDir.path}/$fileName';
       final sourceFile = File(sourcePath);
       await sourceFile.copy(newPath);
-      
+
       return newPath;
     } catch (e) {
       print('Dosya kaydedilirken hata: $e');
       return null;
     }
   }
-  
-  /// Türkçe karakterleri ASCII'ye çevir (font desteklemiyorsa)
+
+  /// Türkçe karakterleri ASCII'ye çevirir. Yalnızca dosya adları için; gömülü
+  /// Roboto bütün Türkçe harfleri taşıdığı için PDF metni olduğu gibi yazılır.
   static String _convertTurkishChars(String text) {
     return text
         .replaceAll('ı', 'i')
@@ -523,7 +691,7 @@ class ExportService {
         .replaceAll('ç', 'c')
         .replaceAll('Ç', 'C');
   }
-  
+
   /// CSV alanını escape et
   static String _escapeCsvField(String field) {
     if (field.contains(',') || field.contains('"') || field.contains('\n')) {
@@ -531,14 +699,14 @@ class ExportService {
     }
     return field;
   }
-  
+
   /// Dosya adını temizle
   static String _sanitizeFileName(String name) {
-    return _convertTurkishChars(name)
-        .replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')
-        .replaceAll(' ', '_');
+    return _convertTurkishChars(
+      name,
+    ).replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').replaceAll(' ', '_');
   }
-  
+
   /// Sütun genişliklerini hesapla
   static Map<int, pw.TableColumnWidth> _calculateColumnWidths(int columnCount) {
     final Map<int, pw.TableColumnWidth> widths = {};
@@ -547,15 +715,7 @@ class ExportService {
     }
     return widths;
   }
-  
-  /// Sayıyı formatla
-  static String _formatNumber(double value) {
-    if (value == value.truncate()) {
-      return value.truncate().toString();
-    }
-    return value.toStringAsFixed(2);
-  }
-  
+
   /// Şu anki tarih ve saati formatla
   static String _getCurrentDateTime() {
     final now = DateTime.now();
