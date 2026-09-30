@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/shared_row_operation.dart';
+import '../models/tabel_model.dart';
 import '../providers/table_provider.dart';
 import 'cloud_repository.dart';
 
@@ -54,6 +55,12 @@ class SharedSyncService extends ChangeNotifier {
   final Map<String, SharedSyncState> _states = {};
   final Map<String, Timer> _timers = {};
   final Set<String> _inFlight = {};
+
+  /// Indirilmis son surum. Ayni surumu tekrar indirip tabloyu bosuna
+  /// degistirmemek icin tutulur.
+  final Map<String, int> _knownRevision = {};
+  final Set<String> _pulling = {};
+  String? _openTableId;
   bool _disposed = false;
 
   SharedSyncService({required this.tables, CloudRepository? repository})
@@ -79,6 +86,15 @@ class SharedSyncService extends ChangeNotifier {
     if (_disposed) return;
     final table = tables.currentTable;
     if (table == null) return;
+
+    // Baska bir ortak tabloya gecildiginde sunucudaki hali bir kez indir.
+    // Bu dinleyici her tus vurusunda calistigi icin kimlik degisimine
+    // bakiliyor; yoksa her harfte bir ag cagrisi giderdi.
+    if (table.id != _openTableId) {
+      _openTableId = table.id;
+      if (tables.isSharedTable(table.id)) unawaited(pull(table.id));
+    }
+
     // Yalnizca sahip kendiliginden gonderir.
     if (!tables.isSharedOwner(table.id)) return;
     if (tables.pendingChangeCount(table.id) == 0) return;
@@ -102,6 +118,12 @@ class SharedSyncService extends ChangeNotifier {
       final operations = List<SharedRowOperation>.from(pending.operations);
       final result = await repository.applySharedTableRows(tableId, operations);
       await tables.markChangesApplied(tableId, result.applied);
+      // Sunucu, birlestirme sonrasi tablonun tamamini geri veriyor. Karsi
+      // tarafin bu arada kaydettigi satirlar da icinde; bedava gelen bu
+      // veriyi atmak, gonderen kisiyi eski halde birakmak olurdu.
+      if (!result.hasConflicts && result.payload != null) {
+        await _adopt(tableId, result.payload!, result.revision);
+      }
       _update(
         tableId,
         (state) => state.copyWith(
@@ -131,6 +153,43 @@ class SharedSyncService extends ChangeNotifier {
     } finally {
       _inFlight.remove(tableId);
     }
+  }
+
+  /// Sunucudaki hali yerele indirir.
+  ///
+  /// Bekleyen degisiklik varken hicbir sey yapmaz. Kullanicinin henuz
+  /// gondermedigi duzenlemesini sunucunun eski haliyle ezmek dogrudan veri
+  /// kaybi olurdu; o satirlar zaten gonderimde cakisma olarak karsiya cikar.
+  Future<void> pull(String tableId) async {
+    if (_disposed || _pulling.contains(tableId)) return;
+    if (tables.pendingChangeCount(tableId) > 0) return;
+    _pulling.add(tableId);
+    try {
+      final snapshot = await repository.fetchSharedTable(tableId);
+      if (snapshot == null) return;
+      if (_knownRevision[tableId] == snapshot.revision) return;
+      // Istek sirasinda kullanici bir sey degistirmis olabilir.
+      if (tables.pendingChangeCount(tableId) > 0) return;
+      await _adopt(tableId, snapshot.payload, snapshot.revision);
+    } catch (error) {
+      // Tazeleme sessiz bir istek: basarisiz olmasi kullaniciyi
+      // uyarmayi gerektirmez, elindeki veri gecerliligini korur.
+      debugPrint('Ortak tablo indirilemedi: $error');
+    } finally {
+      _pulling.remove(tableId);
+    }
+  }
+
+  Future<void> _adopt(
+    String tableId,
+    Map<String, dynamic> payload,
+    int revision,
+  ) async {
+    _knownRevision[tableId] = revision;
+    await tables.importCloudTable(
+      TableModel.fromJson(payload),
+      overwrite: true,
+    );
   }
 
   /// Cakisan satirda kayittaki hali kabul et: yerel satir sunucudakiyle

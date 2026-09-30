@@ -147,6 +147,14 @@ class TableActivityEntry {
       );
 }
 
+/// Ortak tablonun sunucudaki son hali.
+class SharedTableSnapshot {
+  final int revision;
+  final Map<String, dynamic> payload;
+
+  const SharedTableSnapshot({required this.revision, required this.payload});
+}
+
 /// Satir gonderiminin sonucu. Uygulananlar kuyruktan duser; cakisanlar
 /// kullanici karar verene kadar bekler.
 class SharedRowSyncResult {
@@ -425,6 +433,25 @@ class CloudRepository {
 
   /// Degisiklik gunlugu, en yenisi basta. Sunucu bu tabloyu yalnizca sahibine
   /// okutur; baskasi cagirirsa bos liste doner.
+  /// Ortak tablonun sunucudaki son halini indirir.
+  ///
+  /// list() butun tablolari cektigi icin tek bir tabloyu tazelemek adina
+  /// israfti; burada yalnizca gereken iki alan isteniyor.
+  Future<SharedTableSnapshot?> fetchSharedTable(String tableId) async {
+    final row = await _client
+        .from('cloud_tables')
+        .select('payload, revision')
+        .eq('id', tableId)
+        .maybeSingle();
+    if (row == null) return null;
+    final payload = row['payload'];
+    if (payload is! Map) return null;
+    return SharedTableSnapshot(
+      revision: (row['revision'] as num?)?.toInt() ?? 0,
+      payload: Map<String, dynamic>.from(payload),
+    );
+  }
+
   Future<List<TableActivityEntry>> tableActivity(
     String tableId, {
     int limit = 200,

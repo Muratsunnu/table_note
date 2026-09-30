@@ -13,6 +13,16 @@ class _FakeRepository implements CloudRepository {
   SharedRowSyncResult Function(List<SharedRowOperation>)? responder;
   Object? throwThis;
 
+  /// Sunucuda duran hal. null ise tablo yok sayilir.
+  SharedTableSnapshot? snapshot;
+  int fetchCount = 0;
+
+  @override
+  Future<SharedTableSnapshot?> fetchSharedTable(String tableId) async {
+    fetchCount++;
+    return snapshot;
+  }
+
   @override
   Future<SharedRowSyncResult> applySharedTableRows(
     String tableId,
@@ -49,6 +59,57 @@ Future<TableProvider> _seeded(String role) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('indirme sunucudaki hali yerele alir', () async {
+    final tables = await _seeded('editor');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(tables: tables, repository: repository);
+    addTearDown(sync.dispose);
+    final table = tables.currentTable!;
+    final rowId = table.rowIdAt(0)!;
+
+    // Karsi taraf ayni satiri degistirmis.
+    final server = TableModel.fromJson(table.toJson());
+    server.replaceRow(0, ['ankara', '35000']);
+    repository.snapshot = SharedTableSnapshot(
+      revision: 7,
+      payload: server.toJson(),
+    );
+
+    await sync.pull(table.id);
+    expect(tables.currentTable!.rows.single, ['ankara', '35000']);
+    // Satir kimlikleri korunmali; yoksa bekleyen islemler eslesemez.
+    expect(tables.currentTable!.rowIdAt(0), rowId);
+
+    // Ayni surum yeniden indirilmez.
+    await sync.pull(table.id);
+    expect(repository.fetchCount, 2);
+  });
+
+  test('bekleyen değişiklik varken indirme yapılmaz', () async {
+    final tables = await _seeded('editor');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(tables: tables, repository: repository);
+    addTearDown(sync.dispose);
+    final table = tables.currentTable!;
+
+    final server = TableModel.fromJson(table.toJson());
+    server.replaceRow(0, ['ankara', '35000']);
+    repository.snapshot = SharedTableSnapshot(
+      revision: 7,
+      payload: server.toJson(),
+    );
+
+    // Henuz gonderilmemis yerel duzenleme.
+    await tables.updateRow(0, ['konya', '99000']);
+    await sync.pull(table.id);
+
+    // Gonderilmemis duzenlemenin sunucunun eski haliyle ezilmesi veri
+    // kaybidir; indirme hic istek bile atmamali.
+    expect(repository.fetchCount, 0);
+    expect(tables.currentTable!.rows.single, ['konya', '99000']);
+    expect(tables.pendingChangeCount(table.id), 1);
+  });
 
   test('katılanın değişikliği kendiliğinden gitmez, butonla gider', () async {
     final tables = await _seeded('editor');
