@@ -477,6 +477,7 @@ class AppLocalizations {
   String get activityJoined => _t('activityJoined');
   String get activityRowAdded => _t('activityRowAdded');
   String get activityRowDeleted => _t('activityRowDeleted');
+  String get activityActorSelf => _t('activityActorSelf');
   String get copy => _t('copy');
   String get copied => _t('copied');
   String sharedTableError(String code) => _t('err_$code');
@@ -944,6 +945,7 @@ class AppLocalizations {
     'activityJoined': 'tabloya katıldı',
     'activityRowAdded': 'satır ekledi',
     'activityRowDeleted': 'satır sildi',
+    'activityActorSelf': 'Sen',
     'copy': 'Kopyala',
     'copied': 'Kopyalandı',
     'err_authentication_required': 'Bağlantı kurulamadı, tekrar dene.',
@@ -1429,6 +1431,7 @@ class AppLocalizations {
     'activityJoined': 'joined the table',
     'activityRowAdded': 'added a row',
     'activityRowDeleted': 'deleted a row',
+    'activityActorSelf': 'You',
     'copy': 'Copy',
     'copied': 'Copied',
     'err_authentication_required': 'Could not connect. Try again.',

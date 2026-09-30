@@ -93,9 +93,12 @@ class SharedTableMember {
         userId: json['user_id'].toString(),
         displayName: json['display_name']?.toString(),
         role: json['role']?.toString() ?? 'editor',
+        // Sunucu UTC gonderir; yerel saate cevrilmezse kullanici saatleri
+        // kendi diliminden kaymis gorur.
         joinedAt:
-            DateTime.tryParse(json['joined_at']?.toString() ?? '') ??
-            DateTime.now(),
+            (DateTime.tryParse(json['joined_at']?.toString() ?? '') ??
+                    DateTime.now())
+                .toLocal(),
       );
 }
 
@@ -103,6 +106,10 @@ class SharedTableMember {
 /// degistirse de gecmis oldugu gibi kalir.
 class TableActivityEntry {
   final int id;
+
+  /// Kaydi atan kisinin kimligi. Ad yerine kimlige bakmak gerekir: sahibin
+  /// profilinde ad olmayabilir ve sunucu o zaman 'bilinmeyen' yazar.
+  final String? actorId;
   final String actorName;
   final String action;
   final String? rowId;
@@ -113,6 +120,7 @@ class TableActivityEntry {
 
   const TableActivityEntry({
     required this.id,
+    required this.actorId,
     required this.actorName,
     required this.action,
     required this.rowId,
@@ -125,6 +133,7 @@ class TableActivityEntry {
   factory TableActivityEntry.fromJson(Map<String, dynamic> json) =>
       TableActivityEntry(
         id: (json['id'] as num?)?.toInt() ?? 0,
+        actorId: json['actor_id']?.toString(),
         actorName: json['actor_name']?.toString() ?? '',
         action: json['action']?.toString() ?? '',
         rowId: json['row_id']?.toString(),
@@ -132,8 +141,9 @@ class TableActivityEntry {
         oldValue: json['old_value']?.toString(),
         newValue: json['new_value']?.toString(),
         createdAt:
-            DateTime.tryParse(json['created_at']?.toString() ?? '') ??
-            DateTime.now(),
+            (DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+                    DateTime.now())
+                .toLocal(),
       );
 }
 

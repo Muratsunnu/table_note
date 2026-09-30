@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
+import '../providers/auth_provider.dart';
 import '../providers/table_provider.dart';
 import '../services/cloud_repository.dart';
 
@@ -159,6 +160,7 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
+    final selfActorId = context.watch<AuthProvider>().user?.id;
     return Scaffold(
       appBar: AppBar(title: Text(widget.tableName)),
       body: ListView(
@@ -242,7 +244,8 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
                 style: TextStyle(color: colors.onSurfaceVariant),
               )
             else
-              for (final entry in _activity) _ActivityRow(entry: entry),
+              for (final entry in _activity)
+                _ActivityRow(entry: entry, selfActorId: selfActorId),
           ],
           if (_busy) ...[
             const SizedBox(height: 24),
@@ -311,9 +314,14 @@ class _CodeCard extends StatelessWidget {
 }
 
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.entry});
+  const _ActivityRow({required this.entry, required this.selfActorId});
 
   final TableActivityEntry entry;
+
+  /// Gunlugu okuyan kisinin kimligi. Bu gunlugu yalnizca tablo sahibi
+  /// gordugu icin kendi satirlarini adiyla degil "Sen" diye gostermek hem
+  /// daha anlasilir hem de profilde ad olup olmamasindan bagimsiz.
+  final String? selfActorId;
 
   @override
   Widget build(BuildContext context) {
@@ -328,6 +336,7 @@ class _ActivityRow extends StatelessWidget {
             '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
       _ => entry.action,
     };
+    final isSelf = entry.actorId != null && entry.actorId == selfActorId;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -345,7 +354,7 @@ class _ActivityRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.actorName,
+                  isSelf ? loc.activityActorSelf : entry.actorName,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text(detail, style: const TextStyle(fontSize: 13)),
