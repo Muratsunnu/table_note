@@ -12,6 +12,7 @@ import '../services/cloud_repository.dart';
 import '../l10n/app_localizations.dart';
 import 'account_screen.dart';
 import 'premium_screen.dart';
+import 'shared_table_manage_screen.dart';
 
 class CloudBackupScreen extends StatefulWidget {
   const CloudBackupScreen({super.key});
@@ -108,58 +109,20 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
     }
   }
 
+  /// Eski 7 gunluk tek kullanimlik davet yerine kalici 6 haneli kod yolu.
+  /// Kod uretme, sifre, uye listesi ve gecmis tek ekranda.
   Future<void> _share(CloudEntry entry) async {
-    final loc = AppLocalizations.of(context);
-    await _run(() async {
-      final code = await _repository.createShareCode(entry.id);
-      await Clipboard.setData(ClipboardData(text: code));
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(loc.shareCode),
-          content: SelectableText(loc.shareCodeValidity(code)),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(loc.ok),
-            ),
-          ],
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SharedTableManageScreen(
+          tableId: entry.id,
+          tableName: entry.name,
+          collaborationEnabled: entry.collaborationEnabled,
         ),
-      );
-    });
-  }
-
-  Future<void> _claim() async {
-    final loc = AppLocalizations.of(context);
-    final controller = TextEditingController();
-    final code = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(loc.addSharedTable),
-        content: TextField(
-          controller: controller,
-          autocorrect: false,
-          decoration: InputDecoration(labelText: loc.shareCode),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(loc.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: Text(loc.add),
-          ),
-        ],
       ),
     );
-    controller.dispose();
-    if (code == null || code.trim().isEmpty) return;
-    await _run(() async {
-      await _repository.claimShareCode(code);
-      _entries = await _repository.list();
-    });
+    if (mounted) _refresh();
   }
 
   @override
@@ -212,12 +175,6 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
                           icon: const Icon(Icons.cloud_upload_rounded),
                           label: Text(loc.backupNow),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filledTonal(
-                        onPressed: _loading ? null : _claim,
-                        icon: const Icon(Icons.group_add_rounded),
-                        tooltip: loc.addShareCodeTooltip,
                       ),
                     ],
                   ),

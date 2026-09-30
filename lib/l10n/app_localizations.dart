@@ -464,6 +464,21 @@ class AppLocalizations {
   String get sharedTableMembers => _t('sharedTableMembers');
   String get activityLog => _t('activityLog');
   String get activityLogOwnerOnly => _t('activityLogOwnerOnly');
+  String get shareExplainer => _t('shareExplainer');
+  String get codeHiddenExplainer => _t('codeHiddenExplainer');
+  String get startSharing => _t('startSharing');
+  String get stopSharing => _t('stopSharing');
+  String get newCode => _t('newCode');
+  String get joinPasswordHint => _t('joinPasswordHint');
+  String get passwordSaved => _t('passwordSaved');
+  String get passwordRemoved => _t('passwordRemoved');
+  String get noMembersYet => _t('noMembersYet');
+  String get noActivityYet => _t('noActivityYet');
+  String get activityJoined => _t('activityJoined');
+  String get activityRowAdded => _t('activityRowAdded');
+  String get activityRowDeleted => _t('activityRowDeleted');
+  String get copy => _t('copy');
+  String get copied => _t('copied');
   String sharedTableError(String code) => _t('err_$code');
   String get redoLastAction => _t('redoLastAction');
   String get done => _t('done');
@@ -914,6 +929,23 @@ class AppLocalizations {
     'sharedTableMembers': 'Katılanlar',
     'activityLog': 'Değişiklik geçmişi',
     'activityLogOwnerOnly': 'Bu geçmişi yalnızca tabloyu paylaşan kişi görür.',
+    'shareExplainer':
+        'Kod üret, karşındakine söyle. Hesap açmasına gerek yok; sadece adını yazıp katılır.',
+    'codeHiddenExplainer':
+        'Bu tablo paylaşımda. Kod güvenlik gereği saklanmıyor; hatırlamıyorsan yenisini üret.',
+    'startSharing': 'Paylaşımı başlat',
+    'stopSharing': 'Paylaşımı kapat',
+    'newCode': 'Yeni kod üret',
+    'joinPasswordHint': 'Boş bırakırsan şifre kaldırılır. En az 4 karakter.',
+    'passwordSaved': 'Şifre kaydedildi.',
+    'passwordRemoved': 'Şifre kaldırıldı.',
+    'noMembersYet': 'Henüz kimse katılmadı.',
+    'noActivityYet': 'Henüz değişiklik yok.',
+    'activityJoined': 'tabloya katıldı',
+    'activityRowAdded': 'satır ekledi',
+    'activityRowDeleted': 'satır sildi',
+    'copy': 'Kopyala',
+    'copied': 'Kopyalandı',
     'err_authentication_required': 'Bağlantı kurulamadı, tekrar dene.',
     'err_invalid_table_code': 'Kod bulunamadı. Kodu kontrol et.',
     'err_invalid_table_password': 'Şifre yanlış.',
@@ -1381,6 +1413,24 @@ class AppLocalizations {
     'activityLog': 'Change history',
     'activityLogOwnerOnly':
         'Only the person who shared the table sees this history.',
+    'shareExplainer':
+        'Generate a code and tell the other person. They need no account, just a name.',
+    'codeHiddenExplainer':
+        'This table is shared. The code is not kept for security; generate a new one if you forgot it.',
+    'startSharing': 'Start sharing',
+    'stopSharing': 'Stop sharing',
+    'newCode': 'Generate a new code',
+    'joinPasswordHint':
+        'Leave empty to remove the password. At least 4 characters.',
+    'passwordSaved': 'Password saved.',
+    'passwordRemoved': 'Password removed.',
+    'noMembersYet': 'Nobody has joined yet.',
+    'noActivityYet': 'No changes yet.',
+    'activityJoined': 'joined the table',
+    'activityRowAdded': 'added a row',
+    'activityRowDeleted': 'deleted a row',
+    'copy': 'Copy',
+    'copied': 'Copied',
     'err_authentication_required': 'Could not connect. Try again.',
     'err_invalid_table_code': 'No table for that code. Check the code.',
     'err_invalid_table_password': 'Wrong password.',
