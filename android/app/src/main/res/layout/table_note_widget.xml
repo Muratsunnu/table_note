@@ -1,86 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget artik bir tablo cizer. Eskiden burada bes sabit satirlik bir
+     liste ve ustunde iri bir sayi vardi; sayinin kapladigi yer tabloya
+     verildi, satirlar da sabit olmaktan cikip saglayici tarafindan
+     widget_grid icine eklenir oldu. Boylece sutun sayisi widget'in
+     genisligine gore degisebiliyor. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="14dp" android:background="@drawable/widget_background">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="36dp" android:gravity="center_vertical">
+    android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_background">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical">
         <TextView android:id="@+id/widget_title" android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:text="Table Note" android:textSize="18sp" android:textStyle="bold"
+            android:layout_weight="1" android:text="Table Note" android:textSize="17sp" android:textStyle="bold"
             android:textColor="#172554" android:maxLines="1" android:ellipsize="end"/>
-        <TextView android:id="@+id/widget_settings" android:layout_width="40dp" android:layout_height="match_parent"
-            android:gravity="center" android:text="⚙" android:textSize="24sp" android:textColor="#172554"/>
+        <TextView android:id="@+id/widget_settings" android:layout_width="36dp" android:layout_height="match_parent"
+            android:gravity="center" android:text="⚙" android:textSize="22sp" android:textColor="#172554"/>
     </LinearLayout>
+    <!-- Kayit sayisi ve secilmisse toplam, tek satirda. -->
     <TextView android:id="@+id/widget_count" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="12sp" android:textColor="#576885" android:maxLines="2" android:ellipsize="end"/>
-    <TextView android:id="@+id/widget_metric" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="12sp" android:textColor="#576885" android:maxLines="1" android:ellipsize="end"/>
-    <TextView android:id="@+id/widget_value" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="—" android:textSize="26sp" android:textStyle="bold" android:textColor="#172554"
-        android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
+        android:layout_marginBottom="6dp" android:textSize="11sp" android:textColor="#576885"
+        android:maxLines="2" android:ellipsize="end"/>
 
-    <!-- Recent entries. The provider shows only as many as the current height fits. -->
-    <FrameLayout android:id="@+id/widget_divider" android:layout_width="match_parent" android:layout_height="1dp"
-        android:layout_marginTop="8dp" android:layout_marginBottom="4dp" android:background="#DCE5FA"
-        android:visibility="gone"/>
-    <TextView android:id="@+id/widget_rows_title" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:textSize="11sp" android:textColor="#576885" android:maxLines="1" android:ellipsize="end"
-        android:visibility="gone"/>
-    <LinearLayout android:id="@+id/widget_row_0" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:paddingTop="4dp" android:paddingBottom="4dp" android:visibility="gone">
-        <ImageView android:id="@+id/widget_row_0_dot" android:layout_width="9dp" android:layout_height="9dp"
-            android:layout_marginEnd="8dp" android:src="@drawable/widget_dot" android:visibility="gone"
-            android:contentDescription="@null"/>
-        <TextView android:id="@+id/widget_row_0_text" android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:textSize="13sp" android:textColor="#172554" android:maxLines="1" android:ellipsize="end"/>
-        <TextView android:id="@+id/widget_row_0_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:paddingStart="8dp" android:textSize="13sp" android:textStyle="bold" android:textColor="#2563EB" android:maxLines="1"/>
-    </LinearLayout>
-    <LinearLayout android:id="@+id/widget_row_1" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:paddingTop="4dp" android:paddingBottom="4dp" android:visibility="gone">
-        <ImageView android:id="@+id/widget_row_1_dot" android:layout_width="9dp" android:layout_height="9dp"
-            android:layout_marginEnd="8dp" android:src="@drawable/widget_dot" android:visibility="gone"
-            android:contentDescription="@null"/>
-        <TextView android:id="@+id/widget_row_1_text" android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:textSize="13sp" android:textColor="#172554" android:maxLines="1" android:ellipsize="end"/>
-        <TextView android:id="@+id/widget_row_1_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:paddingStart="8dp" android:textSize="13sp" android:textStyle="bold" android:textColor="#2563EB" android:maxLines="1"/>
-    </LinearLayout>
-    <LinearLayout android:id="@+id/widget_row_2" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:paddingTop="4dp" android:paddingBottom="4dp" android:visibility="gone">
-        <ImageView android:id="@+id/widget_row_2_dot" android:layout_width="9dp" android:layout_height="9dp"
-            android:layout_marginEnd="8dp" android:src="@drawable/widget_dot" android:visibility="gone"
-            android:contentDescription="@null"/>
-        <TextView android:id="@+id/widget_row_2_text" android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:textSize="13sp" android:textColor="#172554" android:maxLines="1" android:ellipsize="end"/>
-        <TextView android:id="@+id/widget_row_2_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:paddingStart="8dp" android:textSize="13sp" android:textStyle="bold" android:textColor="#2563EB" android:maxLines="1"/>
-    </LinearLayout>
-    <LinearLayout android:id="@+id/widget_row_3" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:paddingTop="4dp" android:paddingBottom="4dp" android:visibility="gone">
-        <ImageView android:id="@+id/widget_row_3_dot" android:layout_width="9dp" android:layout_height="9dp"
-            android:layout_marginEnd="8dp" android:src="@drawable/widget_dot" android:visibility="gone"
-            android:contentDescription="@null"/>
-        <TextView android:id="@+id/widget_row_3_text" android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:textSize="13sp" android:textColor="#172554" android:maxLines="1" android:ellipsize="end"/>
-        <TextView android:id="@+id/widget_row_3_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:paddingStart="8dp" android:textSize="13sp" android:textStyle="bold" android:textColor="#2563EB" android:maxLines="1"/>
-    </LinearLayout>
-    <LinearLayout android:id="@+id/widget_row_4" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:paddingTop="4dp" android:paddingBottom="4dp" android:visibility="gone">
-        <ImageView android:id="@+id/widget_row_4_dot" android:layout_width="9dp" android:layout_height="9dp"
-            android:layout_marginEnd="8dp" android:src="@drawable/widget_dot" android:visibility="gone"
-            android:contentDescription="@null"/>
-        <TextView android:id="@+id/widget_row_4_text" android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:textSize="13sp" android:textColor="#172554" android:maxLines="1" android:ellipsize="end"/>
-        <TextView android:id="@+id/widget_row_4_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:paddingStart="8dp" android:textSize="13sp" android:textStyle="bold" android:textColor="#2563EB" android:maxLines="1"/>
-    </LinearLayout>
+    <LinearLayout android:id="@+id/widget_grid" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:orientation="vertical"/>
 
     <TextView android:id="@+id/widget_rows_footer" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="2dp" android:gravity="end" android:textSize="11sp" android:textColor="#576885"
+        android:layout_marginTop="4dp" android:gravity="end" android:textSize="10sp" android:textColor="#576885"
         android:maxLines="1" android:ellipsize="end" android:visibility="gone"/>
 
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
-    <TextView android:id="@+id/widget_add" android:layout_width="match_parent" android:layout_height="36dp"
-        android:gravity="center" android:text="Table Note" android:textSize="14sp" android:textStyle="bold"
+    <TextView android:id="@+id/widget_add" android:layout_width="match_parent" android:layout_height="34dp"
+        android:gravity="center" android:text="Table Note" android:textSize="13sp" android:textStyle="bold"
         android:textColor="#FFFFFF" android:background="@drawable/widget_button" android:maxLines="1" android:ellipsize="end"/>
 </LinearLayout>
