@@ -52,10 +52,12 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
     try {
       await action();
     } on SharedTableException catch (error) {
-      setState(() => _errorCode = error.isKnown ? error.code : 'unknown');
+      if (mounted) {
+        setState(() => _errorCode = error.isKnown ? error.code : 'unknown');
+      }
     } catch (error) {
       debugPrint('Ortak tablo yonetimi: $error');
-      setState(() => _errorCode = 'unknown');
+      if (mounted) setState(() => _errorCode = 'unknown');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -71,43 +73,60 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
     });
   });
 
-  Future<void> _generateCode() => _run(() async {
-    final code = await _repository.rotateSharedTableCode(widget.tableId);
-    // Sahibin kendi degisiklikleri bundan sonra kendiliginden gitsin diye
-    // tablo yerelde 'owner' olarak isaretlenir.
-    await context.read<TableProvider>().setSharedRole(widget.tableId, 'owner');
-    if (!mounted) return;
-    setState(() {
-      _code = code;
-      _enabled = true;
+  Future<void> _generateCode() {
+    // Saglayici await'lerden ONCE yakalanir. Kod uretimi ag uzerinden
+    // surerken kullanici geri donerse bu ekranin context'i gecersizlesir;
+    // sonrasinda context.read cagirmak cokmeye yol acardi.
+    final tables = context.read<TableProvider>();
+    return _run(() async {
+      final code = await _repository.rotateSharedTableCode(widget.tableId);
+      // Sahibin kendi degisiklikleri bundan sonra kendiliginden gitsin diye
+      // tablo yerelde 'owner' olarak isaretlenir.
+      await tables.setSharedRole(widget.tableId, 'owner');
+      if (!mounted) return;
+      setState(() {
+        _code = code;
+        _enabled = true;
+      });
+      await _refresh();
     });
-    await _refresh();
-  });
+  }
 
-  Future<void> _disable() => _run(() async {
-    await _repository.disableSharedTableCollaboration(widget.tableId);
-    await context.read<TableProvider>().setSharedRole(widget.tableId, null);
-    if (!mounted) return;
-    setState(() {
-      _enabled = false;
-      _code = null;
-      _members = const [];
+  Future<void> _disable() {
+    final tables = context.read<TableProvider>();
+    return _run(() async {
+      await _repository.disableSharedTableCollaboration(widget.tableId);
+      await tables.setSharedRole(widget.tableId, null);
+      if (!mounted) return;
+      setState(() {
+        _enabled = false;
+        _code = null;
+        _members = const [];
+      });
     });
-  });
+  }
 
   Future<void> _setPassword() async {
     final loc = AppLocalizations.of(context);
-    final controller = TextEditingController();
+    // Denetleyici degil duz degisken: showDialog, kapanma animasyonu
+    // bitmeden doner. Denetleyiciyi doner donmez dispose etmek, hala agacta
+    // duran TextField yuzunden '_dependents.isEmpty' iddiasini patlatiyordu.
+    // Animasyonun bitmesini beklemek yerine dispose edilecek nesneyi ortadan
+    // kaldirmak, zamanlamaya bagli kalmayan tek cozum.
+    var typed = '';
     final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(loc.joinPassword),
         content: TextField(
-          controller: controller,
           autofocus: true,
+          onChanged: (text) => typed = text,
+          onSubmitted: (text) => Navigator.pop(dialogContext, text),
           decoration: InputDecoration(
             labelText: loc.joinPasswordOptional,
+            // Ipucu tek satira sigmayip ortasindan kesiliyordu.
             helperText: loc.joinPasswordHint,
+            helperMaxLines: 2,
           ),
         ),
         actions: [
@@ -116,13 +135,12 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
             child: Text(loc.cancel),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
+            onPressed: () => Navigator.pop(dialogContext, typed),
             child: Text(loc.save),
           ),
         ],
       ),
     );
-    controller.dispose();
     if (value == null) return;
     await _run(() async {
       await _repository.setSharedTablePassword(widget.tableId, value);
