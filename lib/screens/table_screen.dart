@@ -4,7 +4,7 @@ import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/shared_sync_bar.dart';
+import '../widgets/shared_sync_indicator.dart';
 import '../widgets/table_list_widget.dart';
 import '../models/overview_grid.dart';
 import '../widgets/grid_overview_screen.dart';
@@ -173,8 +173,6 @@ class _TableScreenState extends State<TableScreen> {
           children: [
             _buildTableHeader(provider),
             _buildSearchBar(provider),
-            // Ortak olmayan tabloda hicbir sey cizmez.
-            const SharedSyncBar(),
             Expanded(child: TableListWidget()),
             const ColumnSumsWidget(),
             _buildAddRowButton(),
@@ -580,6 +578,8 @@ class _TableScreenState extends State<TableScreen> {
     return TableSectionHeader(
       title: table.tableName,
       summary: loc.nRecords(table.rows.length),
+      // Ortak olmayan tabloda hicbir sey cizmez.
+      titleTrailing: const SharedSyncIndicator(),
       actions: [
         IconButton(
           tooltip: loc.locale.languageCode == 'en'

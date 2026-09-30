@@ -6,14 +6,20 @@ import '../providers/table_provider.dart';
 import '../services/cloud_repository.dart';
 import '../services/shared_sync_service.dart';
 
-/// Ortak tablolarda gorunen senkron seridi. Siradan bir tabloda hicbir sey
-/// cizmez, yani paylasim kullanmayan kullanici bunu hic gormez.
+/// Ortak tablolarda tablo adinin yaninda duran senkron gostergesi.
 ///
-/// Iki rol iki farkli sey gorur: tabloyu paylasan kisi yalnizca durumu
-/// ("kaydedildi" / "gonderiliyor"), katilan kisi ise bekleyen sayisini ve
-/// "Buluta kaydet" butonunu.
-class SharedSyncBar extends StatelessWidget {
-  const SharedSyncBar({super.key});
+/// Siradan bir tabloda hicbir sey cizmez, yani paylasim kullanmayan
+/// kullanici bunu hic gormez.
+///
+/// Bilerek yalnizca ikon: eskiden kendi satirini kaplayan bir serit vardi ve
+/// "Bulutla esit" gibi surekli duran bir metin tasiyordu. Metin, iyi durumda
+/// hicbir sey soylemiyor ama tabloyu asagi itiyordu. Durumu ikonun kendisi
+/// anlatiyor; kelimeler dokunmatik ipucunda duruyor.
+///
+/// Islem gerektiren durumlarda ikonun kendisi dugmedir: bekleyen degisiklik
+/// varken dokunmak gonderir, cakisma varken cozum ekranini acar.
+class SharedSyncIndicator extends StatelessWidget {
+  const SharedSyncIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -30,73 +36,59 @@ class SharedSyncBar extends StatelessWidget {
     final pending = tables.pendingChangeCount(table.id);
     final isOwner = tables.isSharedOwner(table.id);
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: state.hasConflicts
-            ? colors.errorContainer
-            : colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            state.hasConflicts
-                ? Icons.merge_type_rounded
-                : state.isSending
-                ? Icons.cloud_sync_rounded
-                : pending > 0
-                ? Icons.cloud_upload_outlined
-                : Icons.cloud_done_rounded,
-            size: 20,
-            color: state.hasConflicts
-                ? colors.onErrorContainer
-                : colors.primary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _label(loc, state, pending, isOwner),
-              style: TextStyle(
-                fontSize: 13,
-                color: state.hasConflicts
-                    ? colors.onErrorContainer
-                    : colors.onSurfaceVariant,
-              ),
-            ),
-          ),
-          if (state.hasConflicts)
-            TextButton(
-              onPressed: () => _showConflicts(context, table.id),
-              child: Text(loc.reviewConflicts),
-            )
-          // Sahip kendiliginden gonderir; butona yalnizca katilan basar.
-          else if (!isOwner && pending > 0)
-            FilledButton(
-              onPressed: state.isSending
-                  ? null
-                  : () => context.read<SharedSyncService>().push(table.id),
-              child: Text(loc.saveToCloud),
-            ),
-        ],
-      ),
-    );
-  }
+    final IconData icon;
+    final Color color;
+    final String label;
+    VoidCallback? onTap;
+    var needsAttention = false;
 
-  String _label(
-    AppLocalizations loc,
-    SharedSyncState state,
-    int pending,
-    bool isOwner,
-  ) {
-    if (state.hasConflicts) return loc.conflictCount(state.conflicts.length);
-    if (state.errorCode != null) return loc.sharedTableError(state.errorCode!);
-    if (state.isSending) return loc.syncSending;
-    if (pending > 0) {
-      return isOwner ? loc.syncSending : loc.pendingChangeCount(pending);
+    if (state.hasConflicts) {
+      icon = Icons.cloud_sync_rounded;
+      color = colors.error;
+      label = loc.conflictCount(state.conflicts.length);
+      needsAttention = true;
+      onTap = () => _showConflicts(context, table.id);
+    } else if (state.errorCode != null) {
+      icon = Icons.cloud_off_rounded;
+      color = colors.error;
+      label = loc.sharedTableError(state.errorCode!);
+      onTap = () => context.read<SharedSyncService>().push(table.id);
+    } else if (state.isSending) {
+      icon = Icons.cloud_sync_rounded;
+      color = colors.primary;
+      label = loc.syncSending;
+    } else if (pending > 0) {
+      // Sahip kendiliginden gonderir, bekleme hali onda goz acip kapayincaya
+      // kadar surer; dokunma yalnizca katilan kisi icin anlamli.
+      icon = isOwner ? Icons.cloud_sync_rounded : Icons.cloud_upload_rounded;
+      color = colors.primary;
+      label = isOwner ? loc.syncSending : loc.pendingChangeCount(pending);
+      if (!isOwner) {
+        onTap = () => context.read<SharedSyncService>().push(table.id);
+      }
+    } else {
+      icon = Icons.cloud_done_rounded;
+      color = colors.onSurfaceVariant;
+      label = loc.syncUpToDate;
     }
-    return loc.syncUpToDate;
+
+    Widget glyph = Icon(icon, size: 22, color: color);
+    if (needsAttention) {
+      // Kirmizi nokta, "gonderiliyor" ile "karar bekliyor" arasindaki farki
+      // renkten bagimsiz olarak da belli eder.
+      glyph = Badge(backgroundColor: colors.error, child: glyph);
+    }
+
+    return Tooltip(
+      message: label,
+      child: onTap == null
+          ? Padding(padding: const EdgeInsets.all(6), child: glyph)
+          : InkResponse(
+              onTap: onTap,
+              radius: 24,
+              child: Padding(padding: const EdgeInsets.all(6), child: glyph),
+            ),
+    );
   }
 
   Future<void> _showConflicts(BuildContext context, String tableId) {
