@@ -36,9 +36,6 @@ class _AddRowDialogState extends State<AddRowDialog> {
     _tableId = provider.currentTable!.id;
     _schema = jsonEncode(_columns.map((c) => c.toJson()).toList());
 
-    // Mevcut satır sayısı (sıra no için)
-    final currentRowCount = provider.currentTable!.rows.length;
-
     // Her sütun için controller oluştur
     for (int i = 0; i < _columns.length; i++) {
       final col = _columns[i];
@@ -58,7 +55,7 @@ class _AddRowDialogState extends State<AddRowDialog> {
       }
       // Otomatik sıra numarası
       else if (col.isAutoNumber) {
-        controller.text = (currentRowCount + 1).toString();
+        controller.text = provider.currentTable!.nextAutoNumber(i).toString();
       }
 
       _controllers.add(controller);
@@ -542,7 +539,9 @@ class _AddRowDialogState extends State<AddRowDialog> {
     // Son kez formülleri hesapla
     for (var i = 0; i < _columns.length; i++) {
       if (_columns[i].isAutoNumber) {
-        _controllers[i].text = '${table.rows.length + 1}';
+        // Pencere acikken baskasi satir eklemis olabilir; numara kaydetme
+        // aninda yeniden hesaplanir.
+        _controllers[i].text = table.nextAutoNumber(i).toString();
       }
     }
     _recalculateFormulas();

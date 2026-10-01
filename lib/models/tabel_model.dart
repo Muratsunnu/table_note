@@ -139,6 +139,23 @@ class TableModel {
   }
 
   /// The id of the row at [index], or null when there is no such row.
+  /// Bir sira sutununun bir sonraki degeri: var olanlarin en buyugu + 1.
+  ///
+  /// Satir SAYISI + 1 degil. Silinen satirin numarasi geri gelmedigi icin
+  /// o hesap cakisma uretiyordu: 5 satirlik tablodan 2'yi silip yeni kayit
+  /// eklemek yeniden 5 veriyordu. Ortak tabloda ayni hata iki kat agir;
+  /// karsi tarafin ekledigi satiri henuz gormeyen kullanici da ayni
+  /// numarayi uretirdi.
+  int nextAutoNumber(int columnIndex) {
+    var highest = 0;
+    for (final row in rows) {
+      if (columnIndex < 0 || columnIndex >= row.length) continue;
+      final value = int.tryParse(row[columnIndex].trim());
+      if (value != null && value > highest) highest = value;
+    }
+    return highest + 1;
+  }
+
   String? rowIdAt(int index) =>
       index >= 0 && index < rowIds.length ? rowIds[index] : null;
 

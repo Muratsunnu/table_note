@@ -64,8 +64,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     _schema = jsonEncode(_columns.map((column) => column.toJson()).toList());
     _controllers = List.generate(
       _columns.length,
-      (index) =>
-          TextEditingController(text: _defaultValue(index, table.rows.length)),
+      (index) => TextEditingController(text: _defaultValue(index, table)),
     );
     _fieldFocus = List.generate(_columns.length, (_) => FocusNode());
     _recalculateFormulas();
@@ -115,7 +114,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     });
   }
 
-  String _defaultValue(int index, int rowCount) {
+  String _defaultValue(int index, TableModel table) {
     final column = _columns[index];
     if (column.isConstant && column.constantValue != null) {
       return _formatNumber(column.constantValue!);
@@ -128,7 +127,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
       final now = TimeOfDay.now();
       return '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     }
-    if (column.isAutoNumber) return '${rowCount + 1}';
+    if (column.isAutoNumber) return '${table.nextAutoNumber(index)}';
     return '';
   }
 
@@ -356,7 +355,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     try {
       for (var index = 0; index < _columns.length; index++) {
         if (_columns[index].isAutoNumber) {
-          _controllers[index].text = '${table.rows.length + 1}';
+          _controllers[index].text = table.nextAutoNumber(index).toString();
         }
       }
       _recalculateFormulas();
@@ -384,10 +383,10 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     setState(() => _restoringDraft = true);
     await _stopListening();
     if (!mounted) return;
-    final rowCount =
-        context.read<TableProvider>().currentTable?.rows.length ?? 0;
+    final table = context.read<TableProvider>().currentTable;
+    if (table == null) return;
     for (var i = 0; i < _columns.length; i++) {
-      _controllers[i].text = _defaultValue(i, rowCount);
+      _controllers[i].text = _defaultValue(i, table);
     }
     _transcript.clear();
     _recalculateFormulas();
