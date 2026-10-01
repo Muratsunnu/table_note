@@ -207,6 +207,9 @@ class SharedSyncService extends ChangeNotifier {
       );
       return !result.hasConflicts;
     } on SharedTableException catch (error) {
+      // Beklenmeyen bir sunucu kodu kullaniciya ham haliyle gosterilmez ama
+      // teshis edilemez de kalmamali; katilim ekraninda bu zaten boyleydi.
+      if (!error.isKnown) debugPrint('Bilinmeyen senkron kodu: ${error.code}');
       _update(
         tableId,
         (state) => state.copyWith(
