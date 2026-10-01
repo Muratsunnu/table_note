@@ -61,6 +61,10 @@ class SharedSyncService extends ChangeNotifier {
   final Map<String, int> _knownRevision = {};
   final Set<String> _pulling = {};
   String? _openTableId;
+
+  /// Acik olan ortak tablonun canli yayin aboneligi. Ayni anda tek tane
+  /// olur: kullanici baska tabloya gecince eskisi kapatilir.
+  StreamSubscription<int>? _liveWatch;
   bool _disposed = false;
 
   SharedSyncService({required this.tables, CloudRepository? repository})
@@ -74,6 +78,8 @@ class SharedSyncService extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(_liveWatch?.cancel());
+    _liveWatch = null;
     tables.removeListener(_onTablesChanged);
     for (final timer in _timers.values) {
       timer.cancel();
@@ -92,6 +98,7 @@ class SharedSyncService extends ChangeNotifier {
     // bakiliyor; yoksa her harfte bir ag cagrisi giderdi.
     if (table.id != _openTableId) {
       _openTableId = table.id;
+      _watchLive(tables.isSharedTable(table.id) ? table.id : null);
       if (tables.isSharedTable(table.id)) unawaited(pull(table.id));
     }
 
@@ -153,6 +160,28 @@ class SharedSyncService extends ChangeNotifier {
     } finally {
       _inFlight.remove(tableId);
     }
+  }
+
+  /// Acik tablonun canli yayinina abone olur, oncekini birakir.
+  ///
+  /// Karsi taraf kaydettigi anda surum artar ve asagidaki dinleyici
+  /// indirmeyi tetikler; ekran kendiliginden guncellenir. Beklemek yerine
+  /// anlik olmasinin sebebi satir eklemek: baskasinin ekledigi satiri
+  /// gormeyen kullanici ayni sira numarasini uretir.
+  void _watchLive(String? tableId) {
+    unawaited(_liveWatch?.cancel());
+    _liveWatch = null;
+    if (tableId == null) return;
+    _liveWatch = repository.watchSharedTableRevision(tableId).listen(
+      (revision) {
+        // Kendi gonderimimiz de yayina dusuyor; bilinen surumse is yok.
+        if (revision == 0 || revision == _knownRevision[tableId]) return;
+        unawaited(pull(tableId));
+      },
+      // Baglanti kopabilir; uygulamanin durmasi icin sebep degil. Tablo
+      // yeniden acildiginda zaten bir kez indiriliyor.
+      onError: (Object error) => debugPrint('Canli yayin koptu: $error'),
+    );
   }
 
   /// Sunucudaki hali yerele indirir.

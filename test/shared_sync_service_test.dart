@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_note/models/shared_row_operation.dart';
@@ -16,6 +18,12 @@ class _FakeRepository implements CloudRepository {
   /// Sunucuda duran hal. null ise tablo yok sayilir.
   SharedTableSnapshot? snapshot;
   int fetchCount = 0;
+
+  /// Canli yayin yerine gecen akis; testi surum olayini kendi uretir.
+  final live = StreamController<int>.broadcast();
+
+  @override
+  Stream<int> watchSharedTableRevision(String tableId) => live.stream;
 
   @override
   Future<SharedTableSnapshot?> fetchSharedTable(String tableId) async {
@@ -59,6 +67,33 @@ Future<TableProvider> _seeded(String role) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('canlı yayın sürüm artınca indirmeyi tetikler', () async {
+    final tables = await _seeded('editor');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(tables: tables, repository: repository);
+    addTearDown(sync.dispose);
+    addTearDown(repository.live.close);
+    final table = tables.currentTable!;
+
+    // Servis acik tabloya abone olsun diye bir bildirim uretilir.
+    tables.notifyListeners();
+    await Future<void>.delayed(Duration.zero);
+
+    final server = TableModel.fromJson(table.toJson());
+    server.replaceRow(0, ['ankara', '35000']);
+    repository.snapshot = SharedTableSnapshot(
+      revision: 9,
+      payload: server.toJson(),
+    );
+
+    // Karsi taraf kaydetti: sunucu yeni surumu yayinlar.
+    repository.live.add(9);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    // Kullanici hicbir sey yapmadan ekrandaki satir guncellenmis olmali.
+    expect(tables.currentTable!.rows.single, ['ankara', '35000']);
+  });
 
   test('indirme sunucudaki hali yerele alir', () async {
     final tables = await _seeded('editor');

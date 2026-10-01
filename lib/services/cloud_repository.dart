@@ -381,6 +381,23 @@ class CloudRepository {
     );
   }
 
+  /// Ortak tablonun sunucudaki surumunu canli izler.
+  ///
+  /// Yayin satirin tamamini tasiyor ama buradan yalnizca surum numarasi
+  /// okunuyor; icerigi fetchSharedTable ile almak, indirmenin tek bir
+  /// yoldan gecmesini sagliyor. O yolda "bekleyen degisiklik varsa
+  /// dokunma" korumasi var ve onu atlamak veri kaybi olurdu.
+  Stream<int> watchSharedTableRevision(String tableId) {
+    final dynamic raw = _client
+        .from('cloud_tables')
+        .stream(primaryKey: ['id'])
+        .eq('id', tableId);
+    return (raw as Stream<List<Map<String, dynamic>>>).map((rows) {
+      if (rows.isEmpty) return 0;
+      return (rows.first['revision'] as num?)?.toInt() ?? 0;
+    });
+  }
+
   Future<List<TableActivityEntry>> tableActivity(
     String tableId, {
     int limit = 200,
