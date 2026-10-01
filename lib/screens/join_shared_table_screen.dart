@@ -87,6 +87,12 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
         if (mounted) setState(() => _errorCode = 'table_not_found');
         return;
       }
+      // Cetelenin yapisi tabloya benzemiyor; TableModel olarak okumak
+      // anlamsiz bir tablo uretirdi. Kod gecerli olsa da burada durulur.
+      if (entry.kind != 'table') {
+        if (mounted) setState(() => _errorCode = 'shared_tally_not_supported');
+        return;
+      }
       final joined = TableModel.fromJson(entry.payload);
       await tables.importCloudTable(joined, overwrite: true);
       // Bundan sonra bu tablodaki duzenlemeler kuyruga yazilir ve butonla

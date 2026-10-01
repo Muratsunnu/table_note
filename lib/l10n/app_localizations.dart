@@ -946,6 +946,8 @@ class AppLocalizations {
     'activityRowAdded': 'satır ekledi',
     'activityRowDeleted': 'satır sildi',
     'activityActorSelf': 'Sen',
+    'err_shared_tally_not_supported':
+        'Bu kod bir çeteleye ait. Çetele paylaşımı henüz yok.',
     'copy': 'Kopyala',
     'copied': 'Kopyalandı',
     'err_authentication_required': 'Bağlantı kurulamadı, tekrar dene.',
@@ -1432,6 +1434,8 @@ class AppLocalizations {
     'activityRowAdded': 'added a row',
     'activityRowDeleted': 'deleted a row',
     'activityActorSelf': 'You',
+    'err_shared_tally_not_supported':
+        'This code belongs to a tally. Tally sharing is not available yet.',
     'copy': 'Copy',
     'copied': 'Copied',
     'err_authentication_required': 'Could not connect. Try again.',
