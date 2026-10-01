@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/shared_row_operation.dart';
+import '../models/shared_tally_operation.dart';
 import '../models/tabel_model.dart';
 import '../models/tally_model.dart';
 import 'supabase_service.dart';
@@ -145,6 +146,66 @@ class TableActivityEntry {
                     DateTime.now())
                 .toLocal(),
       );
+}
+
+/// Sunucunun uygulamadigi bir cetele ogesi ve kayittaki hali.
+class SharedTallyConflict {
+  final String itemId;
+
+  /// 'changed' baskasi ayni ogenin ayni gununu degistirdi, 'deleted' ogeyi
+  /// sildi.
+  final String reason;
+  final TallyItemModel? current;
+
+  const SharedTallyConflict({
+    required this.itemId,
+    required this.reason,
+    this.current,
+  });
+
+  factory SharedTallyConflict.fromJson(Map<String, dynamic> json) =>
+      SharedTallyConflict(
+        itemId: json['itemId'].toString(),
+        reason: json['reason']?.toString() ?? 'changed',
+        current: json['current'] == null
+            ? null
+            : TallyItemModel.fromJson(
+                Map<String, dynamic>.from(json['current'] as Map),
+              ),
+      );
+}
+
+/// Cetele oge gonderiminin sonucu.
+class SharedTallySyncResult {
+  final int revision;
+  final List<String> applied;
+  final List<SharedTallyConflict> conflicts;
+  final Map<String, dynamic>? payload;
+
+  const SharedTallySyncResult({
+    required this.revision,
+    required this.applied,
+    required this.conflicts,
+    this.payload,
+  });
+
+  bool get hasConflicts => conflicts.isNotEmpty;
+
+  factory SharedTallySyncResult.fromJson(
+    Map<String, dynamic> json,
+  ) => SharedTallySyncResult(
+    revision: (json['revision'] as num?)?.toInt() ?? 0,
+    applied: [
+      for (final id in (json['applied'] as List? ?? const [])) id.toString(),
+    ],
+    conflicts: [
+      for (final item in (json['conflicts'] as List? ?? const []))
+        SharedTallyConflict.fromJson(Map<String, dynamic>.from(item as Map)),
+    ],
+    payload: json['payload'] == null
+        ? null
+        : Map<String, dynamic>.from(json['payload'] as Map),
+  );
 }
 
 /// Ortak tablonun sunucudaki son hali.
@@ -432,6 +493,24 @@ class CloudRepository {
         },
       );
       return SharedRowSyncResult.fromJson(_resultMap(result));
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
+  Future<SharedTallySyncResult> applySharedTallyItems(
+    String tallyId,
+    List<SharedTallyOperation> operations,
+  ) async {
+    try {
+      final result = await _client.rpc(
+        'apply_shared_tally_items',
+        params: {
+          'target_table_id': tallyId,
+          'operations': operations.map((op) => op.toJson()).toList(),
+        },
+      );
+      return SharedTallySyncResult.fromJson(_resultMap(result));
     } on PostgrestException catch (error) {
       throw SharedTableException(error.message);
     }

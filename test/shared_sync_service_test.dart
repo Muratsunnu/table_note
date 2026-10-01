@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_note/models/shared_row_operation.dart';
 import 'package:table_note/models/tabel_model.dart';
 import 'package:table_note/providers/table_provider.dart';
+import 'package:table_note/providers/tally_provider.dart';
 import 'package:table_note/services/cloud_repository.dart';
 import 'package:table_note/services/shared_sync_service.dart';
 
@@ -50,6 +51,16 @@ class _FakeRepository implements CloudRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Testler yalnizca tablo yolunu deniyor; servis yine de bir cetele
+/// saglayicisi istiyor.
+Future<TallyProvider> _emptyTallies() async {
+  final provider = TallyProvider();
+  while (provider.isLoading) {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  return provider;
+}
+
 Future<TableProvider> _seeded(String role) async {
   SharedPreferences.setMockInitialValues({});
   final provider = TableProvider();
@@ -71,7 +82,11 @@ void main() {
   test('canlı yayın sürüm artınca indirmeyi tetikler', () async {
     final tables = await _seeded('editor');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
     addTearDown(repository.live.close);
     final table = tables.currentTable!;
@@ -98,7 +113,11 @@ void main() {
   test('indirme sunucudaki hali yerele alir', () async {
     final tables = await _seeded('editor');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
     final table = tables.currentTable!;
     final rowId = table.rowIdAt(0)!;
@@ -124,7 +143,11 @@ void main() {
   test('bekleyen değişiklik varken indirme yapılmaz', () async {
     final tables = await _seeded('editor');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
     final table = tables.currentTable!;
 
@@ -149,7 +172,11 @@ void main() {
   test('katılanın değişikliği kendiliğinden gitmez, butonla gider', () async {
     final tables = await _seeded('editor');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
     final id = tables.currentTable!.id;
 
@@ -166,7 +193,11 @@ void main() {
   test('sahibin değişikliği gecikmeyle kendiliğinden gider', () async {
     final tables = await _seeded('owner');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
 
     await tables.updateRow(0, ['konya', '40000']);
@@ -179,7 +210,11 @@ void main() {
   test('art arda düzenleme tek istek üretir', () async {
     final tables = await _seeded('owner');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
 
     await tables.updateRow(0, ['konya', '40000']);
@@ -194,7 +229,11 @@ void main() {
   test('çakışan satır kuyrukta kalır ve ekrana taşınır', () async {
     final tables = await _seeded('editor');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
     final id = tables.currentTable!.id;
     final rowId = tables.currentTable!.rowIds.first;
@@ -221,7 +260,11 @@ void main() {
   test('"kayıttaki kalsın" yerel satırı sunucununkiyle değiştirir', () async {
     final tables = await _seeded('editor');
     final repository = _FakeRepository();
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
     final id = tables.currentTable!.id;
     final rowId = tables.currentTable!.rowIds.first;
@@ -245,7 +288,11 @@ void main() {
     () async {
       final tables = await _seeded('editor');
       final repository = _FakeRepository();
-      final sync = SharedSyncService(tables: tables, repository: repository);
+      final sync = SharedSyncService(
+        tables: tables,
+        tallies: await _emptyTallies(),
+        repository: repository,
+      );
       addTearDown(sync.dispose);
       final id = tables.currentTable!.id;
       final rowId = tables.currentTable!.rowIds.first;
@@ -271,7 +318,11 @@ void main() {
     final tables = await _seeded('editor');
     final repository = _FakeRepository()
       ..throwThis = const SharedTableException('owner_premium_required');
-    final sync = SharedSyncService(tables: tables, repository: repository);
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
     addTearDown(sync.dispose);
     final id = tables.currentTable!.id;
 

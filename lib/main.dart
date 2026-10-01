@@ -56,8 +56,10 @@ class TableNoteRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           lazy: false,
-          create: (context) =>
-              SharedSyncService(tables: context.read<TableProvider>()),
+          create: (context) => SharedSyncService(
+            tables: context.read<TableProvider>(),
+            tallies: context.read<TallyProvider>(),
+          ),
         ),
         ChangeNotifierProxyProvider<AuthProvider, SubscriptionProvider>(
           create: (context) =>
