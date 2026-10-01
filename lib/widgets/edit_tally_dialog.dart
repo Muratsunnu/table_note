@@ -3,6 +3,7 @@ import 'form_field_reveal.dart';
 import 'added_field_focus.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
+import 'shared_structure_locked.dart';
 import '../models/tally_model.dart';
 import '../providers/tally_provider.dart';
 import '../theme/app_theme.dart';
@@ -102,6 +103,11 @@ class _EditTallyDialogState extends State<EditTallyDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
+    final tallies = context.watch<TallyProvider>();
+    final id = tallies.currentTable?.id;
+    if (id != null && tallies.isSharedTally(id) && !tallies.isSharedOwner(id)) {
+      return const SharedStructureLocked();
+    }
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(

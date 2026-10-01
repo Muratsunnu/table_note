@@ -350,6 +350,7 @@ class _ActivityRow extends StatelessWidget {
       'row_updated' =>
         '${entry.columnName}: '
             '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
+      'columns_changed' => loc.activityColumnsChanged,
       'item_added' => loc.activityItemAdded,
       'item_deleted' => loc.activityItemDeleted,
       // Ad degisikligi ve gun isareti ayni bicimde okunur: eski → yeni.

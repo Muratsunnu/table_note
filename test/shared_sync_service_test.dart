@@ -23,6 +23,19 @@ class _FakeRepository implements CloudRepository {
   /// Canli yayin yerine gecen akis; testi surum olayini kendi uretir.
   final live = StreamController<int>.broadcast();
 
+  /// Gonderilen sutun yapilari.
+  final List<List<Map<String, dynamic>>> sentColumns = [];
+
+  @override
+  Future<SharedRowSyncResult> applySharedTableColumns({
+    required String tableId,
+    required String name,
+    required List<Map<String, dynamic>> columns,
+  }) async {
+    sentColumns.add(columns);
+    return const SharedRowSyncResult(revision: 5, applied: [], conflicts: []);
+  }
+
   @override
   Stream<int> watchSharedTableRevision(String tableId) => live.stream;
 
@@ -108,6 +121,58 @@ void main() {
 
     // Kullanici hicbir sey yapmadan ekrandaki satir guncellenmis olmali.
     expect(tables.currentTable!.rows.single, ['ankara', '35000']);
+  });
+
+  test('sahip sütun eklerse yapı kendiliğinden gider', () async {
+    final tables = await _seeded('owner');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
+    addTearDown(sync.dispose);
+    final table = tables.currentTable!;
+
+    // Imza sunucudan indirilen yukla kurulur; yoksa her açılışta yapı
+    // boşuna yeniden gönderilirdi.
+    repository.snapshot = SharedTableSnapshot(
+      revision: 3,
+      payload: table.toJson(),
+    );
+    await sync.pull(table.id);
+    expect(repository.sentColumns, isEmpty);
+
+    await tables.updateTableStructure('seferler', [
+      ...table.columns.map((column) => column.copyWith()),
+      ColumnModel(name: 'notlar'),
+    ], table.columns.length);
+    await Future<void>.delayed(SharedSyncService.ownerDebounce * 2);
+
+    expect(repository.sentColumns.single.length, 3);
+    expect(repository.sentColumns.single.last['name'], 'notlar');
+  });
+
+  test('yapı değişmediyse tekrar gönderilmez', () async {
+    final tables = await _seeded('owner');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
+    addTearDown(sync.dispose);
+    final table = tables.currentTable!;
+    repository.snapshot = SharedTableSnapshot(
+      revision: 3,
+      payload: table.toJson(),
+    );
+    await sync.pull(table.id);
+
+    // Satır düzenlemek yapıya dokunmaz.
+    await tables.updateRow(0, ['ankara', '40000']);
+    await Future<void>.delayed(SharedSyncService.ownerDebounce * 2);
+    expect(repository.sentColumns, isEmpty);
   });
 
   test('indirme sunucudaki hali yerele alir', () async {

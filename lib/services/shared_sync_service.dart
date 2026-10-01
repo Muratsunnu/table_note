@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -71,6 +72,11 @@ class SharedSyncService extends ChangeNotifier {
   /// Indirilmis son surum. Ayni surumu tekrar indirip tabloyu bosuna
   /// degistirmemek icin tutulur.
   final Map<String, int> _knownRevision = {};
+
+  /// Sunucudaki yapinin parmak izi. Yerelde bundan farkli bir yapi gorulurse
+  /// sahip onu gondermeli demektir. Imza sunucudan indirilen yukla kurulur,
+  /// yoksa uygulama her acilista yapiyi bosuna yeniden gonderirdi.
+  final Map<String, String> _knownStructure = {};
   final Set<String> _pulling = {};
   String? _openTableId;
   String? _openTallyId;
@@ -134,9 +140,115 @@ class SharedSyncService extends ChangeNotifier {
     // Yalnizca sahip kendiliginden gonderir.
     if (tableId != null && tables.isSharedOwner(tableId)) {
       _scheduleOwnerPush(tableId, tables.pendingChangeCount(tableId));
+      _scheduleStructurePush(tableId);
     }
     if (tallyId != null && tallies.isSharedOwner(tallyId)) {
       _scheduleOwnerPush(tallyId, tallies.pendingChangeCount(tallyId));
+      _scheduleStructurePush(tallyId);
+    }
+  }
+
+  /// Yapinin degisip degismedigine imzayla bakilir. Bunu her cagiran ekrana
+  /// elle eklemek yerine burada saptamak, ileride eklenecek bir yapi
+  /// duzenleme yolunun sessizce senkron disinda kalmasini engelliyor.
+  void _scheduleStructurePush(String id) {
+    final signature = _structureOf(id);
+    if (signature == null) return;
+    final known = _knownStructure[id];
+    if (known == null) {
+      // Sunucudaki hali hic gormedik; bunu "degisiklik" sayip gondermek
+      // yanlis olurdu.
+      _knownStructure[id] = signature;
+      return;
+    }
+    if (known == signature) return;
+    _timers['$id#structure']?.cancel();
+    _timers['$id#structure'] = Timer(ownerDebounce, () => pushStructure(id));
+  }
+
+  String? _structureOf(String id) {
+    if (_isTally(id)) {
+      final tally = tallies.tables.where((item) => item.id == id).firstOrNull;
+      if (tally == null) return null;
+      return jsonEncode({
+        'name': tally.tableName,
+        'statuses': tally.statuses.map((status) => status.toJson()).toList(),
+        'start': tally.startDate.toIso8601String(),
+        'end': tally.endDate.toIso8601String(),
+      });
+    }
+    final table = tables.tables.where((item) => item.id == id).firstOrNull;
+    if (table == null) return null;
+    return jsonEncode({
+      'name': table.tableName,
+      'columns': table.columns.map((column) => column.toJson()).toList(),
+    });
+  }
+
+  /// Yapi degisikligini gonderir. Satirlar gonderilmez; sunucu mevcut
+  /// satirlarin boyunu kendisi ayarlar, boylece karsi tarafin o sirada
+  /// kaydettigi satir tehlikeye girmez.
+  Future<bool> pushStructure(String id) async {
+    if (_disposed || _inFlight.contains(id)) return false;
+    final isTally = _isTally(id);
+    final isOwner = isTally
+        ? tallies.isSharedOwner(id)
+        : tables.isSharedOwner(id);
+    if (!isOwner) return false;
+    final signature = _structureOf(id);
+    if (signature == null) return false;
+
+    _inFlight.add(id);
+    _update(id, (state) => state.copyWith(isSending: true, clearError: true));
+    try {
+      final SharedRowSyncResult result;
+      if (isTally) {
+        final tally = tallies.tables.firstWhere((item) => item.id == id);
+        result = await repository.applySharedTallyStructure(
+          tallyId: id,
+          name: tally.tableName,
+          statuses: tally.statuses.map((status) => status.toJson()).toList(),
+          startDate: tally.startDate.toIso8601String(),
+          endDate: tally.endDate.toIso8601String(),
+        );
+      } else {
+        final table = tables.tables.firstWhere((item) => item.id == id);
+        result = await repository.applySharedTableColumns(
+          tableId: id,
+          name: table.tableName,
+          columns: table.columns.map((column) => column.toJson()).toList(),
+        );
+      }
+      _knownRevision[id] = result.revision;
+      _knownStructure[id] = signature;
+      _update(
+        id,
+        (state) => state.copyWith(
+          isSending: false,
+          lastSentAt: DateTime.now(),
+          clearError: true,
+        ),
+      );
+      return true;
+    } on SharedTableException catch (error) {
+      if (!error.isKnown) debugPrint('Bilinmeyen yapi kodu: ${error.code}');
+      _update(
+        id,
+        (state) => state.copyWith(
+          isSending: false,
+          errorCode: error.isKnown ? error.code : 'unknown',
+        ),
+      );
+      return false;
+    } catch (error) {
+      debugPrint('Yapi gonderilemedi: $error');
+      _update(
+        id,
+        (state) => state.copyWith(isSending: false, errorCode: 'unknown'),
+      );
+      return false;
+    } finally {
+      _inFlight.remove(id);
     }
   }
 
@@ -302,12 +414,15 @@ class SharedSyncService extends ChangeNotifier {
         TallyTableModel.fromJson(payload),
         overwrite: true,
       );
-      return;
+    } else {
+      await tables.importCloudTable(
+        TableModel.fromJson(payload),
+        overwrite: true,
+      );
     }
-    await tables.importCloudTable(
-      TableModel.fromJson(payload),
-      overwrite: true,
-    );
+    // Sunucudaki yapi artik yerelde. Imza buradan kurulur ki bundan sonraki
+    // YEREL bir degisiklik "gonderilmeli" diye saptanabilsin.
+    _knownStructure[tableId] = _structureOf(tableId) ?? '';
   }
 
   /// Cakisan ogede kayittaki hali kabul et.

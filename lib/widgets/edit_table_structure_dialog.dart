@@ -6,6 +6,7 @@ import '../models/tabel_model.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import 'shared_structure_locked.dart';
 import '../utils/app_feedback.dart';
 
 class EditTableStructureDialog extends StatefulWidget {
@@ -82,6 +83,11 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
+    final tables = context.watch<TableProvider>();
+    final id = tables.currentTable?.id;
+    if (id != null && tables.isSharedTable(id) && !tables.isSharedOwner(id)) {
+      return const SharedStructureLocked();
+    }
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(

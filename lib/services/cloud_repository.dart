@@ -498,6 +498,58 @@ class CloudRepository {
     }
   }
 
+  /// Tablo sutunlarini degistirir. Yalnizca sahip cagirabilir.
+  ///
+  /// Satirlar gonderilmez: sunucu mevcut satirlarin boyunu kendisi ayarlar.
+  /// Istemcinin elindeki yuku butun halinde yazmak daha kolay olurdu ama o
+  /// sirada katilan birinin kaydettigi satir, sahibin eski kopyasinda
+  /// bulunmadigi icin silinirdi.
+  Future<SharedRowSyncResult> applySharedTableColumns({
+    required String tableId,
+    required String name,
+    required List<Map<String, dynamic>> columns,
+  }) async {
+    try {
+      final result = await _client.rpc(
+        'apply_shared_table_columns',
+        params: {
+          'target_table_id': tableId,
+          'new_name': name,
+          'new_columns': columns,
+        },
+      );
+      return SharedRowSyncResult.fromJson(_resultMap(result));
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
+  /// Cetele yapisini degistirir: durumlar, tarih araligi, ad. Ogelere
+  /// dokunulmaz, cunku isaretler gun anahtariyla saklaniyor.
+  Future<SharedRowSyncResult> applySharedTallyStructure({
+    required String tallyId,
+    required String name,
+    required List<Map<String, dynamic>> statuses,
+    required String startDate,
+    required String endDate,
+  }) async {
+    try {
+      final result = await _client.rpc(
+        'apply_shared_tally_structure',
+        params: {
+          'target_table_id': tallyId,
+          'new_name': name,
+          'new_statuses': statuses,
+          'new_start': startDate,
+          'new_end': endDate,
+        },
+      );
+      return SharedRowSyncResult.fromJson(_resultMap(result));
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
   Future<SharedTallySyncResult> applySharedTallyItems(
     String tallyId,
     List<SharedTallyOperation> operations,
