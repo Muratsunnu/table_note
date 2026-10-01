@@ -210,10 +210,7 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
                                     owned ? loc.myBackup : loc.sharedWithMe,
                                   ),
                                   onTap: () => _restore(entry),
-                                  // Cetele paylasimi henuz yok: kod
-                                  // uretilebiliyor ama katilan taraf
-                                  // iceriği tablo olarak okuyamaz.
-                                  trailing: owned && entry.kind == 'table'
+                                  trailing: owned
                                       ? IconButton(
                                           onPressed: () => _share(entry),
                                           icon: const Icon(Icons.share_rounded),

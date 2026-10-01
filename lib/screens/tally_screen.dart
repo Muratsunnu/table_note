@@ -16,6 +16,7 @@ import '../widgets/tally_bulk_edit_dialog.dart';
 import '../widgets/create_tally_dialog.dart';
 import '../widgets/grid_overview_screen.dart';
 import 'premium_screen.dart';
+import '../widgets/shared_sync_indicator.dart';
 
 class TallyScreen extends StatefulWidget {
   const TallyScreen({Key? key}) : super(key: key);
@@ -166,6 +167,8 @@ class _TallyScreenState extends State<TallyScreen> {
       title: table.tableName,
       summary: loc.nRecords(table.items.length),
       detail: dateFormat,
+      // Ortak olmayan cetelede hicbir sey cizmez.
+      titleTrailing: const SharedSyncIndicator(isTally: true),
       actions: [
         IconButton(
           tooltip: loc.locale.languageCode == 'en'

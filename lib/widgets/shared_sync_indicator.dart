@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/table_provider.dart';
+import '../providers/tally_provider.dart';
+import '../models/shared_tally_operation.dart';
 import '../services/cloud_repository.dart';
 import '../services/shared_sync_service.dart';
 
@@ -19,22 +21,36 @@ import '../services/shared_sync_service.dart';
 /// Islem gerektiren durumlarda ikonun kendisi dugmedir: bekleyen degisiklik
 /// varken dokunmak gonderir, cakisma varken cozum ekranini acar.
 class SharedSyncIndicator extends StatelessWidget {
-  const SharedSyncIndicator({super.key});
+  const SharedSyncIndicator({super.key, this.isTally = false});
+
+  /// Cetele ekraninda duran gosterge, tablo saglayicisi yerine cetele
+  /// saglayicisina bakar. Durum, ikonlar ve dokunma davranisi aynidir.
+  final bool isTally;
 
   @override
   Widget build(BuildContext context) {
+    // Her iki saglayici da izlenir ki gosterge kendi turundeki degisikligi
+    // kacirmasin; hangisinin okunacagini isTally belirler.
     final tables = context.watch<TableProvider>();
-    final table = tables.currentTable;
-    if (table == null || !tables.isSharedTable(table.id)) {
-      return const SizedBox.shrink();
-    }
+    final tallies = context.watch<TallyProvider>();
+    final String? id = isTally
+        ? tallies.currentTable?.id
+        : tables.currentTable?.id;
+    final shared =
+        id != null &&
+        (isTally ? tallies.isSharedTally(id) : tables.isSharedTable(id));
+    if (!shared) return const SizedBox.shrink();
 
     final sync = context.watch<SharedSyncService>();
-    final state = sync.stateFor(table.id);
+    final state = sync.stateFor(id);
     final loc = AppLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
-    final pending = tables.pendingChangeCount(table.id);
-    final isOwner = tables.isSharedOwner(table.id);
+    final pending = isTally
+        ? tallies.pendingChangeCount(id)
+        : tables.pendingChangeCount(id);
+    final isOwner = isTally
+        ? tallies.isSharedOwner(id)
+        : tables.isSharedOwner(id);
 
     final IconData icon;
     final Color color;
@@ -45,14 +61,14 @@ class SharedSyncIndicator extends StatelessWidget {
     if (state.hasConflicts) {
       icon = Icons.cloud_sync_rounded;
       color = colors.error;
-      label = loc.conflictCount(state.conflicts.length);
+      label = loc.conflictCount(state.conflictCount);
       needsAttention = true;
-      onTap = () => _showConflicts(context, table.id);
+      onTap = () => _showConflicts(context, id, isTally: isTally);
     } else if (state.errorCode != null) {
       icon = Icons.cloud_off_rounded;
       color = colors.error;
       label = loc.sharedTableError(state.errorCode!);
-      onTap = () => context.read<SharedSyncService>().push(table.id);
+      onTap = () => context.read<SharedSyncService>().push(id);
     } else if (state.isSending) {
       icon = Icons.cloud_sync_rounded;
       color = colors.primary;
@@ -64,7 +80,7 @@ class SharedSyncIndicator extends StatelessWidget {
       color = colors.primary;
       label = isOwner ? loc.syncSending : loc.pendingChangeCount(pending);
       if (!isOwner) {
-        onTap = () => context.read<SharedSyncService>().push(table.id);
+        onTap = () => context.read<SharedSyncService>().push(id);
       }
     } else {
       icon = Icons.cloud_done_rounded;
@@ -91,11 +107,17 @@ class SharedSyncIndicator extends StatelessWidget {
     );
   }
 
-  Future<void> _showConflicts(BuildContext context, String tableId) {
+  Future<void> _showConflicts(
+    BuildContext context,
+    String tableId, {
+    required bool isTally,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _ConflictSheet(tableId: tableId),
+      builder: (_) => isTally
+          ? _TallyConflictSheet(tallyId: tableId)
+          : _ConflictSheet(tableId: tableId),
     );
   }
 }
@@ -161,6 +183,173 @@ class _ConflictSheet extends StatelessWidget {
         .where((operation) => operation.rowId == rowId)
         .firstOrNull
         ?.values;
+  }
+}
+
+/// Cetele cakismalari. Tablodakinden tek farki neyin gosterildigi: satirin
+/// tamami yerine ogenin adi ve YALNIZCA cakisan gunler. Butun gunleri yan
+/// yana dizmek okunmazdi ve zaten cogu ayni.
+class _TallyConflictSheet extends StatelessWidget {
+  const _TallyConflictSheet({required this.tallyId});
+
+  final String tallyId;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final tallies = context.watch<TallyProvider>();
+    final sync = context.watch<SharedSyncService>();
+    final conflicts = sync.stateFor(tallyId).tallyConflicts;
+
+    if (conflicts.isEmpty) {
+      // Son cakisma da cozulunce sayfa kendini kapatir.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) Navigator.maybePop(context);
+      });
+    }
+
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            loc.conflictTitle,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            loc.conflictExplainer,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          for (final conflict in conflicts)
+            _TallyConflictCard(
+              conflict: conflict,
+              mine: _mineFor(tallies, conflict.itemId),
+              labelFor: (code) => _statusLabel(tallies, code),
+              onKeepServer: () => context
+                  .read<SharedSyncService>()
+                  .keepServerItem(tallyId, conflict),
+              onKeepMine: () => context.read<SharedSyncService>().keepLocalItem(
+                tallyId,
+                conflict,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  SharedTallyOperation? _mineFor(TallyProvider tallies, String itemId) =>
+      tallies
+          .pendingChanges(tallyId)
+          ?.operations
+          .where((operation) => operation.itemId == itemId)
+          .firstOrNull;
+
+  /// Durum kodu tek basina bir sey anlatmaz; kullanicinin ekranda gordugu
+  /// etiket gosterilir.
+  String _statusLabel(TallyProvider tallies, String? code) {
+    if (code == null || code.isEmpty) return '—';
+    final table = tallies.tables
+        .where((item) => item.id == tallyId)
+        .firstOrNull;
+    final status = table?.statuses
+        .where((item) => item.code == code)
+        .firstOrNull;
+    return status?.label ?? code;
+  }
+}
+
+class _TallyConflictCard extends StatelessWidget {
+  const _TallyConflictCard({
+    required this.conflict,
+    required this.mine,
+    required this.labelFor,
+    required this.onKeepServer,
+    required this.onKeepMine,
+  });
+
+  final SharedTallyConflict conflict;
+  final SharedTallyOperation? mine;
+  final String Function(String?) labelFor;
+  final VoidCallback onKeepServer;
+  final VoidCallback onKeepMine;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final colors = Theme.of(context).colorScheme;
+    final name = conflict.current?.name ?? mine?.name ?? '—';
+    // Yalnizca iki tarafin da dokundugu gunler gosterilir.
+    final days = (mine?.days.keys.toList() ?? <String>[])..sort();
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              conflict.reason == 'deleted'
+                  ? loc.conflictRowDeleted
+                  : loc.conflictRowChanged,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(name, style: TextStyle(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 10),
+            for (final day in days)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 92,
+                      child: Text(
+                        day,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        '${loc.conflictMine}: ${labelFor(mine?.days[day])}'
+                        '   ·   ${loc.conflictTheirs}: '
+                        '${labelFor(conflict.current?.entries[day])}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: onKeepServer,
+                  child: Text(loc.conflictKeepTheirs),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: onKeepMine,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.primary,
+                  ),
+                  child: Text(loc.conflictKeepMine),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

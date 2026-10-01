@@ -478,6 +478,8 @@ class AppLocalizations {
   String get activityRowAdded => _t('activityRowAdded');
   String get activityRowDeleted => _t('activityRowDeleted');
   String get activityActorSelf => _t('activityActorSelf');
+  String get activityItemAdded => _t('activityItemAdded');
+  String get activityItemDeleted => _t('activityItemDeleted');
   String get copy => _t('copy');
   String get copied => _t('copied');
   String sharedTableError(String code) => _t('err_$code');
@@ -946,8 +948,8 @@ class AppLocalizations {
     'activityRowAdded': 'satır ekledi',
     'activityRowDeleted': 'satır sildi',
     'activityActorSelf': 'Sen',
-    'err_shared_tally_not_supported':
-        'Bu kod bir çeteleye ait. Çetele paylaşımı henüz yok.',
+    'activityItemAdded': 'öğe ekledi',
+    'activityItemDeleted': 'öğe sildi',
     'copy': 'Kopyala',
     'copied': 'Kopyalandı',
     'err_authentication_required': 'Bağlantı kurulamadı, tekrar dene.',
@@ -1434,8 +1436,8 @@ class AppLocalizations {
     'activityRowAdded': 'added a row',
     'activityRowDeleted': 'deleted a row',
     'activityActorSelf': 'You',
-    'err_shared_tally_not_supported':
-        'This code belongs to a tally. Tally sharing is not available yet.',
+    'activityItemAdded': 'added an item',
+    'activityItemDeleted': 'deleted an item',
     'copy': 'Copy',
     'copied': 'Copied',
     'err_authentication_required': 'Could not connect. Try again.',

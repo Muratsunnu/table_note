@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/tabel_model.dart';
+import '../models/tally_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/table_provider.dart';
+import '../providers/tally_provider.dart';
 import '../services/cloud_repository.dart';
 import '../services/storage_service.dart';
 
@@ -56,6 +58,7 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
     final loc = AppLocalizations.of(context);
     final auth = context.read<AuthProvider>();
     final tables = context.read<TableProvider>();
+    final tallies = context.read<TallyProvider>();
     // Bildirim tasiyicisi da await'lerden once yakalanir: basarili
     // katilimdan sonra bu ekran zaten kapaniyor.
     final messenger = ScaffoldMessenger.of(context);
@@ -87,17 +90,22 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
         if (mounted) setState(() => _errorCode = 'table_not_found');
         return;
       }
-      // Cetelenin yapisi tabloya benzemiyor; TableModel olarak okumak
-      // anlamsiz bir tablo uretirdi. Kod gecerli olsa da burada durulur.
-      if (entry.kind != 'table') {
-        if (mounted) setState(() => _errorCode = 'shared_tally_not_supported');
+      // Cetelenin yapisi tabloya benzemiyor; hangi saglayiciya gidecegi
+      // kinde gore secilir. Bilinmeyen bir tur gelirse katilim durur.
+      if (entry.kind == 'tally') {
+        final joined = TallyTableModel.fromJson(entry.payload);
+        await tallies.importCloudTable(joined, overwrite: true);
+        await tallies.setSharedRole(joined.id, 'editor');
+      } else if (entry.kind == 'table') {
+        final joined = TableModel.fromJson(entry.payload);
+        await tables.importCloudTable(joined, overwrite: true);
+        // Bundan sonra bu tablodaki duzenlemeler kuyruga yazilir ve butonla
+        // gonderilir; aninda gonderim yalnizca paylasan kisidedir.
+        await tables.setSharedRole(joined.id, 'editor');
+      } else {
+        if (mounted) setState(() => _errorCode = 'table_not_found');
         return;
       }
-      final joined = TableModel.fromJson(entry.payload);
-      await tables.importCloudTable(joined, overwrite: true);
-      // Bundan sonra bu tablodaki duzenlemeler kuyruga yazilir ve butonla
-      // gonderilir; aninda gonderim yalnizca tabloyu paylasan kisidedir.
-      await tables.setSharedRole(joined.id, 'editor');
       if (!mounted) return;
       Navigator.pop(context, true);
       messenger.showSnackBar(

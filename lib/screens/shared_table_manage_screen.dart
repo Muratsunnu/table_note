@@ -334,6 +334,14 @@ class _ActivityRow extends StatelessWidget {
       'row_updated' =>
         '${entry.columnName}: '
             '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
+      'item_added' => loc.activityItemAdded,
+      'item_deleted' => loc.activityItemDeleted,
+      // Ad degisikligi ve gun isareti ayni bicimde okunur: eski → yeni.
+      'item_renamed' =>
+        '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
+      'mark_changed' =>
+        '${entry.columnName}: '
+            '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
       _ => entry.action,
     };
     final isSelf = entry.actorId != null && entry.actorId == selfActorId;
