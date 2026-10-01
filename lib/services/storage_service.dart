@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_note/models/shared_row_operation.dart';
+import 'package:table_note/models/shared_tally_operation.dart';
 import 'package:table_note/models/tabel_model.dart';
 import 'package:table_note/models/table_sort_preference.dart';
 import 'package:table_note/models/tally_sort_preference.dart';
@@ -24,6 +25,8 @@ class StorageService {
   static const String _sharedDisplayNameKey = 'shared_display_name';
   static const String _pendingRowChangesKey = 'pending_row_changes_v1';
   static const String _sharedTableRolesKey = 'shared_table_roles_v1';
+  static const String _pendingTallyChangesKey = 'pending_tally_changes_v1';
+  static const String _sharedTallyRolesKey = 'shared_tally_roles_v1';
   static const String _legacyBackupSuffix = '_legacy_v1_backup';
 
   /// Hangi tablonun ortak oldugu ve bu cihazin oradaki rolu: 'owner' tabloyu
@@ -52,6 +55,71 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     if (roles.isEmpty) return prefs.remove(_sharedTableRolesKey);
     return prefs.setString(_sharedTableRolesKey, json.encode(roles));
+  }
+
+  /// Cetelelerin ortak calisma rolleri. Tablolarinkiyle ayni bicim ama ayri
+  /// anahtar: tek harita paylasilsaydi iki saglayici birbirinin kaydini
+  /// ezerdi, cunku her biri kendi haritasinin tamamini yaziyor.
+  static Future<Map<String, String>> loadSharedTallyRoles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_sharedTallyRolesKey);
+    if (raw == null) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final entry in decoded.entries)
+          if (entry.value == 'owner' || entry.value == 'editor')
+            entry.key.toString(): entry.value.toString(),
+      };
+    } catch (e) {
+      debugPrint('Ortak cetele rolleri okunamadi: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> saveSharedTallyRoles(Map<String, String> roles) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (roles.isEmpty) return prefs.remove(_sharedTallyRolesKey);
+    return prefs.setString(_sharedTallyRolesKey, json.encode(roles));
+  }
+
+  /// Buluta gonderilmeyi bekleyen cetele degisiklikleri, cetele kimligine gore.
+  static Future<Map<String, PendingTallyChanges>>
+  loadPendingTallyChanges() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_pendingTallyChangesKey);
+    if (raw == null) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final entry in decoded.entries)
+          entry.key.toString(): PendingTallyChanges.fromJson(entry.value),
+      };
+    } catch (e) {
+      debugPrint('Bekleyen cetele degisiklikleri okunamadi: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> savePendingTallyChanges(
+    Map<String, PendingTallyChanges> pending,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = <String, dynamic>{
+        for (final entry in pending.entries)
+          if (entry.value.isNotEmpty) entry.key: entry.value.toJson(),
+      };
+      if (payload.isEmpty) {
+        return prefs.remove(_pendingTallyChangesKey);
+      }
+      return prefs.setString(_pendingTallyChangesKey, json.encode(payload));
+    } catch (e) {
+      debugPrint('Bekleyen cetele degisiklikleri kaydedilemedi: $e');
+      return false;
+    }
   }
 
   /// Buluta gonderilmeyi bekleyen satir degisiklikleri, tablo kimligine gore.

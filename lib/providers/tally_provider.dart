@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import '../models/shared_tally_operation.dart';
 import '../models/tally_model.dart';
 import '../models/tally_sort_preference.dart';
 import '../services/storage_service.dart';
@@ -21,6 +24,12 @@ class TallyProvider extends ChangeNotifier {
 
   // Sıralama yalnızca görünümü etkiler; çetele kimliğine göre kalıcı tutulur.
   final Map<String, TallySortPreference> _sorts = {};
+
+  /// Hangi çetele ortak ve bu cihaz orada sahip mi katılan mı.
+  final Map<String, String> _sharedRoles = {};
+
+  /// Buluta gönderilmeyi bekleyen değişiklikler, çetele kimliğine göre.
+  final Map<String, PendingTallyChanges> _pending = {};
 
   List<TallyTableModel> get tables => _tables;
   TallyTableModel? get currentTable =>
@@ -209,12 +218,122 @@ class TallyProvider extends ChangeNotifier {
     _sorts
       ..clear()
       ..addAll(await StorageService.loadTallySorts());
+    _sharedRoles
+      ..clear()
+      ..addAll(await StorageService.loadSharedTallyRoles());
+    _pending
+      ..clear()
+      ..addAll(await StorageService.loadPendingTallyChanges());
     if (_tables.isNotEmpty) {
       final last = await StorageService.loadLastOpenedTallyIndex();
       _currentIndex = (last >= 0 && last < _tables.length) ? last : 0;
     }
     _isLoading = false;
     notifyListeners();
+  }
+
+  // === ORTAK ÇETELE ===
+
+  String? sharedRole(String tallyId) => _sharedRoles[tallyId];
+  bool isSharedTally(String tallyId) => _sharedRoles.containsKey(tallyId);
+  bool isSharedOwner(String tallyId) => _sharedRoles[tallyId] == 'owner';
+
+  /// Bu çetelede buluta gönderilmeyi bekleyen öğe sayısı.
+  int pendingChangeCount(String tallyId) => _pending[tallyId]?.length ?? 0;
+
+  PendingTallyChanges? pendingChanges(String tallyId) => _pending[tallyId];
+
+  Future<void> setSharedRole(String tallyId, String? role) async {
+    if (role == null) {
+      if (_sharedRoles.remove(tallyId) == null) return;
+      // Artık ortak değilse bekleyen değişikliklerin gideceği yer yok.
+      _pending.remove(tallyId);
+      await StorageService.savePendingTallyChanges(Map.of(_pending));
+    } else {
+      if (_sharedRoles[tallyId] == role) return;
+      _sharedRoles[tallyId] = role;
+    }
+    await StorageService.saveSharedTallyRoles(Map.of(_sharedRoles));
+    notifyListeners();
+  }
+
+  /// Sunucunun uyguladığını bildirdiği öğeleri kuyruktan düşürür.
+  Future<void> markChangesApplied(
+    String tallyId,
+    Iterable<String> itemIds,
+  ) async {
+    final pending = _pending[tallyId];
+    if (pending == null) return;
+    pending.clearApplied(itemIds);
+    if (pending.isEmpty) _pending.remove(tallyId);
+    await StorageService.savePendingTallyChanges(Map.of(_pending));
+    notifyListeners();
+  }
+
+  /// Çakışmada kayıttaki hâli kabul etmek: yerel öğe sunucudakiyle
+  /// değiştirilir. [serverItem] null ise öğe sunucuda silinmiş demektir.
+  Future<void> applyServerItem(
+    String tallyId,
+    String itemId,
+    TallyItemModel? serverItem,
+  ) async {
+    final tableIndex = _tables.indexWhere((item) => item.id == tallyId);
+    if (tableIndex < 0) return;
+    final table = _tables[tableIndex];
+    final index = table.items.indexWhere((item) => item.id == itemId);
+    if (serverItem == null) {
+      if (index < 0) return;
+      table.items.removeAt(index);
+    } else if (index < 0) {
+      // Öğe yerelde yok ama sunucuda var: geri getir.
+      table.items.add(serverItem);
+    } else {
+      table.items[index]
+        ..name = serverItem.name
+        ..entries = Map<String, String>.from(serverItem.entries);
+    }
+    table.touch();
+    await _save();
+    notifyListeners();
+  }
+
+  /// "Benimki kalsın": bekleyen işlemin temeli sunucunun şimdiki hâliyle
+  /// değiştirilir, böylece bir sonraki gönderimde geçer.
+  void rebaseChange(String tallyId, String itemId, TallyItemModel? serverItem) {
+    _pending[tallyId]?.rebase(
+      itemId,
+      serverItem == null ? null : Map<String, String?>.from(serverItem.entries),
+      serverItem?.name,
+    );
+    unawaited(StorageService.savePendingTallyChanges(Map.of(_pending)));
+    notifyListeners();
+  }
+
+  /// Ortak olmayan çetelede hiçbir şey yazılmaz; kuyruk yalnızca paylaşılan
+  /// çeteleler için tutulur.
+  PendingTallyChanges? _queueFor(TallyTableModel table) {
+    if (!_sharedRoles.containsKey(table.id)) return null;
+    return _pending.putIfAbsent(table.id, PendingTallyChanges.new);
+  }
+
+  void _persistQueue(TallyTableModel table) {
+    final pending = _pending[table.id];
+    if (pending != null && pending.isEmpty) _pending.remove(table.id);
+    // Çevrimdışı yapılan düzenleme uygulama kapansa da beklemeye devam eder.
+    unawaited(StorageService.savePendingTallyChanges(Map.of(_pending)));
+  }
+
+  void _recordMark(
+    TallyTableModel table,
+    String itemId,
+    String dayKey, {
+    required String? value,
+    required String? base,
+  }) {
+    final queue = _queueFor(table);
+    if (queue == null) return;
+    queue.recordMark(itemId, dayKey, value: value, base: base);
+    _persistQueue(table);
   }
 
   Future<void> _save() async {
@@ -329,7 +448,13 @@ class TallyProvider extends ChangeNotifier {
   Future<bool> addItem(String name) async {
     if (currentTable == null) return false;
     try {
-      currentTable!.items.add(TallyItemModel(name: name.trim()));
+      final item = TallyItemModel(name: name.trim());
+      currentTable!.items.add(item);
+      final queue = _queueFor(currentTable!);
+      if (queue != null) {
+        queue.recordCreate(item.id, item.name);
+        _persistQueue(currentTable!);
+      }
       currentTable!.touch();
       await _save();
       notifyListeners();
@@ -343,7 +468,12 @@ class TallyProvider extends ChangeNotifier {
     if (currentTable == null) return false;
     try {
       if (itemIndex >= 0 && itemIndex < currentTable!.items.length) {
-        currentTable!.items.removeAt(itemIndex);
+        final removed = currentTable!.items.removeAt(itemIndex);
+        final queue = _queueFor(currentTable!);
+        if (queue != null) {
+          queue.recordDelete(removed.id);
+          _persistQueue(currentTable!);
+        }
         currentTable!.touch();
         await _save();
         notifyListeners();
@@ -359,7 +489,14 @@ class TallyProvider extends ChangeNotifier {
     if (currentTable == null) return false;
     try {
       if (itemIndex >= 0 && itemIndex < currentTable!.items.length) {
-        currentTable!.items[itemIndex].name = newName.trim();
+        final item = currentTable!.items[itemIndex];
+        final previous = item.name;
+        item.name = newName.trim();
+        final queue = _queueFor(currentTable!);
+        if (queue != null) {
+          queue.recordRename(item.id, item.name, base: previous);
+          _persistQueue(currentTable!);
+        }
         currentTable!.touch();
         await _save();
         notifyListeners();
@@ -393,12 +530,16 @@ class TallyProvider extends ChangeNotifier {
     String key,
     String? statusCode,
   ) async {
+    final table = currentTable!;
+    final item = table.items[itemIndex];
+    final base = item.entries[key];
     if (statusCode == null || statusCode.isEmpty) {
-      currentTable!.items[itemIndex].entries.remove(key);
+      item.entries.remove(key);
     } else {
-      currentTable!.items[itemIndex].entries[key] = statusCode;
+      item.entries[key] = statusCode;
     }
-    currentTable!.touch();
+    _recordMark(table, item.id, key, value: item.entries[key], base: base);
+    table.touch();
     await _save();
     notifyListeners();
   }
@@ -422,11 +563,19 @@ class TallyProvider extends ChangeNotifier {
         final oldValue = table.items[itemIndex].entries[key];
         if (oldValue != statusCode) {
           changes.add(_TallyCellChange(itemIndex, key, oldValue));
+          final item = table.items[itemIndex];
           if (statusCode == null || statusCode.isEmpty) {
-            table.items[itemIndex].entries.remove(key);
+            item.entries.remove(key);
           } else {
-            table.items[itemIndex].entries[key] = statusCode;
+            item.entries[key] = statusCode;
           }
+          _recordMark(
+            table,
+            item.id,
+            key,
+            value: item.entries[key],
+            base: oldValue,
+          );
         }
         current = current.add(const Duration(days: 1));
       }
@@ -474,11 +623,21 @@ class TallyProvider extends ChangeNotifier {
           entries[change.dateKey],
         ),
       );
+      final base = entries[change.dateKey];
       if (change.oldValue == null) {
         entries.remove(change.dateKey);
       } else {
         entries[change.dateKey] = change.oldValue!;
       }
+      // Geri alma da sıradan bir değişiklik: karşı taraf o arada senin
+      // işaretini görmüş olabilir, yani buluta gitmesi gerekir.
+      _recordMark(
+        table,
+        table.items[change.itemIndex].id,
+        change.dateKey,
+        value: entries[change.dateKey],
+        base: base,
+      );
     }
     if (inverse.isEmpty) {
       notifyListeners();
