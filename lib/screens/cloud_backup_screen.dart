@@ -119,6 +119,7 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
           tableId: entry.id,
           tableName: entry.name,
           collaborationEnabled: entry.collaborationEnabled,
+          isTally: entry.kind == 'tally',
         ),
       ),
     );

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../providers/table_provider.dart';
+import '../providers/tally_provider.dart';
 import '../services/cloud_repository.dart';
 
 /// Tabloyu paylasan kisinin yonetim ekrani: kod uretme, istege bagli sifre,
@@ -18,11 +19,17 @@ class SharedTableManageScreen extends StatefulWidget {
     required this.tableId,
     required this.tableName,
     required this.collaborationEnabled,
+    required this.isTally,
   });
 
   final String tableId;
   final String tableName;
   final bool collaborationEnabled;
+
+  /// Rol dogru saglayiciya yazilsin diye gerekiyor. Yanlis saglayiciya
+  /// yazilsaydi kayit olusur ama o tur kendini hic "ortak" saymazdi:
+  /// gosterge cikmaz, otomatik gonderim calismazdi.
+  final bool isTally;
 
   @override
   State<SharedTableManageScreen> createState() =>
@@ -74,16 +81,25 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
     });
   });
 
-  Future<void> _generateCode() {
-    // Saglayici await'lerden ONCE yakalanir. Kod uretimi ag uzerinden
-    // surerken kullanici geri donerse bu ekranin context'i gecersizlesir;
-    // sonrasinda context.read cagirmak cokmeye yol acardi.
+  /// Rolu dogru saglayiciya yazar. Saglayicilar await'lerden ONCE yakalanir:
+  /// kod uretimi ag uzerinden surerken kullanici geri donerse bu ekranin
+  /// context'i gecersizlesir ve sonrasinda context.read cokmeye yol acardi.
+  Future<void> Function(String?) _roleWriter() {
+    if (widget.isTally) {
+      final tallies = context.read<TallyProvider>();
+      return (role) => tallies.setSharedRole(widget.tableId, role);
+    }
     final tables = context.read<TableProvider>();
+    return (role) => tables.setSharedRole(widget.tableId, role);
+  }
+
+  Future<void> _generateCode() {
+    final setRole = _roleWriter();
     return _run(() async {
       final code = await _repository.rotateSharedTableCode(widget.tableId);
       // Sahibin kendi degisiklikleri bundan sonra kendiliginden gitsin diye
-      // tablo yerelde 'owner' olarak isaretlenir.
-      await tables.setSharedRole(widget.tableId, 'owner');
+      // kayit yerelde 'owner' olarak isaretlenir.
+      await setRole('owner');
       if (!mounted) return;
       setState(() {
         _code = code;
@@ -94,10 +110,10 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
   }
 
   Future<void> _disable() {
-    final tables = context.read<TableProvider>();
+    final setRole = _roleWriter();
     return _run(() async {
       await _repository.disableSharedTableCollaboration(widget.tableId);
-      await tables.setSharedRole(widget.tableId, null);
+      await setRole(null);
       if (!mounted) return;
       setState(() {
         _enabled = false;
