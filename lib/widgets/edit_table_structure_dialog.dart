@@ -60,9 +60,26 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     _formulaControllers = _columns
         .map((col) => TextEditingController(text: col.formula ?? ''))
         .toList();
-    _columnNameErrors = List<String?>.filled(_columns.length, null);
-    _constantValueErrors = List<String?>.filled(_columns.length, null);
-    _formulaErrors = List<String?>.filled(_columns.length, null);
+    // growable: true sart. Varsayilan List.filled SABIT uzunlukta bir liste
+    // dondurur; "Yeni Sutun" bu listelere add() cagirinca istisna firlatiyor
+    // ve istisna setState'in icinde patladigi icin widget kirli
+    // isaretlenmiyordu. Sonuc: ne ekran degisiyor ne de cokme oluyordu,
+    // dugme sessizce calismiyordu.
+    _columnNameErrors = List<String?>.filled(
+      _columns.length,
+      null,
+      growable: true,
+    );
+    _constantValueErrors = List<String?>.filled(
+      _columns.length,
+      null,
+      growable: true,
+    );
+    _formulaErrors = List<String?>.filled(
+      _columns.length,
+      null,
+      growable: true,
+    );
   }
 
   @override
