@@ -93,14 +93,17 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
       ),
     );
     if (overwrite == null || !mounted) return;
+    final copyName = '${entry.name}${loc.copySuffix}';
     final success = entry.kind == 'table'
         ? await context.read<TableProvider>().importCloudTable(
             TableModel.fromJson(entry.payload),
             overwrite: overwrite,
+            copyName: copyName,
           )
         : await context.read<TallyProvider>().importCloudTable(
             TallyTableModel.fromJson(entry.payload),
             overwrite: overwrite,
+            copyName: copyName,
           );
     if (mounted && success) {
       ScaffoldMessenger.of(

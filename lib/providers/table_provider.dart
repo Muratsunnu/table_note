@@ -260,9 +260,14 @@ class TableProvider extends ChangeNotifier {
 
   Future<void> reloadFromStorage() => _loadTables();
 
+  /// Buluttaki bir kaydi cihaza alir.
+  ///
+  /// [copyName] yalnizca yeni kopya olustururken kullanilir. Kopya ayni adi
+  /// tasirsa cekmecede birbirinden ayirt edilemeyen iki satir olusuyordu.
   Future<bool> importCloudTable(
     TableModel table, {
     required bool overwrite,
+    String? copyName,
   }) async {
     try {
       final index = _tables.indexWhere((item) => item.id == table.id);
@@ -276,7 +281,7 @@ class TableProvider extends ChangeNotifier {
                     .map((column) => column.copyWith())
                     .toList(),
                 rows: table.rows.map(List<String>.from).toList(),
-                tableName: table.tableName,
+                tableName: copyName ?? table.tableName,
               )
             : table;
         _tables.add(imported);

@@ -170,9 +170,12 @@ class TallyProvider extends ChangeNotifier {
 
   Future<void> reloadFromStorage() => _load();
 
+  /// Buluttaki bir ceteleyi cihaza alir. [copyName] yalnizca yeni kopya
+  /// olustururken kullanilir; ayni ad iki satiri ayirt edilemez yapiyordu.
   Future<bool> importCloudTable(
     TallyTableModel table, {
     required bool overwrite,
+    String? copyName,
   }) async {
     try {
       final index = _tables.indexWhere((item) => item.id == table.id);
@@ -182,7 +185,7 @@ class TallyProvider extends ChangeNotifier {
       } else {
         final imported = index >= 0
             ? TallyTableModel(
-                tableName: table.tableName,
+                tableName: copyName ?? table.tableName,
                 startDate: table.startDate,
                 endDate: table.endDate,
                 statuses: table.statuses

@@ -484,6 +484,7 @@ class AppLocalizations {
   String get sharedStructureLocked => _t('sharedStructureLocked');
   String get sharedStructureLockedTitle => _t('sharedStructureLockedTitle');
   String get copy => _t('copy');
+  String get copySuffix => _t('copySuffix');
   String get copied => _t('copied');
   String sharedTableError(String code) => _t('err_$code');
   String get redoLastAction => _t('redoLastAction');
@@ -959,6 +960,7 @@ class AppLocalizations {
         'Yapıyı yalnızca paylaşan kişi değiştirebilir. Kayıtları ve '
         'işaretleri düzenlemeye devam edebilirsin.',
     'copy': 'Kopyala',
+    'copySuffix': ' (kopya)',
     'copied': 'Kopyalandı',
     'err_authentication_required': 'Bağlantı kurulamadı, tekrar dene.',
     'err_invalid_table_code': 'Kod bulunamadı. Kodu kontrol et.',
@@ -1452,6 +1454,7 @@ class AppLocalizations {
         'Only the person who shared this can change its structure. You can '
         'still edit records and marks.',
     'copy': 'Copy',
+    'copySuffix': ' (copy)',
     'copied': 'Copied',
     'err_authentication_required': 'Could not connect. Try again.',
     'err_invalid_table_code': 'No table for that code. Check the code.',
