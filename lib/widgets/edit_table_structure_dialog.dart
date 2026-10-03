@@ -1,25 +1,36 @@
 import 'package:flutter/material.dart';
+import 'form_field_reveal.dart';
+import 'added_field_focus.dart';
 import 'package:provider/provider.dart';
 import '../models/tabel_model.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import 'shared_structure_locked.dart';
+import '../utils/app_feedback.dart';
 
 class EditTableStructureDialog extends StatefulWidget {
   const EditTableStructureDialog({Key? key}) : super(key: key);
 
   @override
-  State<EditTableStructureDialog> createState() => _EditTableStructureDialogState();
+  State<EditTableStructureDialog> createState() =>
+      _EditTableStructureDialogState();
 }
 
 class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
+  TextEditingController? _newFieldToFocus;
+
   late List<ColumnModel> _columns;
   late List<TextEditingController> _nameControllers;
   late List<TextEditingController> _constantValueControllers;
   late List<TextEditingController> _formulaControllers;
+  late List<String?> _columnNameErrors;
+  late List<String?> _constantValueErrors;
+  late List<String?> _formulaErrors;
   late String _tableName;
   late TextEditingController _tableNameController;
-  
+  String? _tableNameError;
+
   // Yeni eklenen sütunlar için takip
   int _originalColumnCount = 0;
 
@@ -28,20 +39,47 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     super.initState();
     final provider = Provider.of<TableProvider>(context, listen: false);
     final currentTable = provider.currentTable!;
-    
+
     _tableName = currentTable.tableName;
     _tableNameController = TextEditingController(text: _tableName);
     _originalColumnCount = currentTable.columns.length;
-    
+
     // Mevcut sütunları kopyala
     _columns = currentTable.columns.map((col) => col.copyWith()).toList();
-    
+
     // Controller'ları oluştur
-    _nameControllers = _columns.map((col) => TextEditingController(text: col.name)).toList();
-    _constantValueControllers = _columns.map((col) => 
-      TextEditingController(text: col.constantValue?.toString() ?? '')).toList();
-    _formulaControllers = _columns.map((col) => 
-      TextEditingController(text: col.formula ?? '')).toList();
+    _nameControllers = _columns
+        .map((col) => TextEditingController(text: col.name))
+        .toList();
+    _constantValueControllers = _columns
+        .map(
+          (col) =>
+              TextEditingController(text: col.constantValue?.toString() ?? ''),
+        )
+        .toList();
+    _formulaControllers = _columns
+        .map((col) => TextEditingController(text: col.formula ?? ''))
+        .toList();
+    // growable: true sart. Varsayilan List.filled SABIT uzunlukta bir liste
+    // dondurur; "Yeni Sutun" bu listelere add() cagirinca istisna firlatiyor
+    // ve istisna setState'in icinde patladigi icin widget kirli
+    // isaretlenmiyordu. Sonuc: ne ekran degisiyor ne de cokme oluyordu,
+    // dugme sessizce calismiyordu.
+    _columnNameErrors = List<String?>.filled(
+      _columns.length,
+      null,
+      growable: true,
+    );
+    _constantValueErrors = List<String?>.filled(
+      _columns.length,
+      null,
+      growable: true,
+    );
+    _formulaErrors = List<String?>.filled(
+      _columns.length,
+      null,
+      growable: true,
+    );
   }
 
   @override
@@ -61,104 +99,171 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.lightBlue,
-              borderRadius: BorderRadius.circular(8),
+    final loc = AppLocalizations.of(context);
+    final tables = context.watch<TableProvider>();
+    final id = tables.currentTable?.id;
+    if (id != null && tables.isSharedTable(id) && !tables.isSharedOwner(id)) {
+      return const SharedStructureLocked();
+    }
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildEditorHeader(
+              context,
+              icon: Icons.settings_rounded,
+              title: loc.editTableStructure,
             ),
-            child: const Icon(Icons.settings_rounded, color: AppTheme.primaryBlue, size: 20),
+            Expanded(
+              child: FormFocusScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Tablo adı
+                    TextField(
+                      controller: _tableNameController,
+                      onChanged: (value) {
+                        _tableName = value;
+                        if (_tableNameError != null) {
+                          setState(() => _tableNameError = null);
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).tableName,
+                        errorText: _tableNameError,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.table_chart,
+                          color: AppTheme.readableAccent(context, Colors.blue),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Sütunlar başlığı
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${loc.columns} (${_columns.length})',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: _addNewColumn,
+                          icon: const Icon(Icons.add, size: 18),
+                          label: Text(loc.newColumn),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Sütun listesi
+                    ..._buildColumnList(),
+                  ],
+                ),
+              ),
+            ),
+            _buildEditorFooter(
+              context,
+              cancelLabel: loc.cancel,
+              saveLabel: loc.save,
+              onSave: _saveChanges,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditorHeader(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+  }) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [AppTheme.darkBlue, AppTheme.primaryBlue],
+      ),
+    ),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
           ),
-          SizedBox(width: 12),
+          child: Icon(icon, color: Colors.white, size: 24),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildEditorFooter(
+    BuildContext context, {
+    required String cancelLabel,
+    required String saveLabel,
+    required VoidCallback onSave,
+  }) => Container(
+    padding: const EdgeInsets.all(16),
+    color: Theme.of(context).colorScheme.surface,
+    child: SafeArea(
+      top: false,
+      child: Row(
+        children: [
           Expanded(
-            child: Text(
-              AppLocalizations.of(context).editTableStructure,
-              style: TextStyle(fontSize: 18),
-              overflow: TextOverflow.ellipsis,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(cancelLabel),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: onSave,
+              icon: const Icon(Icons.save_rounded),
+              label: Text(saveLabel),
             ),
           ),
         ],
       ),
-      content: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Tablo adı
-              TextField(
-                controller: _tableNameController,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).tableName,
-                  border: const OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.table_chart, color: Colors.blue[700]),
-                ),
-                onChanged: (value) => _tableName = value,
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Sütunlar başlığı
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${AppLocalizations.of(context).columns} (${_columns.length})',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _addNewColumn,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text(AppLocalizations.of(context).newColumn),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Sütun listesi
-              ..._buildColumnList(),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(AppLocalizations.of(context).cancel),
-        ),
-        ElevatedButton.icon(
-          onPressed: _saveChanges,
-          icon: const Icon(Icons.save),
-          label: Text(AppLocalizations.of(context).save),
-        ),
-      ],
-    );
-  }
+    ),
+  );
 
   List<Widget> _buildColumnList() {
     return _columns.asMap().entries.map((entry) {
       final index = entry.key;
       final column = entry.value;
       final isNewColumn = index >= _originalColumnCount;
-      
+
       return Card(
         margin: const EdgeInsets.symmetric(vertical: 6),
-        color: isNewColumn ? Colors.green[50] : null,
+        color: isNewColumn
+            ? AppTheme.tintedSurface(context, Colors.green)
+            : null,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -177,7 +282,10 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                   ),
                   if (isNewColumn)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green,
                         borderRadius: BorderRadius.circular(12),
@@ -190,7 +298,11 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                   if (isNewColumn) ...[
                     SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                      icon: const Icon(
+                        Icons.delete,
+                        color: AppTheme.error,
+                        size: 20,
+                      ),
                       onPressed: () => _removeNewColumn(index),
                       tooltip: AppLocalizations.of(context).removeColumn,
                       padding: EdgeInsets.zero,
@@ -199,20 +311,35 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                   ],
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Sütun adı
-              TextField(
-                controller: _nameControllers[index],
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).columnNameLabel,
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.label),
+              AddedFieldFocus(
+                key: ValueKey(_nameControllers[index]),
+                target: _nameControllers[index],
+                pendingTarget: () => _newFieldToFocus,
+                onFocused: (target) {
+                  if (identical(_newFieldToFocus, target)) {
+                    _newFieldToFocus = null;
+                  }
+                },
+                builder: (focusNode) => TextField(
+                  focusNode: focusNode,
+                  controller: _nameControllers[index],
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).columnNameLabel,
+                    errorText: _columnNameErrors[index],
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.label),
+                  ),
+                  onChanged: (value) => setState(() {
+                    column.name = value;
+                    _columnNameErrors[index] = null;
+                  }),
                 ),
-                onChanged: (value) => column.name = value,
               ),
-              
+
               // Yeni sütunlar için tip seçimi
               if (isNewColumn) ...[
                 const SizedBox(height: 12),
@@ -224,18 +351,24 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: Theme.of(context).colorScheme.surfaceContainer,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       SizedBox(width: 8),
                       Text(
-                        AppLocalizations.of(context).typeName(_getColumnTypeName(column.columnType)),
+                        AppLocalizations.of(
+                          context,
+                        ).typeName(_getColumnTypeName(column.columnType)),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[700],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const Spacer(),
@@ -243,7 +376,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                         AppLocalizations.of(context).cannotChange,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey[500],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -271,7 +404,11 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       case ColumnType.time:
         return const Icon(Icons.access_time, color: Colors.indigo, size: 20);
       case ColumnType.autoNumber:
-        return const Icon(Icons.format_list_numbered, color: Colors.brown, size: 20);
+        return const Icon(
+          Icons.format_list_numbered,
+          color: Colors.brown,
+          size: 20,
+        );
     }
   }
 
@@ -296,7 +433,7 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -311,12 +448,54 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              _buildTypeChip(index, column, ColumnType.normal, AppLocalizations.of(context).normal, Icons.edit, Colors.blue),
-              _buildTypeChip(index, column, ColumnType.constant, AppLocalizations.of(context).constant, Icons.pin, Colors.orange),
-              _buildTypeChip(index, column, ColumnType.formula, AppLocalizations.of(context).formula, Icons.functions, Colors.purple),
-              _buildTypeChip(index, column, ColumnType.date, AppLocalizations.of(context).date, Icons.calendar_today, Colors.teal),
-              _buildTypeChip(index, column, ColumnType.time, AppLocalizations.of(context).time, Icons.access_time, Colors.indigo),
-              _buildTypeChip(index, column, ColumnType.autoNumber, AppLocalizations.of(context).autoNumber, Icons.format_list_numbered, Colors.brown),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.normal,
+                AppLocalizations.of(context).normal,
+                Icons.edit,
+                Colors.blue,
+              ),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.constant,
+                AppLocalizations.of(context).constant,
+                Icons.pin,
+                Colors.orange,
+              ),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.formula,
+                AppLocalizations.of(context).formula,
+                Icons.functions,
+                Colors.purple,
+              ),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.date,
+                AppLocalizations.of(context).date,
+                Icons.calendar_today,
+                Colors.teal,
+              ),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.time,
+                AppLocalizations.of(context).time,
+                Icons.access_time,
+                Colors.indigo,
+              ),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.autoNumber,
+                AppLocalizations.of(context).autoNumber,
+                Icons.format_list_numbered,
+                Colors.brown,
+              ),
             ],
           ),
         ],
@@ -324,9 +503,16 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     );
   }
 
-  Widget _buildTypeChip(int index, ColumnModel column, ColumnType type, String label, IconData icon, Color color) {
+  Widget _buildTypeChip(
+    int index,
+    ColumnModel column,
+    ColumnType type,
+    String label,
+    IconData icon,
+    Color color,
+  ) {
     final isSelected = column.columnType == type;
-    
+
     return FilterChip(
       selected: isSelected,
       label: Row(
@@ -340,7 +526,9 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       selectedColor: color,
       checkmarkColor: Colors.white,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black87,
+        color: isSelected
+            ? Colors.white
+            : Theme.of(context).colorScheme.onSurface,
         fontSize: 11,
       ),
       onSelected: (selected) {
@@ -392,9 +580,13 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       children: [
         SizedBox(height: 8),
         CheckboxListTile(
-          title: Text(AppLocalizations.of(context).numericColumn, style: const TextStyle(fontSize: 13)),
+          title: Text(
+            AppLocalizations.of(context).numericColumn,
+            style: const TextStyle(fontSize: 13),
+          ),
           value: column.isNumeric,
-          onChanged: (value) => setState(() => column.isNumeric = value ?? false),
+          onChanged: (value) =>
+              setState(() => column.isNumeric = value ?? false),
           dense: true,
           contentPadding: EdgeInsets.zero,
         ),
@@ -410,12 +602,16 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
           controller: _constantValueControllers[index],
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context).defaultValue,
+            errorText: _constantValueErrors[index],
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.pin, color: Colors.orange),
           ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           onChanged: (value) {
-            column.constantValue = double.tryParse(value);
+            setState(() {
+              column.constantValue = double.tryParse(value);
+              _constantValueErrors[index] = null;
+            });
           },
         ),
       ],
@@ -440,14 +636,21 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context).formulaLabel,
             hintText: AppLocalizations.of(context).formulaHint,
+            errorText: _formulaErrors[index],
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.functions, color: Colors.purple),
           ),
-          onChanged: (value) => column.formula = value,
+          onChanged: (value) => setState(() {
+            column.formula = value;
+            _formulaErrors[index] = null;
+          }),
         ),
         if (availableColumns.isNotEmpty) ...[
           SizedBox(height: 8),
-          Text(AppLocalizations.of(context).addColumnLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            AppLocalizations.of(context).addColumnLabel,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -455,14 +658,16 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
             children: availableColumns.map((col) {
               return ActionChip(
                 label: Text(
-                  col.name, 
-                  style: const TextStyle(
+                  col.name,
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-                backgroundColor: AppTheme.lightBlue,
-                side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                side: BorderSide(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                ),
                 onPressed: () {
                   final current = _formulaControllers[index].text;
                   _formulaControllers[index].text = '$current{${col.name}}';
@@ -472,7 +677,10 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
             }).toList(),
           ),
           SizedBox(height: 8),
-          Text(AppLocalizations.of(context).addOperation, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            AppLocalizations.of(context).addOperation,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -480,15 +688,20 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
             children: ['+', '-', '*', '/', '%', '(', ')'].map((op) {
               return ActionChip(
                 label: Text(
-                  op, 
+                  op,
                   style: const TextStyle(
-                    fontSize: 14, 
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.formula,
                   ),
                 ),
-                backgroundColor: AppTheme.formulaLight,
-                side: BorderSide(color: AppTheme.formula.withValues(alpha: 0.3)),
+                backgroundColor: AppTheme.tintedSurface(
+                  context,
+                  AppTheme.formula,
+                ),
+                side: BorderSide(
+                  color: AppTheme.formula.withValues(alpha: 0.3),
+                ),
                 onPressed: () {
                   final current = _formulaControllers[index].text;
                   _formulaControllers[index].text = '$current$op';
@@ -509,6 +722,10 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       _nameControllers.add(TextEditingController());
       _constantValueControllers.add(TextEditingController());
       _formulaControllers.add(TextEditingController());
+      _columnNameErrors.add(null);
+      _constantValueErrors.add(null);
+      _formulaErrors.add(null);
+      _newFieldToFocus = _nameControllers.last;
     });
   }
 
@@ -522,6 +739,9 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
         _constantValueControllers.removeAt(index);
         _formulaControllers[index].dispose();
         _formulaControllers.removeAt(index);
+        _columnNameErrors.removeAt(index);
+        _constantValueErrors.removeAt(index);
+        _formulaErrors.removeAt(index);
       });
     }
   }
@@ -530,33 +750,62 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     // Validasyon
     _tableName = _tableNameController.text.trim();
     if (_tableName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).tableNameEmpty)),
-      );
+      setState(() {
+        _tableNameError = AppLocalizations.of(context).tableNameEmpty;
+      });
       return;
     }
+
+    setState(() {
+      for (var i = 0; i < _columns.length; i++) {
+        _columnNameErrors[i] = null;
+        _constantValueErrors[i] = null;
+        _formulaErrors[i] = null;
+      }
+    });
 
     // Sütun isimlerini güncelle
     for (int i = 0; i < _columns.length; i++) {
       _columns[i].name = _nameControllers[i].text.trim();
-      
+
       if (_columns[i].name.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).columnNameEmpty(i + 1))),
-        );
+        setState(() {
+          _columnNameErrors[i] = AppLocalizations.of(
+            context,
+          ).columnNameEmpty(i + 1);
+        });
         return;
       }
-      
+
       // Yeni sütunlar için ek ayarları güncelle
       if (i >= _originalColumnCount) {
         if (_columns[i].isConstant) {
-          _columns[i].constantValue = double.tryParse(_constantValueControllers[i].text);
+          _columns[i].constantValue = double.tryParse(
+            _constantValueControllers[i].text,
+          );
         }
         if (_columns[i].isFormula) {
-          _columns[i].formula = _formulaControllers[i].text.trim().isEmpty 
-              ? null 
+          _columns[i].formula = _formulaControllers[i].text.trim().isEmpty
+              ? null
               : _formulaControllers[i].text.trim();
         }
+      }
+
+      if (_columns[i].isConstant && _columns[i].constantValue == null) {
+        setState(() {
+          _constantValueErrors[i] = AppLocalizations.of(
+            context,
+          ).defaultValueRequired(_columns[i].name);
+        });
+        return;
+      }
+      if (_columns[i].isFormula && _columns[i].formula == null) {
+        setState(() {
+          _formulaErrors[i] = AppLocalizations.of(
+            context,
+          ).formulaRequired(_columns[i].name);
+        });
+        return;
       }
     }
 
@@ -567,21 +816,19 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       _columns,
       _originalColumnCount,
     );
+    if (!mounted) return;
 
     if (success) {
+      final messenger = ScaffoldMessenger.of(context);
+      final message = AppLocalizations.of(context).tableStructureUpdated;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).tableStructureUpdated),
-          backgroundColor: Colors.green,
-        ),
+      messenger.showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: AppTheme.success),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).tableUpdateError),
-          backgroundColor: Colors.red,
-        ),
+      AppFeedback.showError(
+        context,
+        AppLocalizations.of(context).tableUpdateError,
       );
     }
   }

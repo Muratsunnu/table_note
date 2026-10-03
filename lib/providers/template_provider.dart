@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:table_note/models/tabel_model.dart';
 
 import '../services/storage_service.dart';
+import '../config/plan_limits.dart';
 
 class TemplateProvider extends ChangeNotifier {
   List<TemplateModel> _templates = [];
@@ -18,9 +19,9 @@ class TemplateProvider extends ChangeNotifier {
   Future<void> _loadTemplates() async {
     _isLoading = true;
     notifyListeners();
-    
+
     _templates = await StorageService.loadTemplates();
-    
+
     _isLoading = false;
     notifyListeners();
   }
@@ -30,13 +31,20 @@ class TemplateProvider extends ChangeNotifier {
   }
 
   // Template oluştur
-  Future<bool> createTemplate(String templateName, List<ColumnModel> columns) async {
+  Future<bool> createTemplate(
+    String templateName,
+    List<ColumnModel> columns, {
+    bool isPremium = false,
+  }) async {
     try {
+      if (!isPremium && _templates.length >= PlanLimits.freeTemplates) {
+        return false;
+      }
       final newTemplate = TemplateModel(
         templateName: templateName.trim(),
         columns: columns,
       );
-      
+
       _templates.add(newTemplate);
       await _saveTemplates();
       notifyListeners();
@@ -64,12 +72,20 @@ class TemplateProvider extends ChangeNotifier {
   }
 
   // Template güncelle
-  Future<bool> updateTemplate(int templateIndex, String newName, List<ColumnModel> newColumns) async {
+  Future<bool> updateTemplate(
+    int templateIndex,
+    String newName,
+    List<ColumnModel> newColumns,
+  ) async {
     try {
       if (templateIndex >= 0 && templateIndex < _templates.length) {
+        final oldTemplate = _templates[templateIndex];
         _templates[templateIndex] = TemplateModel(
+          id: oldTemplate.id,
           templateName: newName.trim(),
           columns: newColumns,
+          createdAt: oldTemplate.createdAt,
+          updatedAt: DateTime.now(),
         );
         await _saveTemplates();
         notifyListeners();

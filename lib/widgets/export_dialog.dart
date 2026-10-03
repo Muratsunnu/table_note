@@ -4,6 +4,7 @@ import '../providers/table_provider.dart';
 import '../services/export_service.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/app_feedback.dart';
 
 class ExportDialog extends StatefulWidget {
   const ExportDialog({Key? key}) : super(key: key);
@@ -28,10 +29,14 @@ class _ExportDialogState extends State<ExportDialog> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.lightBlue,
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.download_rounded, color: AppTheme.primaryBlue, size: 20),
+            child: const Icon(
+              Icons.download_rounded,
+              color: AppTheme.primaryBlue,
+              size: 20,
+            ),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -53,13 +58,18 @@ class _ExportDialogState extends State<ExportDialog> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.lightBlue,
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.table_chart_rounded, color: AppTheme.primaryBlue),
+                  const Icon(
+                    Icons.table_chart_rounded,
+                    color: AppTheme.primaryBlue,
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -67,17 +77,22 @@ class _ExportDialogState extends State<ExportDialog> {
                       children: [
                         Text(
                           table.tableName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
-                            color: AppTheme.textPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         SizedBox(height: 4),
                         Text(
-                          AppLocalizations.of(context).recordsAndColumns(table.rows.length, table.columns.length),
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
+                          AppLocalizations.of(context).recordsAndColumns(
+                            table.rows.length,
+                            table.columns.length,
+                          ),
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontSize: 13,
                           ),
                         ),
@@ -94,10 +109,7 @@ class _ExportDialogState extends State<ExportDialog> {
             if (_exportedFilePath == null) ...[
               Text(
                 AppLocalizations.of(context).selectFormat,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(height: 12),
 
@@ -127,19 +139,25 @@ class _ExportDialogState extends State<ExportDialog> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: AppTheme.tintedSurface(context, Colors.green),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green[200]!),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green[600], size: 48),
+                    Icon(
+                      Icons.check_circle,
+                      color: AppTheme.readableAccent(context, Colors.green),
+                      size: 48,
+                    ),
                     SizedBox(height: 12),
                     Text(
-                      AppLocalizations.of(context).fileCreated(_exportFormat!.toUpperCase()),
+                      AppLocalizations.of(
+                        context,
+                      ).fileCreated(_exportFormat!.toUpperCase()),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.green[800],
+                        color: AppTheme.readableAccent(context, Colors.green),
                         fontSize: 16,
                       ),
                     ),
@@ -148,11 +166,11 @@ class _ExportDialogState extends State<ExportDialog> {
                     // Paylaş butonu
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: _share,
                         icon: const Icon(Icons.share),
                         label: Text(AppLocalizations.of(context).shareWhatsApp),
-                        style: ElevatedButton.styleFrom(
+                        style: FilledButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -185,7 +203,9 @@ class _ExportDialogState extends State<ExportDialog> {
                           _exportFormat = null;
                         });
                       },
-                      child: Text(AppLocalizations.of(context).selectAnotherFormat),
+                      child: Text(
+                        AppLocalizations.of(context).selectAnotherFormat,
+                      ),
                     ),
                   ],
                 ),
@@ -202,7 +222,9 @@ class _ExportDialogState extends State<ExportDialog> {
                     SizedBox(height: 16),
                     Text(
                       AppLocalizations.of(context).creatingFile,
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -213,7 +235,11 @@ class _ExportDialogState extends State<ExportDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(_exportedFilePath != null ? AppLocalizations.of(context).close : AppLocalizations.of(context).cancel),
+          child: Text(
+            _exportedFilePath != null
+                ? AppLocalizations.of(context).close
+                : AppLocalizations.of(context).cancel,
+          ),
         ),
       ],
     );
@@ -234,7 +260,7 @@ class _ExportDialogState extends State<ExportDialog> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
+            border: Border.all(color: Theme.of(context).dividerColor),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -263,14 +289,18 @@ class _ExportDialogState extends State<ExportDialog> {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                size: 16,
+              ),
             ],
           ),
         ),
@@ -292,7 +322,11 @@ class _ExportDialogState extends State<ExportDialog> {
       if (format == 'csv') {
         filePath = await ExportService.exportToCsv(table);
       } else {
-        filePath = await ExportService.exportToPdf(table, columnSums: columnSums);
+        filePath = await ExportService.exportToPdf(
+          table,
+          loc: AppLocalizations.of(context),
+          columnSums: columnSums,
+        );
       }
 
       setState(() {
@@ -300,17 +334,12 @@ class _ExportDialogState extends State<ExportDialog> {
         _exportFormat = format;
         _isExporting = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _isExporting = false;
       });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hata: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+
+      AppFeedback.showError(context, AppLocalizations.of(context).exportFailed);
     }
   }
 
@@ -327,29 +356,16 @@ class _ExportDialogState extends State<ExportDialog> {
   Future<void> _saveToDevice() async {
     if (_exportedFilePath != null) {
       final savedPath = await ExportService.saveToDownloads(_exportedFilePath!);
-      
+
       if (savedPath != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(AppLocalizations.of(context).fileSaved(savedPath.split('/').last)),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
+        AppFeedback.showSuccess(
+          context,
+          AppLocalizations.of(context).fileSaved(savedPath.split('/').last),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Dosya kaydedilemedi. Depolama izni gerekebilir.'),
-            backgroundColor: Colors.red,
-          ),
+        AppFeedback.showError(
+          context,
+          AppLocalizations.of(context).fileSaveFailed,
         );
       }
     }

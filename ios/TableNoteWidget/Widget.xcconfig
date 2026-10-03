@@ -1,0 +1,2 @@
+// Keep the extension's version in sync with the Flutter application.
+#include "../Flutter/Generated.xcconfig"

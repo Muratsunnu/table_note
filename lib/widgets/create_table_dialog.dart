@@ -1,10 +1,21 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'form_field_reveal.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
 import '../providers/table_provider.dart';
+import '../providers/subscription_provider.dart';
 import '../providers/template_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/ux_localizations.dart';
+import '../services/form_draft_store.dart';
+import '../utils/app_feedback.dart';
+import 'form_draft_guard.dart';
 
 class CreateTableDialog extends StatefulWidget {
   const CreateTableDialog({Key? key}) : super(key: key);
@@ -14,8 +25,19 @@ class CreateTableDialog extends StatefulWidget {
 }
 
 class _CreateTableDialogState extends State<CreateTableDialog>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _tableNameController = TextEditingController();
+  final _tableNameFocus = FocusNode();
+  final _fieldReveal = FieldRevealController();
+  final _draft = FormDraftStore('create_table');
+  late final String _emptyDraft;
+  String? _lastDraftSnapshot;
+  bool _restoringDraft = true;
+  bool _restoredDraft = false;
+  bool _draftCaptureQueued = false;
+  bool _draftCompleted = false;
+  bool _isSaving = false;
+  String? _tableNameError;
   final List<ColumnModel> _columns = [ColumnModel(name: '')];
 
   // Controller listeleri
@@ -23,7 +45,25 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   final List<TextEditingController> _autoFillControllers = [];
   final List<TextEditingController> _constantValueControllers = [];
   final List<TextEditingController> _formulaControllers = [];
+  // TabBarView can retain the previous page during its transition. Keep its
+  // inputs alive until this form is disposed instead of guessing a frame delay.
+  final List<TextEditingController> _retiredControllers = [];
+  final List<FocusNode> _retiredFocusNodes = [];
   final List<bool> _showAutoFill = [];
+  final List<bool> _showAdvanced = [];
+  final List<GlobalKey> _columnKeys = [];
+  final List<FocusNode> _columnFocus = [];
+  final List<FocusNode> _constantFocus = [];
+  final List<FocusNode> _formulaFocus = [];
+  final List<String?> _columnNameErrors = [];
+  final List<String?> _constantValueErrors = [];
+  final List<String?> _formulaErrors = [];
+  final ScrollController _manualScrollController = ScrollController();
+
+  static const double _pullToAddThreshold = 72;
+  static const double _maxPullDistance = 96;
+  double _pullToAddDistance = 0;
+  bool _pullThresholdReached = false;
 
   late TabController _tabController;
 
@@ -31,51 +71,221 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addObserver(this);
     _initializeControllersForColumn(_columns[0]);
+    _tableNameController.addListener(_queueDraft);
+    _emptyDraft = jsonEncode(_draftSnapshot());
+    _lastDraftSnapshot = _emptyDraft;
+    unawaited(_restoreDraft());
   }
 
   void _initializeControllersForColumn(ColumnModel col) {
     _columnControllers.add(TextEditingController(text: col.name));
-    _autoFillControllers
-        .add(TextEditingController(text: col.autoFillOptions.join(', ')));
-    _constantValueControllers.add(TextEditingController(
-      text: col.constantValue?.toString() ?? '',
-    ));
+    _autoFillControllers.add(
+      TextEditingController(text: col.autoFillOptions.join(', ')),
+    );
+    _constantValueControllers.add(
+      TextEditingController(text: col.constantValue?.toString() ?? ''),
+    );
     _formulaControllers.add(TextEditingController(text: col.formula ?? ''));
     _showAutoFill.add(col.autoFillOptions.isNotEmpty);
+    _showAdvanced.add(false);
+    _columnKeys.add(GlobalKey());
+    _columnFocus.add(FocusNode());
+    _constantFocus.add(FocusNode());
+    _formulaFocus.add(FocusNode());
+    _columnControllers.last.addListener(_queueDraft);
+    _autoFillControllers.last.addListener(_queueDraft);
+    _constantValueControllers.last.addListener(_queueDraft);
+    _formulaControllers.last.addListener(_queueDraft);
+    _columnNameErrors.add(null);
+    _constantValueErrors.add(null);
+    _formulaErrors.add(null);
   }
 
   @override
   void dispose() {
+    _fieldReveal.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _persistDraft();
+    _draft.dispose();
     _tableNameController.dispose();
+    _tableNameFocus.dispose();
     _tabController.dispose();
+    _manualScrollController.dispose();
     for (var c in _columnControllers) c.dispose();
     for (var c in _autoFillControllers) c.dispose();
     for (var c in _constantValueControllers) c.dispose();
     for (var c in _formulaControllers) c.dispose();
+    for (final controller in _retiredControllers) {
+      controller.dispose();
+    }
+    for (final focus in [
+      ..._columnFocus,
+      ..._constantFocus,
+      ..._formulaFocus,
+      ..._retiredFocusNodes,
+    ]) {
+      focus.dispose();
+    }
     super.dispose();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      _persistDraft();
+      unawaited(_draft.flush());
+    }
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _queueDraft();
+  }
+
+  Map<String, dynamic> _draftSnapshot() => {
+    'name': _tableNameController.text,
+    'columns': List.generate(
+      _columns.length,
+      (i) => {
+        ..._columns[i].toJson(),
+        'name': _columnControllers[i].text,
+        'autoFillText': _autoFillControllers[i].text,
+        'constantText': _constantValueControllers[i].text,
+        'formula': _formulaControllers[i].text,
+      },
+    ),
+  };
+
+  void _queueDraft() {
+    if (_restoringDraft || _draftCompleted || _draftCaptureQueued) return;
+    _draftCaptureQueued = true;
+    scheduleMicrotask(() {
+      _draftCaptureQueued = false;
+      if (mounted) _persistDraft();
+    });
+  }
+
+  void _persistDraft() {
+    if (_restoringDraft || _draftCompleted) return;
+    final snapshot = _draftSnapshot();
+    final serialized = jsonEncode(snapshot);
+    if (serialized == _lastDraftSnapshot) return;
+    _lastDraftSnapshot = serialized;
+    if (serialized == _emptyDraft) {
+      unawaited(_draft.clear());
+    } else {
+      _draft.schedule(snapshot);
+    }
+  }
+
+  Future<void> _restoreDraft() async {
+    final data = await _draft.read();
+    if (!mounted) return;
+    if (data != null) {
+      try {
+        _applyDraft(data);
+        _restoredDraft = true;
+      } catch (_) {
+        _applyDraft(Map<String, dynamic>.from(jsonDecode(_emptyDraft)));
+      }
+    }
+    setState(() => _restoringDraft = false);
+  }
+
+  void _applyDraft(Map<String, dynamic> data) {
+    final columns = (data['columns'] as List)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+    if (columns.isEmpty) return;
+    final models = columns.map(ColumnModel.fromJson).toList();
+    _clearColumnControllers();
+    _tableNameController.text = data['name'] as String? ?? '';
+    _columns
+      ..clear()
+      ..addAll(models);
+    for (var i = 0; i < models.length; i++) {
+      _initializeControllersForColumn(models[i]);
+      _autoFillControllers[i].text =
+          columns[i]['autoFillText'] as String? ?? '';
+      _constantValueControllers[i].text =
+          columns[i]['constantText'] as String? ?? '';
+      _showAutoFill[i] = _autoFillControllers[i].text.isNotEmpty;
+    }
+  }
+
+  void _clearColumnControllers() {
+    _fieldReveal.dispose();
+    _retireColumnInputs(
+      [
+        ..._columnControllers,
+        ..._autoFillControllers,
+        ..._constantValueControllers,
+        ..._formulaControllers,
+      ],
+      [..._columnFocus, ..._constantFocus, ..._formulaFocus],
+    );
+    _columnControllers.clear();
+    _autoFillControllers.clear();
+    _constantValueControllers.clear();
+    _formulaControllers.clear();
+    _columnFocus.clear();
+    _constantFocus.clear();
+    _formulaFocus.clear();
+    _columnKeys.clear();
+    _showAutoFill.clear();
+    _showAdvanced.clear();
+    _columnNameErrors.clear();
+    _constantValueErrors.clear();
+    _formulaErrors.clear();
+  }
+
+  void _retireColumnInputs(
+    List<TextEditingController> controllers,
+    List<FocusNode> focusNodes,
+  ) {
+    for (final controller in controllers) {
+      controller.removeListener(_queueDraft);
+    }
+    for (final focus in focusNodes) {
+      if (focus.hasFocus) focus.unfocus();
+    }
+    _retiredControllers.addAll(controllers);
+    _retiredFocusNodes.addAll(focusNodes);
+  }
+
+  Future<void> _discardDraft() async {
+    _restoringDraft = true;
+    setState(() {
+      _applyDraft(Map<String, dynamic>.from(jsonDecode(_emptyDraft)));
+      _tableNameError = null;
+      _restoredDraft = false;
+      _lastDraftSnapshot = _emptyDraft;
+    });
+    await _draft.clear();
+    if (mounted) setState(() => _restoringDraft = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.95,
-        height: MediaQuery.of(context).size.height * 0.85,
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildManualCreateTab(),
-                  _buildTemplateTab(),
-                ],
+    return FormDraftGuard(
+      isSaving: _isSaving || _restoringDraft,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [_buildManualCreateTab(), _buildTemplateTab()],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -88,10 +298,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           colors: [AppTheme.darkBlue, AppTheme.primaryBlue],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
         ),
       ),
       child: Column(
@@ -106,8 +312,11 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.add_rounded,
-                      color: Colors.white, size: 24),
+                  child: const Icon(
+                    Icons.add_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -122,17 +331,20 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, color: Colors.white70),
-                  onPressed: () => Navigator.pop(context),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: _isSaving ? null : () => Navigator.pop(context),
                 ),
               ],
             ),
           ),
           Container(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             child: TabBar(
               controller: _tabController,
-              labelColor: AppTheme.primaryBlue,
-              unselectedLabelColor: AppTheme.textSecondary,
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: Theme.of(
+                context,
+              ).colorScheme.onSurfaceVariant,
               indicatorColor: AppTheme.primaryBlue,
               indicatorWeight: 3,
               tabs: [
@@ -147,79 +359,253 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   }
 
   Widget _buildManualCreateTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tablo adı
-          TextField(
-            controller: _tableNameController,
-            decoration: InputDecoration(
-              labelText: AppLocalizations.of(context).tableName,
-              hintText: AppLocalizations.of(context).tableNameHint,
-              prefixIcon: const Icon(Icons.table_chart_rounded),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    final colorScheme = Theme.of(context).colorScheme;
+    final revealHeight = _pullToAddDistance.clamp(0.0, _maxPullDistance);
+    final revealProgress = (revealHeight / _pullToAddThreshold).clamp(0.0, 1.0);
+    final revealDuration = revealHeight == 0
+        ? const Duration(milliseconds: 160)
+        : Duration.zero;
+
+    return Column(
+      children: [
+        Expanded(
+          child: ClipRect(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: _handleManualScrollNotification,
+                    child: FormFocusScrollView(
+                      controller: _manualScrollController,
+                      physics: const ClampingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_restoredDraft) ...[
+                            _buildDraftNotice(),
+                            const SizedBox(height: 12),
+                          ],
+                          TextField(
+                            controller: _tableNameController,
+                            focusNode: _tableNameFocus,
+                            onChanged: (_) {
+                              if (_tableNameError != null) {
+                                setState(() => _tableNameError = null);
+                              }
+                            },
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context).tableName,
+                              hintText: AppLocalizations.of(
+                                context,
+                              ).tableNameHint,
+                              errorText: _tableNameError,
+                              prefixIcon: const Icon(Icons.table_chart_rounded),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.view_column_rounded,
+                                  size: 18,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  AppLocalizations.of(context).columns,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(
+                                  Icons.help_outline_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(AppLocalizations.of(context).help),
+                                onPressed: _showHelpDialog,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ..._buildColumnWidgets(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                AnimatedPositioned(
+                  duration: revealDuration,
+                  curve: Curves.easeOutCubic,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: revealHeight,
+                  child: IgnorePointer(
+                    child: ColoredBox(
+                      color: colorScheme.primary,
+                      child: AnimatedOpacity(
+                        duration: revealDuration,
+                        opacity: revealProgress,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedSlide(
+                              duration: const Duration(milliseconds: 120),
+                              offset: _pullThresholdReached
+                                  ? const Offset(0, -0.12)
+                                  : Offset.zero,
+                              child: Icon(
+                                Icons.keyboard_arrow_up_rounded,
+                                color: colorScheme.onPrimary,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              AppLocalizations.of(context).addColumn,
+                              style: TextStyle(
+                                color: colorScheme.onPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
+        ),
+        _buildManualFooter(),
+      ],
+    );
+  }
 
-          // Sütunlar başlığı
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightBlue,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(Icons.view_column_rounded,
-                    size: 18, color: AppTheme.primaryBlue),
-              ),
-              SizedBox(width: 10),
-              Text(
-                AppLocalizations.of(context).columns,
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                icon: const Icon(Icons.help_outline_rounded, size: 18),
-                label: Text(AppLocalizations.of(context).help),
-                onPressed: _showHelpDialog,
-              ),
-            ],
+  Widget _buildManualFooter() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.add),
+              label: Text(AppLocalizations.of(context).addColumn),
+              onPressed: _isSaving ? null : _addColumn,
+            ),
           ),
-          const SizedBox(height: 8),
-
-          // Sütun kartları
-          ..._buildColumnWidgets(),
-
-          const SizedBox(height: 16),
-
-          // Alt butonlar
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: Text(AppLocalizations.of(context).addColumn),
-                  onPressed: _addColumn,
-                ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton.icon(
+              icon: _isSaving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check),
+              label: Text(
+                _isSaving
+                    ? AppLocalizations.of(context).savingProgress
+                    : AppLocalizations.of(context).createTable,
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.check),
-                  label: Text(AppLocalizations.of(context).createTable),
-                  onPressed: _createTable,
-                ),
-              ),
-            ],
+              onPressed: _isSaving ? null : _createTable,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildDraftNotice() {
+    final loc = AppLocalizations.of(context);
+    return Material(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        child: Row(
+          children: [
+            const Icon(Icons.restore_rounded, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text(loc.draftRestored)),
+            TextButton(onPressed: _discardDraft, child: Text(loc.discardDraft)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _handleManualScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+
+    if (notification is OverscrollNotification &&
+        notification.dragDetails != null &&
+        notification.metrics.extentAfter <= 0 &&
+        notification.overscroll > 0) {
+      final nextDistance = (_pullToAddDistance + notification.overscroll).clamp(
+        0.0,
+        _maxPullDistance,
+      );
+      final reached = nextDistance >= _pullToAddThreshold;
+
+      if (reached && !_pullThresholdReached) {
+        HapticFeedback.selectionClick();
+      }
+      setState(() {
+        _pullToAddDistance = nextDistance;
+        _pullThresholdReached = reached;
+      });
+    } else if (notification is ScrollUpdateNotification &&
+        _pullToAddDistance > 0 &&
+        (notification.scrollDelta ?? 0) < 0) {
+      setState(() {
+        _pullToAddDistance = (_pullToAddDistance + notification.scrollDelta!)
+            .clamp(0.0, _maxPullDistance);
+        _pullThresholdReached = _pullToAddDistance >= _pullToAddThreshold;
+      });
+    } else if (notification is ScrollEndNotification ||
+        notification is UserScrollNotification &&
+            notification.direction == ScrollDirection.idle) {
+      _finishPullToAdd();
+    }
+
+    return false;
+  }
+
+  void _finishPullToAdd() {
+    if (_pullToAddDistance == 0) return;
+    final shouldAdd = _pullThresholdReached;
+    setState(() {
+      _pullToAddDistance = 0;
+      _pullThresholdReached = false;
+    });
+    if (shouldAdd) _addColumn();
   }
 
   List<Widget> _buildColumnWidgets() {
@@ -233,8 +619,9 @@ class _CreateTableDialogState extends State<CreateTableDialog>
       }
 
       return Card(
+        key: _columnKeys[index],
         margin: const EdgeInsets.symmetric(vertical: 6),
-        elevation: 2,
+        elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -247,35 +634,72 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                   Expanded(
                     child: TextField(
                       controller: _columnControllers[index],
+                      focusNode: _columnFocus[index],
                       decoration: InputDecoration(
-                        labelText:
-                            AppLocalizations.of(context).columnN(index + 1),
+                        labelText: AppLocalizations.of(
+                          context,
+                        ).columnN(index + 1),
                         hintText: AppLocalizations.of(context).columnName,
+                        errorText: _columnNameErrors[index],
                         border: const OutlineInputBorder(),
                         prefixIcon: _getColumnTypeIcon(column.columnType),
                       ),
                       onChanged: (value) {
-                        setState(() => column.name = value);
+                        setState(() {
+                          column.name = value;
+                          _columnNameErrors[index] = null;
+                        });
                       },
                     ),
                   ),
                   if (_columns.length > 1) ...[
                     SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(Icons.delete, color: AppTheme.error),
                       onPressed: () => _removeColumn(index),
                       tooltip: AppLocalizations.of(context).deleteColumn,
                     ),
                   ],
                 ],
               ),
-              const SizedBox(height: 12),
-
-              // Sütun tipi seçimi
-              _buildColumnTypeSelector(index, column),
-
-              // Tipe göre ek ayarlar
-              _buildColumnTypeSettings(index, column),
+              const SizedBox(height: 4),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      _columnTypeLabel(column.columnType),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => setState(
+                      () => _showAdvanced[index] = !_showAdvanced[index],
+                    ),
+                    icon: Icon(
+                      _showAdvanced[index]
+                          ? Icons.expand_less_rounded
+                          : Icons.tune_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _showAdvanced[index]
+                          ? AppLocalizations.of(context).hideAdvancedSettings
+                          : AppLocalizations.of(context).advancedSettings,
+                    ),
+                  ),
+                ],
+              ),
+              if (_showAdvanced[index]) ...[
+                const SizedBox(height: 8),
+                _buildColumnTypeSelector(index, column),
+                _buildColumnTypeSettings(index, column),
+              ],
             ],
           ),
         ),
@@ -284,27 +708,40 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   }
 
   Widget _getColumnTypeIcon(ColumnType type) {
+    final color = Theme.of(context).colorScheme.primary;
     switch (type) {
       case ColumnType.normal:
-        return const Icon(Icons.edit, color: Colors.blue);
+        return Icon(Icons.edit_outlined, color: color);
       case ColumnType.constant:
-        return const Icon(Icons.pin, color: Colors.orange);
+        return Icon(Icons.pin_outlined, color: color);
       case ColumnType.formula:
-        return const Icon(Icons.functions, color: Colors.purple);
+        return Icon(Icons.functions, color: color);
       case ColumnType.date:
-        return const Icon(Icons.calendar_today, color: Colors.teal);
+        return Icon(Icons.calendar_today_outlined, color: color);
       case ColumnType.time:
-        return const Icon(Icons.access_time, color: Colors.indigo);
+        return Icon(Icons.access_time, color: color);
       case ColumnType.autoNumber:
-        return const Icon(Icons.format_list_numbered, color: Colors.brown);
+        return Icon(Icons.format_list_numbered, color: color);
     }
+  }
+
+  String _columnTypeLabel(ColumnType type) {
+    final loc = AppLocalizations.of(context);
+    return switch (type) {
+      ColumnType.normal => loc.normal,
+      ColumnType.constant => loc.constantValue,
+      ColumnType.formula => loc.formula,
+      ColumnType.date => loc.date,
+      ColumnType.time => loc.time,
+      ColumnType.autoNumber => loc.autoNumber,
+    };
   }
 
   Widget _buildColumnTypeSelector(int index, ColumnModel column) {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -398,15 +835,23 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: isSelected ? Colors.white : color),
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : AppTheme.readableAccent(context, color),
+            ),
             const SizedBox(width: 4),
             Text(label),
           ],
         ),
-        selectedColor: color,
-        checkmarkColor: Colors.white,
+        selectedColor: Theme.of(context).colorScheme.primary,
+        checkmarkColor: Theme.of(context).colorScheme.onPrimary,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
+          color: isSelected
+              ? Theme.of(context).colorScheme.onPrimary
+              : Theme.of(context).colorScheme.onSurface,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
         onSelected: (selected) {
@@ -487,7 +932,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   setState(() {
-                    column.autoFillOptions.clear();
+                    column.autoFillOptions = [];
                     _autoFillControllers[index].clear();
                     _showAutoFill[index] = false;
                   });
@@ -522,21 +967,30 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.orange[50],
+            color: AppTheme.tintedSurface(context, Colors.orange),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.orange[200]!),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline, size: 18, color: Colors.orange[700]),
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: AppTheme.readableAccent(context, Colors.orange),
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       AppLocalizations.of(context).defaultValueInfo,
-                      style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ],
@@ -544,16 +998,22 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               SizedBox(height: 12),
               TextField(
                 controller: _constantValueControllers[index],
+                focusNode: _constantFocus[index],
                 decoration: InputDecoration(
                   labelText: AppLocalizations.of(context).defaultValue,
                   hintText: AppLocalizations.of(context).defaultValueHint,
+                  errorText: _constantValueErrors[index],
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.pin),
                 ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 onChanged: (value) {
-                  column.constantValue = double.tryParse(value);
+                  setState(() {
+                    column.constantValue = _parseConstant(value);
+                    _constantValueErrors[index] = null;
+                  });
                 },
               ),
             ],
@@ -579,21 +1039,30 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.purple[50],
+            color: AppTheme.tintedSurface(context, Colors.purple),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.purple[200]!),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline, size: 18, color: Colors.purple[700]),
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: AppTheme.readableAccent(context, Colors.purple),
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       AppLocalizations.of(context).formulaAutoCalcInfo,
-                      style: TextStyle(fontSize: 12, color: Colors.purple[800]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ],
@@ -603,16 +1072,21 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               // Formül girişi
               TextField(
                 controller: _formulaControllers[index],
+                focusNode: _formulaFocus[index],
                 decoration: InputDecoration(
                   labelText: AppLocalizations.of(context).formulaLabel,
                   hintText: AppLocalizations.of(context).formulaHint,
+                  errorText: _formulaErrors[index],
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.functions),
                   helperText: AppLocalizations.of(context).operationsHint,
                   helperMaxLines: 2,
                 ),
                 onChanged: (value) {
-                  column.formula = value;
+                  setState(() {
+                    column.formula = value;
+                    _formulaErrors[index] = null;
+                  });
                 },
               ),
               const SizedBox(height: 12),
@@ -638,14 +1112,17 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       ),
                       label: Text(
                         col.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
-                      backgroundColor: AppTheme.lightBlue,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
                       side: BorderSide(
-                          color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
+                        color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                      ),
                       onPressed: () {
                         final currentText = _formulaControllers[index].text;
                         _formulaControllers[index].text =
@@ -668,20 +1145,48 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _buildOperatorChip(index, column, '+',
-                      AppLocalizations.of(context).addition),
-                  _buildOperatorChip(index, column, '-',
-                      AppLocalizations.of(context).subtraction),
-                  _buildOperatorChip(index, column, '*',
-                      AppLocalizations.of(context).multiplication),
-                  _buildOperatorChip(index, column, '/',
-                      AppLocalizations.of(context).division),
-                  _buildOperatorChip(index, column, '%',
-                      AppLocalizations.of(context).percentage),
-                  _buildOperatorChip(index, column, '(',
-                      AppLocalizations.of(context).openParen),
-                  _buildOperatorChip(index, column, ')',
-                      AppLocalizations.of(context).closeParen),
+                  _buildOperatorChip(
+                    index,
+                    column,
+                    '+',
+                    AppLocalizations.of(context).addition,
+                  ),
+                  _buildOperatorChip(
+                    index,
+                    column,
+                    '-',
+                    AppLocalizations.of(context).subtraction,
+                  ),
+                  _buildOperatorChip(
+                    index,
+                    column,
+                    '*',
+                    AppLocalizations.of(context).multiplication,
+                  ),
+                  _buildOperatorChip(
+                    index,
+                    column,
+                    '/',
+                    AppLocalizations.of(context).division,
+                  ),
+                  _buildOperatorChip(
+                    index,
+                    column,
+                    '%',
+                    AppLocalizations.of(context).percentage,
+                  ),
+                  _buildOperatorChip(
+                    index,
+                    column,
+                    '(',
+                    AppLocalizations.of(context).openParen,
+                  ),
+                  _buildOperatorChip(
+                    index,
+                    column,
+                    ')',
+                    AppLocalizations.of(context).closeParen,
+                  ),
                 ],
               ),
             ],
@@ -692,19 +1197,23 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   }
 
   Widget _buildOperatorChip(
-      int index, ColumnModel column, String op, String tooltip) {
+    int index,
+    ColumnModel column,
+    String op,
+    String tooltip,
+  ) {
     return Tooltip(
       message: tooltip,
       child: ActionChip(
         label: Text(
           op,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: AppTheme.formula,
+            color: AppTheme.readableAccent(context, AppTheme.formula),
           ),
         ),
-        backgroundColor: AppTheme.formulaLight,
+        backgroundColor: AppTheme.tintedSurface(context, AppTheme.formula),
         side: BorderSide(color: AppTheme.formula.withValues(alpha: 0.3)),
         onPressed: () {
           final currentText = _formulaControllers[index].text;
@@ -723,13 +1232,18 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.teal[50],
+            color: AppTheme.tintedSurface(context, Colors.teal),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.teal[200]!),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.calendar_today, color: Colors.teal[700]),
+              Icon(
+                Icons.calendar_today,
+                color: AppTheme.readableAccent(context, Colors.teal),
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -739,7 +1253,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       AppLocalizations.of(context).autoDate,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.teal[800],
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     SizedBox(height: 4),
@@ -747,23 +1261,26 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       AppLocalizations.of(context).autoDateDesc,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.teal[700],
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.teal[100],
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        AppLocalizations.of(context)
-                            .example(_getCurrentDateFormatted()),
+                        AppLocalizations.of(
+                          context,
+                        ).example(_getCurrentDateFormatted()),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: Colors.teal[900],
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -785,13 +1302,18 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.indigo[50],
+            color: AppTheme.tintedSurface(context, Colors.indigo),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.indigo[200]!),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.access_time, color: Colors.indigo[700]),
+              Icon(
+                Icons.access_time,
+                color: AppTheme.readableAccent(context, Colors.indigo),
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -801,7 +1323,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       AppLocalizations.of(context).autoTime,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo[800],
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     SizedBox(height: 4),
@@ -809,23 +1331,26 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       AppLocalizations.of(context).autoTimeDesc,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.indigo[700],
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.indigo[100],
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        AppLocalizations.of(context)
-                            .example(_getCurrentTimeFormatted()),
+                        AppLocalizations.of(
+                          context,
+                        ).example(_getCurrentTimeFormatted()),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: Colors.indigo[900],
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -847,13 +1372,18 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.brown[50],
+            color: AppTheme.tintedSurface(context, Colors.brown),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.brown[200]!),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.format_list_numbered, color: Colors.brown[700]),
+              Icon(
+                Icons.format_list_numbered,
+                color: AppTheme.readableAccent(context, Colors.brown),
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -863,7 +1393,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       AppLocalizations.of(context).autoNumberTitle,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.brown[800],
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     SizedBox(height: 4),
@@ -871,22 +1401,24 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                       AppLocalizations.of(context).autoNumberDesc,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.brown[700],
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.brown[100],
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         AppLocalizations.of(context).example('1, 2, 3, 4...'),
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: Colors.brown[900],
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -911,40 +1443,53 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   }
 
   void _addColumn() {
+    if (_isSaving) return;
     setState(() {
       final newColumn = ColumnModel(name: '');
       _columns.add(newColumn);
       _initializeControllersForColumn(newColumn);
     });
+    _revealColumn(_columns.length - 1, _columnFocus.last);
   }
 
   void _removeColumn(int index) {
     setState(() {
       _columns.removeAt(index);
-      _columnControllers[index].dispose();
-      _columnControllers.removeAt(index);
-      _autoFillControllers[index].dispose();
-      _autoFillControllers.removeAt(index);
-      _constantValueControllers[index].dispose();
-      _constantValueControllers.removeAt(index);
-      _formulaControllers[index].dispose();
-      _formulaControllers.removeAt(index);
+      _retireColumnInputs(
+        [
+          _columnControllers.removeAt(index),
+          _autoFillControllers.removeAt(index),
+          _constantValueControllers.removeAt(index),
+          _formulaControllers.removeAt(index),
+        ],
+        [
+          _columnFocus.removeAt(index),
+          _constantFocus.removeAt(index),
+          _formulaFocus.removeAt(index),
+        ],
+      );
+      _columnKeys.removeAt(index);
+      _showAdvanced.removeAt(index);
       _showAutoFill.removeAt(index);
+      _columnNameErrors.removeAt(index);
+      _constantValueErrors.removeAt(index);
+      _formulaErrors.removeAt(index);
     });
   }
 
   Future<void> _createTable() async {
+    if (_isSaving || _restoringDraft) return;
     // Controller'lardan verileri senkronize et
     for (int i = 0; i < _columns.length; i++) {
       _columns[i].name = _columnControllers[i].text.trim();
-      _columns[i].autoFillOptions = _autoFillControllers[i]
-          .text
+      _columns[i].autoFillOptions = _autoFillControllers[i].text
           .split(',')
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
-      _columns[i].constantValue =
-          double.tryParse(_constantValueControllers[i].text);
+      _columns[i].constantValue = _parseConstant(
+        _constantValueControllers[i].text,
+      );
       _columns[i].formula = _formulaControllers[i].text.trim().isEmpty
           ? null
           : _formulaControllers[i].text.trim();
@@ -954,40 +1499,111 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
     // Validasyon
     if (tableName.isEmpty) {
-      _showErrorSnackBar(AppLocalizations.of(context).tableNameEmpty);
+      setState(() {
+        _tableNameError = AppLocalizations.of(context).tableNameEmpty;
+      });
+      _tableNameFocus.requestFocus();
+      if (_manualScrollController.hasClients) {
+        _manualScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      }
       return;
     }
 
-    final validColumns = _columns.where((col) => col.name.isNotEmpty).toList();
+    setState(() {
+      for (var i = 0; i < _columns.length; i++) {
+        _columnNameErrors[i] = null;
+        _constantValueErrors[i] = null;
+        _formulaErrors[i] = null;
+      }
+    });
 
-    if (validColumns.isEmpty) {
-      _showErrorSnackBar(AppLocalizations.of(context).atLeastOneColumn);
+    final unnamedIndex = _columns.indexWhere((col) => col.name.isEmpty);
+    if (unnamedIndex != -1) {
+      setState(() {
+        _columnNameErrors[unnamedIndex] = AppLocalizations.of(
+          context,
+        ).columnNameEmpty(unnamedIndex + 1);
+      });
+      _revealColumn(unnamedIndex, _columnFocus[unnamedIndex]);
       return;
     }
+
+    final validColumns = _columns;
 
     // Formül validasyonu
-    for (final col in validColumns) {
+    for (var i = 0; i < validColumns.length; i++) {
+      final col = validColumns[i];
       if (col.isFormula && (col.formula == null || col.formula!.isEmpty)) {
-        _showErrorSnackBar(
-            AppLocalizations.of(context).formulaRequired(col.name));
+        setState(() {
+          _formulaErrors[i] = AppLocalizations.of(
+            context,
+          ).formulaRequired(col.name);
+          _showAdvanced[i] = true;
+        });
+        _revealColumn(i, _formulaFocus[i]);
         return;
       }
       if (col.isConstant && col.constantValue == null) {
-        _showErrorSnackBar(
-            AppLocalizations.of(context).defaultValueRequired(col.name));
+        setState(() {
+          _constantValueErrors[i] = AppLocalizations.of(
+            context,
+          ).defaultValueRequired(col.name);
+          _showAdvanced[i] = true;
+        });
+        _revealColumn(i, _constantFocus[i]);
         return;
       }
     }
 
     // Tablo oluştur
     final provider = Provider.of<TableProvider>(context, listen: false);
-    final success = await provider.createTable(tableName, validColumns);
-
-    if (success) {
-      Navigator.pop(context);
-    } else {
-      _showErrorSnackBar(AppLocalizations.of(context).tableCreateFailed);
+    final isPremium = context.read<SubscriptionProvider>().isPremium;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _isSaving = true);
+    try {
+      final success = await provider.createTable(
+        tableName,
+        validColumns,
+        isPremium: isPremium,
+      );
+      if (!mounted) return;
+      if (success) {
+        _draftCompleted = true;
+        await _draft.clear();
+        if (mounted) Navigator.pop(context);
+      } else {
+        _showErrorSnackBar(AppLocalizations.of(context).tableCreateFailed);
+      }
+    } catch (_) {
+      if (mounted)
+        _showErrorSnackBar(AppLocalizations.of(context).tableCreateFailed);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  double? _parseConstant(String text) {
+    final value = double.tryParse(text.replaceAll(',', '.'));
+    return value != null && value.isFinite ? value : null;
+  }
+
+  void _revealColumn(int index, FocusNode focus) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          index >= _columnKeys.length ||
+          ![
+            ..._columnFocus,
+            ..._constantFocus,
+            ..._formulaFocus,
+          ].contains(focus)) {
+        return;
+      }
+      _fieldReveal.reveal(focus);
+    });
   }
 
   Widget _buildTemplateTab() {
@@ -1004,11 +1620,18 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.article_outlined, size: 60, color: Colors.grey[400]),
+                  Icon(
+                    Icons.article_outlined,
+                    size: 60,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     AppLocalizations.of(context).noTemplatesYet,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
@@ -1031,15 +1654,23 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.blue[100],
-                  child: Icon(Icons.table_chart, color: Colors.blue[700]),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.table_chart,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 title: Text(
                   template.templateName,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text(AppLocalizations.of(context)
-                    .nColumns(template.columns.length)),
+                subtitle: Text(
+                  AppLocalizations.of(
+                    context,
+                  ).nColumns(template.columns.length),
+                ),
                 onTap: () => _createTableFromTemplate(template),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               ),
@@ -1055,15 +1686,8 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     // Kullanıcı düzenleyip tek "Oluştur" butonuyla tabloyu oluşturur.
     setState(() {
       // Eski controller'ları temizle
-      for (var c in _columnControllers) c.dispose();
-      for (var c in _autoFillControllers) c.dispose();
-      for (var c in _constantValueControllers) c.dispose();
-      for (var c in _formulaControllers) c.dispose();
-      _columnControllers.clear();
-      _autoFillControllers.clear();
-      _constantValueControllers.clear();
-      _formulaControllers.clear();
-      _showAutoFill.clear();
+      _clearColumnControllers();
+      _tableNameError = null;
 
       // Şablon verisini yükle
       _tableNameController.text = template.templateName;
@@ -1083,9 +1707,12 @@ class _CreateTableDialogState extends State<CreateTableDialog>
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.help_outline, color: Colors.blue[700]),
+            Icon(
+              Icons.help_outline,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             SizedBox(width: 8),
-            Text(AppLocalizations.of(context).columnTypes),
+            Expanded(child: Text(AppLocalizations.of(context).columnTypes)),
           ],
         ),
         content: SingleChildScrollView(
@@ -1111,28 +1738,30 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 icon: Icons.functions,
                 color: Colors.purple,
                 title: AppLocalizations.of(context).formulaColumnTitle,
-                description:
-                    'Diğer sütunlardan otomatik hesaplanır. Desteklenen işlemler:\n'
-                    '• + (toplama)\n'
-                    '• - (çıkarma)\n'
-                    '• * (çarpma)\n'
-                    '• / (bölme)\n'
-                    '• % (yüzde: {Fiyat}%18 = Fiyatın %18\'i)',
+                description: AppLocalizations.of(context).formulaColumnDesc,
               ),
               const Divider(),
               SizedBox(height: 8),
               Text(
                 AppLocalizations.of(context).exampleFormulas,
                 style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
               SizedBox(height: 8),
-              _buildFormulaExample('{Kg}*{Birim Fiyat}',
-                  AppLocalizations.of(context).multiplyKgPrice),
               _buildFormulaExample(
-                  '{Fiyat}+{Fiyat}%18', AppLocalizations.of(context).priceVat),
+                '{Kg}*{Birim Fiyat}',
+                AppLocalizations.of(context).multiplyKgPrice,
+              ),
               _buildFormulaExample(
-                  '{Brüt}-{Dara}', AppLocalizations.of(context).netWeight),
+                '{Fiyat}+{Fiyat}%18',
+                AppLocalizations.of(context).priceVat,
+              ),
+              _buildFormulaExample(
+                '{Brüt}-{Dara}',
+                AppLocalizations.of(context).netWeight,
+              ),
             ],
           ),
         ),
@@ -1157,18 +1786,24 @@ class _CreateTableDialogState extends State<CreateTableDialog>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
+          Icon(icon, color: AppTheme.readableAccent(context, color), size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, color: color)),
+                Text(
+                  title,
+                  style: TextStyle(fontWeight: FontWeight.bold, color: color),
+                ),
                 const SizedBox(height: 4),
-                Text(description,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1185,7 +1820,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.purple[50],
+              color: AppTheme.tintedSurface(context, Colors.purple),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -1193,7 +1828,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
               style: TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 12,
-                color: Colors.purple[700],
+                color: AppTheme.readableAccent(context, Colors.purple),
               ),
             ),
           ),
@@ -1201,7 +1836,10 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           Expanded(
             child: Text(
               description,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -1210,8 +1848,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    AppFeedback.showError(context, message);
   }
 }

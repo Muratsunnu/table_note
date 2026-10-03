@@ -3,7 +3,9 @@ import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 
 class EmptyStateWidget extends StatelessWidget {
-  const EmptyStateWidget({Key? key}) : super(key: key);
+  final VoidCallback? onCreate;
+
+  const EmptyStateWidget({super.key, this.onCreate});
 
   @override
   Widget build(BuildContext context) {
@@ -16,8 +18,8 @@ class EmptyStateWidget extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: AppTheme.lightBlue,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -29,33 +31,27 @@ class EmptyStateWidget extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               loc.welcome,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               loc.createFirstTable,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.menu_rounded, size: 18, color: AppTheme.textSecondary),
-                const SizedBox(width: 6),
-                Text(
-                  loc.openMenuToCreate,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                ),
-              ],
+            FilledButton.icon(
+              onPressed: onCreate,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(loc.createTable),
             ),
           ],
         ),
