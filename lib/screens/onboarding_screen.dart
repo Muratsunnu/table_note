@@ -51,7 +51,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         description: loc.onboardingOrganizeDescription,
       ),
       _OnboardingPage(
-        icon: Icons.offline_bolt_rounded,
+        icon: Icons.wifi_off_rounded,
         color: AppTheme.teal,
         title: loc.onboardingOfflineTitle,
         description: loc.onboardingOfflineDescription,
@@ -61,7 +61,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         color: const Color(0xFFF59E0B),
         title: loc.onboardingPremiumTitle,
         description: loc.onboardingPremiumDescription,
-        badge: loc.onboardingTrialBadge,
       ),
     ];
 
@@ -146,14 +145,12 @@ class _OnboardingPage extends StatelessWidget {
   final Color color;
   final String title;
   final String description;
-  final String? badge;
 
   const _OnboardingPage({
     required this.icon,
     required this.color,
     required this.title,
     required this.description,
-    this.badge,
   });
 
   @override
@@ -177,28 +174,6 @@ class _OnboardingPage extends StatelessWidget {
                   child: Icon(icon, size: 72, color: color),
                 ),
                 const SizedBox(height: 36),
-                if (badge != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    child: Text(
-                      badge!,
-                      style: TextStyle(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSecondaryContainer,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                ],
                 Text(
                   title,
                   textAlign: TextAlign.center,

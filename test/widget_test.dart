@@ -28,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(PageView), findsOneWidget);
-    expect(find.text('Kayıtlarını Düzenle'), findsOneWidget);
+    expect(find.text('Kendi Defterini Tasarla'), findsOneWidget);
     expect(find.text('Atla'), findsOneWidget);
   });
 }

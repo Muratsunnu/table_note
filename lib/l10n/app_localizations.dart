@@ -60,7 +60,6 @@ class AppLocalizations {
   String get onboardingOfflineDescription => _t('onboardingOfflineDescription');
   String get onboardingPremiumTitle => _t('onboardingPremiumTitle');
   String get onboardingPremiumDescription => _t('onboardingPremiumDescription');
-  String get onboardingTrialBadge => _t('onboardingTrialBadge');
   String get premium => _t('premium');
   String get unlockPremium => _t('unlockPremium');
   String get premiumDescription => _t('premiumDescription');
@@ -557,18 +556,18 @@ class AppLocalizations {
     'menu': 'Menü',
     'openMenuToCreate': 'Yeni tablo veya çetele için menüyü açın',
     'skip': 'Atla',
-    'continueLabel': 'Devam Et',
+    'continueLabel': 'İleri',
     'startUsing': 'Kullanmaya Başla',
-    'onboardingOrganizeTitle': 'Kayıtlarını Düzenle',
+    'onboardingOrganizeTitle': 'Kendi Defterini Tasarla',
     'onboardingOrganizeDescription':
-        'Tablolar, çeteleler ve şablonlarla günlük kayıtlarını tek yerde tut.',
-    'onboardingOfflineTitle': 'İnternetsiz de Yanında',
+        'Sütunları kendin belirle, günlük kayıtlarını ve çeteleleri kolayca tut.',
+    'onboardingOfflineTitle': 'İnternetsiz de Çalışır',
     'onboardingOfflineDescription':
-        'Temel özellikleri bağlantı olmadan kullan. Verilerin cihazında kalır.',
-    'onboardingPremiumTitle': 'Daha Fazlasını Yap',
+        'Her yerde internetsiz kullanmaya devam et, bilgilerin telefonunda '
+        'güvende kalsın.',
+    'onboardingPremiumTitle': 'Sınırları Ortadan Kaldır',
     'onboardingPremiumDescription':
-        'Sesli doldurma, bulut yedekleme, paylaşım ve gelişmiş araçlara eriş.',
-    'onboardingTrialBadge': '7 GÜN ÜCRETSİZ',
+        'Sesle kayıt gir, tabloları ortak kullan ve verilerini buluta yedekle.',
     'premium': 'Premium',
     'unlockPremium': 'Table Note Premium',
     'premiumDescription':
@@ -1053,18 +1052,17 @@ class AppLocalizations {
     'menu': 'Menu',
     'openMenuToCreate': 'Open the menu to create a table or tally',
     'skip': 'Skip',
-    'continueLabel': 'Continue',
-    'startUsing': 'Start Using',
-    'onboardingOrganizeTitle': 'Organize Your Records',
+    'continueLabel': 'Next',
+    'startUsing': 'Get Started',
+    'onboardingOrganizeTitle': 'Create Your Notebook',
     'onboardingOrganizeDescription':
-        'Keep daily records together with tables, tallies, and templates.',
-    'onboardingOfflineTitle': 'Ready Offline',
+        'Set your own columns, track daily records and tallies easily.',
+    'onboardingOfflineTitle': 'Works Without Internet',
     'onboardingOfflineDescription':
-        'Use core features without a connection. Your data stays on your device.',
-    'onboardingPremiumTitle': 'Do More',
+        'Keep using it offline anywhere, your data stays safe on your phone.',
+    'onboardingPremiumTitle': 'Unlock Premium Features',
     'onboardingPremiumDescription':
-        'Access voice entry, cloud backup, sharing, and advanced tools.',
-    'onboardingTrialBadge': '7 DAYS FREE',
+        'Add records by voice, share tables and backup to the cloud.',
     'premium': 'Premium',
     'unlockPremium': 'Table Note Premium',
     'premiumDescription':
