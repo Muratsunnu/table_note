@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
+import '../widgets/onboarding_previews.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final Future<void> Function() onComplete;
@@ -46,12 +47,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final pages = [
       _OnboardingPage(
         icon: Icons.table_chart_rounded,
+        preview: const OnboardingTablePreview(),
         color: AppTheme.primaryBlue,
         title: loc.onboardingOrganizeTitle,
         description: loc.onboardingOrganizeDescription,
       ),
       _OnboardingPage(
         icon: Icons.wifi_off_rounded,
+        preview: const OnboardingTallyPreview(),
         color: AppTheme.teal,
         title: loc.onboardingOfflineTitle,
         description: loc.onboardingOfflineDescription,
@@ -146,11 +149,16 @@ class _OnboardingPage extends StatelessWidget {
   final String title;
   final String description;
 
+  /// Verilirse yuvarlak ikonun yerine bu cizim gosterilir. Ornek tablo ve
+  /// cetele, uygulamanin ne yaptigini bir cumleden daha hizli anlatiyor.
+  final Widget? preview;
+
   const _OnboardingPage({
     required this.icon,
     required this.color,
     required this.title,
     required this.description,
+    this.preview,
   });
 
   @override
@@ -164,15 +172,21 @@ class _OnboardingPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 148,
-                  height: 148,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                if (preview != null)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: preview!,
+                  )
+                else
+                  Container(
+                    width: 148,
+                    height: 148,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 72, color: color),
                   ),
-                  child: Icon(icon, size: 72, color: color),
-                ),
                 const SizedBox(height: 36),
                 Text(
                   title,

@@ -560,11 +560,10 @@ class AppLocalizations {
     'startUsing': 'Kullanmaya Başla',
     'onboardingOrganizeTitle': 'Kendi Defterini Tasarla',
     'onboardingOrganizeDescription':
-        'Sütunları kendin belirle, günlük kayıtlarını ve çeteleleri kolayca tut.',
-    'onboardingOfflineTitle': 'İnternetsiz de Çalışır',
+        'Sütunları kendin belirle, işine göre bir defter kur.',
+    'onboardingOfflineTitle': 'Çeteleni Gün Gün Tut',
     'onboardingOfflineDescription':
-        'Her yerde internetsiz kullanmaya devam et, bilgilerin telefonunda '
-        'güvende kalsın.',
+        'Kim geldi kim gelmedi, internetsiz bile tek dokunuşla işaretle.',
     'onboardingPremiumTitle': 'Sınırları Ortadan Kaldır',
     'onboardingPremiumDescription':
         'Sesle kayıt gir, tabloları ortak kullan ve verilerini buluta yedekle.',
@@ -1056,10 +1055,10 @@ class AppLocalizations {
     'startUsing': 'Get Started',
     'onboardingOrganizeTitle': 'Create Your Notebook',
     'onboardingOrganizeDescription':
-        'Set your own columns, track daily records and tallies easily.',
-    'onboardingOfflineTitle': 'Works Without Internet',
+        'Set your own columns and build a notebook that fits your work.',
+    'onboardingOfflineTitle': 'Track Day by Day',
     'onboardingOfflineDescription':
-        'Keep using it offline anywhere, your data stays safe on your phone.',
+        'Mark who showed up with one tap, even with no connection.',
     'onboardingPremiumTitle': 'Unlock Premium Features',
     'onboardingPremiumDescription':
         'Add records by voice, share tables and backup to the cloud.',
