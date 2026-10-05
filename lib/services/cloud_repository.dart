@@ -41,6 +41,30 @@ class CloudEntry {
 
 /// Katilim denemesinin sonucu. Sahip kendi tablosunun koduyla girerse ad
 /// istenmez ve [displayName] null doner.
+/// Kodun sunucudaki karsiligi. Katilim olusturmaz; arayuzun kodu, sifreyi ve
+/// adi sirayla sorabilmesi icin.
+class SharedTablePeek {
+  final String tableName;
+  final String kind;
+  final bool requiresPassword;
+  final bool passwordOk;
+
+  const SharedTablePeek({
+    required this.tableName,
+    required this.kind,
+    required this.requiresPassword,
+    required this.passwordOk,
+  });
+
+  factory SharedTablePeek.fromJson(Map<String, dynamic> json) =>
+      SharedTablePeek(
+        tableName: json['tableName']?.toString() ?? '',
+        kind: json['kind']?.toString() ?? 'table',
+        requiresPassword: json['requiresPassword'] == true,
+        passwordOk: json['passwordOk'] == true,
+      );
+}
+
 class SharedTableJoin {
   final String tableId;
   final String? displayName;
@@ -362,6 +386,27 @@ class CloudRepository {
 
   /// Kodla (ve varsa sifreyle) tabloya katilir. Katilan kisinin Premium
   /// almasi gerekmez; sart tabloyu paylasan kisidedir.
+  /// Kodu (ve verilmisse sifreyi) dogrular, katilim olusturmaz.
+  Future<SharedTablePeek> peekSharedTable({
+    required String code,
+    String? password,
+  }) async {
+    try {
+      final result = await _client.rpc(
+        'peek_shared_table',
+        params: {
+          'plain_code': code.trim(),
+          'plain_password': (password == null || password.isEmpty)
+              ? null
+              : password,
+        },
+      );
+      return SharedTablePeek.fromJson(_resultMap(result));
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
   Future<SharedTableJoin> joinSharedTable({
     required String code,
     String? password,

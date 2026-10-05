@@ -12,8 +12,14 @@ import '../services/cloud_repository.dart';
 import '../services/storage_service.dart';
 
 /// Kayit olmadan bir tabloya katilma. Katilan kisi ne e-posta girer ne sifre
-/// belirler; kimlik arka planda sessizce acilir. Ekranda yalnizca kod, varsa
-/// tablonun sifresi ve bu tabloda gorunecek ad vardir.
+/// belirler; kimlik arka planda sessizce acilir.
+///
+/// Uc adim halinde sorulur: once kod, kod dogruysa ve tablo sifreliyse
+/// sifre, en son ad. Hepsini tek ekranda sormak kullaniciyi bilmedigi
+/// seyleri doldurmaya zorluyordu: sifresiz bir tabloya katilirken bile bos
+/// bir sifre kutusu goruyor, kodu yanlissa adini bosuna yaziyordu.
+enum _JoinStep { code, password, name }
+
 class JoinSharedTableScreen extends StatefulWidget {
   const JoinSharedTableScreen({super.key});
 
@@ -25,8 +31,10 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final _repository = CloudRepository();
 
+  _JoinStep _step = _JoinStep.code;
+  SharedTablePeek? _peek;
   bool _isBusy = false;
   bool _nameLoaded = false;
   String? _errorCode;
@@ -34,8 +42,8 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
   @override
   void initState() {
     super.initState();
-    // The name typed for an earlier table comes back as the default, but the
-    // person still confirms it: it may be taken in this table.
+    // Daha once girilen ad varsayilan olarak gelir ama kullanici yine de
+    // onaylar: bu tabloda o ad alinmis olabilir.
     StorageService.loadSharedDisplayName().then((name) {
       if (!mounted) return;
       setState(() {
@@ -53,26 +61,69 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
     super.dispose();
   }
 
-  Future<void> _join() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final loc = AppLocalizations.of(context);
-    final auth = context.read<AuthProvider>();
-    final tables = context.read<TableProvider>();
-    final tallies = context.read<TallyProvider>();
-    // Bildirim tasiyicisi da await'lerden once yakalanir: basarili
-    // katilimdan sonra bu ekran zaten kapaniyor.
-    final messenger = ScaffoldMessenger.of(context);
+  /// Her adimin ortak kabugu: mesgul isareti, hata kodu cevirisi ve
+  /// adim degisirken eski hatanin silinmesi tek yerde.
+  Future<void> _run(Future<void> Function() action) async {
     setState(() {
       _isBusy = true;
       _errorCode = null;
     });
     try {
+      await action();
+    } on SharedTableException catch (error) {
+      if (!error.isKnown) debugPrint('Bilinmeyen katilim kodu: ${error.code}');
+      if (mounted) {
+        setState(() => _errorCode = error.isKnown ? error.code : 'unknown');
+      }
+    } catch (error) {
+      debugPrint('Tabloya katilinamadi: $error');
+      if (mounted) setState(() => _errorCode = 'unknown');
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  Future<void> _submitCode() async {
+    final auth = context.read<AuthProvider>();
+    await _run(() async {
       if (!await auth.ensureAnonymousSession()) {
         if (mounted) setState(() => _errorCode = 'authentication_required');
         return;
       }
-      final repository = CloudRepository();
-      final join = await repository.joinSharedTable(
+      final peek = await _repository.peekSharedTable(
+        code: _codeController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _peek = peek;
+        _step = peek.requiresPassword ? _JoinStep.password : _JoinStep.name;
+      });
+    });
+  }
+
+  Future<void> _submitPassword() async {
+    await _run(() async {
+      final peek = await _repository.peekSharedTable(
+        code: _codeController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _peek = peek;
+        _step = _JoinStep.name;
+      });
+    });
+  }
+
+  Future<void> _submitName() async {
+    final loc = AppLocalizations.of(context);
+    final tables = context.read<TableProvider>();
+    final tallies = context.read<TallyProvider>();
+    // Bildirim tasiyicisi await'lerden once yakalanir: basarili katilimdan
+    // sonra bu ekran zaten kapaniyor.
+    final messenger = ScaffoldMessenger.of(context);
+    await _run(() async {
+      final join = await _repository.joinSharedTable(
         code: _codeController.text,
         password: _passwordController.text,
         displayName: _nameController.text,
@@ -81,8 +132,8 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
         await StorageService.saveSharedDisplayName(join.displayName!);
       }
 
-      // Joining only grants access; the table itself still has to come down.
-      final entries = await repository.list();
+      // Katilmak yalnizca erisim verir; tablonun kendisi ayrica inmeli.
+      final entries = await _repository.list();
       final entry = entries
           .where((item) => item.id == join.tableId)
           .firstOrNull;
@@ -90,8 +141,6 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
         if (mounted) setState(() => _errorCode = 'table_not_found');
         return;
       }
-      // Cetelenin yapisi tabloya benzemiyor; hangi saglayiciya gidecegi
-      // kinde gore secilir. Bilinmeyen bir tur gelirse katilim durur.
       if (entry.kind == 'tally') {
         final joined = TallyTableModel.fromJson(entry.payload);
         await tallies.importCloudTable(joined, overwrite: true);
@@ -111,21 +160,22 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
       messenger.showSnackBar(
         SnackBar(content: Text(loc.joinedTable(entry.name))),
       );
-    } on SharedTableException catch (error) {
-      // Beklenmeyen bir sunucu kodu kullaniciya ham haliyle gosterilmez ama
-      // teshis edilemez de kalmamali.
-      if (!error.isKnown) debugPrint('Bilinmeyen katilim kodu: ${error.code}');
-      if (mounted) {
-        setState(() => _errorCode = error.isKnown ? error.code : 'unknown');
-      }
-    } catch (error) {
-      // Beklenmeyen hatayi yutmak teshisi imkansiz kilar; kullaniciya genel
-      // mesaj gosterilir ama sebep loga yazilir.
-      debugPrint('Tabloya katilinamadi: $error');
-      if (mounted) setState(() => _errorCode = 'unknown');
-    } finally {
-      if (mounted) setState(() => _isBusy = false);
+    });
+  }
+
+  /// Geri tusu once adimlari geri alir, en basta ekrani kapatir. Kullanici
+  /// yanlis kod girdiginde bastan baslamak zorunda kalmasin diye.
+  void _back() {
+    if (_step == _JoinStep.code) {
+      Navigator.pop(context);
+      return;
     }
+    setState(() {
+      _errorCode = null;
+      _step = _step == _JoinStep.name && (_peek?.requiresPassword ?? false)
+          ? _JoinStep.password
+          : _JoinStep.code;
+    });
   }
 
   @override
@@ -133,75 +183,134 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
     final loc = AppLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text(loc.joinTable)),
+      appBar: AppBar(
+        title: Text(loc.joinTable),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: _isBusy ? null : _back,
+        ),
+      ),
       body: !_nameLoaded
           ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
+          : ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                // Hangi tabloya girildigi kod dogrulanir dogrulanmaz yazilir;
+                // kullanici dogru tabloda oldugunu adini yazmadan once gorur.
+                if (_peek != null) ...[
                   Text(
-                    loc.joinTableExplainer,
-                    style: TextStyle(color: colors.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _codeController,
-                    autocorrect: false,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(6),
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    decoration: InputDecoration(
-                      labelText: loc.joinCode,
-                      prefixIcon: const Icon(Icons.key_rounded),
-                    ),
-                    validator: (value) =>
-                        RegExp(r'^[0-9]{6}$').hasMatch((value ?? '').trim())
-                        ? null
-                        : loc.sharedTableError('invalid_table_code'),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    autocorrect: false,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: loc.joinPasswordOptional,
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    loc.joiningTable(_peek!.tableName),
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _nameController,
-                    textCapitalization: TextCapitalization.words,
-                    inputFormatters: [LengthLimitingTextInputFormatter(32)],
-                    decoration: InputDecoration(
-                      labelText: loc.yourName,
-                      helperText: loc.yourNameHint,
-                      prefixIcon: const Icon(Icons.person_outline_rounded),
-                    ),
-                    validator: (value) => (value ?? '').trim().length >= 2
-                        ? null
-                        : loc.sharedTableError('invalid_display_name'),
-                  ),
-                  if (_errorCode != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      loc.sharedTableError(_errorCode!),
-                      style: TextStyle(color: colors.error),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _isBusy ? null : _join,
-                    child: Text(_isBusy ? loc.pleaseWait : loc.joinAction),
+                ],
+                ..._stepFields(loc),
+                if (_errorCode != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    loc.sharedTableError(_errorCode!),
+                    style: TextStyle(color: colors.error),
                   ),
                 ],
-              ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _isBusy ? null : _submitStep,
+                  child: Text(
+                    _isBusy
+                        ? loc.pleaseWait
+                        : (_step == _JoinStep.name
+                              ? loc.joinAction
+                              : loc.continueLabel),
+                  ),
+                ),
+              ],
             ),
     );
+  }
+
+  void _submitStep() {
+    switch (_step) {
+      case _JoinStep.code:
+        _submitCode();
+      case _JoinStep.password:
+        _submitPassword();
+      case _JoinStep.name:
+        _submitName();
+    }
+  }
+
+  List<Widget> _stepFields(AppLocalizations loc) {
+    final colors = Theme.of(context).colorScheme;
+    switch (_step) {
+      case _JoinStep.code:
+        return [
+          Text(
+            loc.joinTableExplainer,
+            style: TextStyle(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _codeController,
+            autofocus: true,
+            autocorrect: false,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(6),
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 8,
+            ),
+            decoration: InputDecoration(labelText: loc.joinCode),
+            onSubmitted: (_) => _isBusy ? null : _submitCode(),
+          ),
+        ];
+      case _JoinStep.password:
+        return [
+          Text(
+            loc.joinPasswordRequired,
+            style: TextStyle(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _passwordController,
+            autofocus: true,
+            autocorrect: false,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: loc.joinPassword,
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
+            ),
+            onSubmitted: (_) => _isBusy ? null : _submitPassword(),
+          ),
+        ];
+      case _JoinStep.name:
+        return [
+          Text(
+            loc.joinNameStepExplainer,
+            style: TextStyle(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _nameController,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            inputFormatters: [LengthLimitingTextInputFormatter(32)],
+            decoration: InputDecoration(
+              labelText: loc.yourName,
+              helperText: loc.yourNameHint,
+              helperMaxLines: 2,
+              prefixIcon: const Icon(Icons.person_outline_rounded),
+            ),
+            onSubmitted: (_) => _isBusy ? null : _submitName(),
+          ),
+        ];
+    }
   }
 }

@@ -460,6 +460,10 @@ class AppLocalizations {
   String get yourNameHint => _t('yourNameHint');
   String joinedTable(String name) =>
       _t('joinedTable').replaceAll('{name}', name);
+  String joiningTable(String name) =>
+      _t('joiningTable').replaceAll('{name}', name);
+  String get joinPasswordRequired => _t('joinPasswordRequired');
+  String get joinNameStepExplainer => _t('joinNameStepExplainer');
   String get sharedTableMembers => _t('sharedTableMembers');
   String get activityLog => _t('activityLog');
   String get activityLogOwnerOnly => _t('activityLogOwnerOnly');
@@ -910,6 +914,11 @@ class AppLocalizations {
     'joinPasswordOptional': 'Şifre (varsa)',
     'yourName': 'Adın',
     'joinAction': 'Katıl',
+    'joiningTable': '{name} tablosuna katılıyorsun.',
+    'joinPasswordRequired':
+        'Bu tablo şifreli. Paylaşan kişiden aldığın şifreyi gir.',
+    'joinNameStepExplainer':
+        'Bu tabloda görünecek adın. Aynı tabloda her ad yalnızca bir kişide olabilir.',
     'saveToCloud': 'Buluta kaydet',
     'syncSending': 'Gönderiliyor…',
     'syncUpToDate': 'Bulutla eşit',
@@ -1400,6 +1409,11 @@ class AppLocalizations {
     'joinPasswordOptional': 'Password (if any)',
     'yourName': 'Your name',
     'joinAction': 'Join',
+    'joiningTable': 'You are joining {name}.',
+    'joinPasswordRequired':
+        'This table has a password. Enter the one you were given.',
+    'joinNameStepExplainer':
+        'Your name in this table. Each name can belong to only one person here.',
     'saveToCloud': 'Save to cloud',
     'syncSending': 'Sending…',
     'syncUpToDate': 'Up to date',
