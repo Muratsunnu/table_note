@@ -72,10 +72,15 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
   }
 
   Future<void> _refresh() => _run(() async {
+    // Kod da her acilista okunur. Eskiden yalnizca uretildigi an
+    // gorulebiliyordu; kodunu hatirlamayan kullanicinin tek caresi yeni kod
+    // uretmekti, o da eskisini gecersiz kiliyordu.
+    final code = await _repository.sharedTableJoinCode(widget.tableId);
     final members = await _repository.sharedTableMembers(widget.tableId);
     final activity = await _repository.tableActivity(widget.tableId);
     if (!mounted) return;
     setState(() {
+      if (code != null) _code = code;
       _members = members;
       _activity = activity;
     });

@@ -623,6 +623,21 @@ class CloudRepository {
   /// Ortak calismayi acar veya mevcut katilim kodunu yeniler.
   /// Kod sunucuda yalnizca hash olarak tutuldugu icin sadece bu cagri sonucunda
   /// gosterilebilir.
+  /// Tablonun katilim kodu. Yalnizca sahibine doner; kod hic uretilmediyse
+  /// ya da bu degisiklikten once uretildiyse null.
+  Future<String?> sharedTableJoinCode(String tableId) async {
+    try {
+      final result = await _client.rpc(
+        'shared_table_join_code',
+        params: {'target_table_id': tableId},
+      );
+      final code = result?.toString().trim();
+      return (code == null || code.isEmpty) ? null : code;
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
   Future<String> rotateSharedTableCode(String tableId) async {
     final result = await _client.rpc(
       'rotate_shared_table_join_code',

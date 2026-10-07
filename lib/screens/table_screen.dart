@@ -25,6 +25,7 @@ import '../l10n/app_localizations.dart';
 import '../l10n/ux_localizations.dart';
 import 'tally_screen.dart';
 import 'premium_screen.dart';
+import 'shared_table_manage_screen.dart';
 import '../services/home_widget_service.dart';
 import '../widgets/add_tally_item_dialog.dart';
 
@@ -618,6 +619,27 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
+  bool _isSharedOwner(TableProvider provider) {
+    final table = provider.currentTable;
+    return table != null && provider.isSharedOwner(table.id);
+  }
+
+  void _openShareScreen(TableProvider provider) {
+    final table = provider.currentTable;
+    if (table == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SharedTableManageScreen(
+          tableId: table.id,
+          tableName: table.tableName,
+          collaborationEnabled: true,
+          isTally: false,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTableActions(TableProvider provider) {
     final loc = AppLocalizations.of(context);
     return PopupMenuButton<String>(
@@ -643,9 +665,25 @@ class _TableScreenState extends State<TableScreen> {
                 );
         } else if (value == 'templates') {
           _showTemplateDialog(context);
+        } else if (value == 'share') {
+          _openShareScreen(provider);
         }
       },
       itemBuilder: (_) => [
+        // Yalnizca paylasimdaki ve bu cihazin sahibi oldugu tabloda. Kodu
+        // gormek icin Ayarlar > Bulut Yedekleme > paylas simgesi yolunu
+        // izlemek gerekiyordu; kod zaten en cok burada lazim oluyor.
+        if (_isSharedOwner(provider))
+          PopupMenuItem(
+            value: 'share',
+            child: Row(
+              children: [
+                const Icon(Icons.key_rounded, size: 20),
+                const SizedBox(width: 10),
+                Text(loc.joinCode),
+              ],
+            ),
+          ),
         PopupMenuItem(value: 'edit', child: Text(loc.editStructure)),
         PopupMenuItem(value: 'import', child: Text(loc.importCsv)),
         PopupMenuItem(value: 'templates', child: Text(loc.templates)),
