@@ -1,4 +1,15 @@
+import 'package:flutter/foundation.dart';
+
 import 'app_localizations.dart';
+
+/// Iki dilin ayni anahtarlari tasidigini testin dogrulayabilmesi icin.
+/// Eksik anahtar hata vermez, sessizce genel hata metnine duser; bu yuzden
+/// eksikligi ancak bir test yakalar.
+@visibleForTesting
+Map<String, Map<String, String>> get authStrings => const {
+  'tr': _authTr,
+  'en': _authEn,
+};
 
 extension AuthLocalizations on AppLocalizations {
   String authText(String key) =>
@@ -36,6 +47,7 @@ extension AuthLocalizations on AppLocalizations {
     'apple_unavailable' => 'appleUnavailable',
     'apple_failed' => 'appleFailed',
     'oauth_launch_failed' => 'googleFailed',
+    'delete_failed' => 'deleteFailed',
     _ => 'failed',
   });
 }
@@ -61,11 +73,32 @@ const _authTr = {
   'or': 'veya',
   'google': 'Google ile devam et',
   'apple': 'Apple ile devam et',
-  'offlineHelp':
-      'Hesap yalnızca çevrimiçi özellikler için gerekir. Tablolarını giriş yapmadan kullanabilirsin.',
+  'accountPurpose': 'Yedekleme, paylaşım ve Premium hesabına bağlıdır.',
+  'accountOptional': 'Tablolarını hesap açmadan da kullanabilirsin.',
+  'emailHint': 'ornek@eposta.com',
+  'confirmShort': 'Tekrar',
+  'codeShort': 'Kod',
+  'guestNotice':
+      'Misafir olarak katıldığın tablolar var. Giriş yapınca misafir erişimin kapanır; bu tablolara kodla yeniden katılman gerekir. Kopyaları cihazında kalır.',
+  'backToAccount': 'Hesaba dön',
+  'signOutHint': 'Tabloların bu cihazda kalır.',
+  'deleteAccount': 'Hesabı sil',
+  'deleteHint': 'Hesabın ve buluttaki her şey kalıcı olarak silinir.',
+  'deleteTitle': 'Hesabın kalıcı olarak silinsin mi?',
+  'deleteCloud':
+      'Buluttaki yedeklerin ve paylaştığın tablolar silinir. Katılanlar bu tablolara artık erişemez.',
+  'deleteLocal': 'Bu cihazdaki tabloların ve çetelelerin silinmez.',
+  'deleteSubscription':
+      'Premium aboneliğin varsa kendiliğinden iptal olmaz. Ücretlendirmeyi durdurmak için {store} aboneliklerinden iptal et.',
+  'deleteConfirmWord': 'SİL',
+  'deleteConfirmLabel': 'Onaylamak için {word} yaz',
+  'deleteConfirm': 'Hesabımı kalıcı olarak sil',
+  'deleteFailed': 'Hesap silinemedi. Bağlantını kontrol edip yeniden dene.',
+  'account_deleted': 'Hesabın silindi. Tabloların bu cihazda duruyor.',
   'verifyTitle': 'E-postanı doğrula',
   'verifyHelp':
-      'E-postandaki doğrulama bağlantısını bu cihazda aç. Gelen kutusu ve gereksiz posta klasörünü kontrol et.',
+      'E-postandaki bağlantıya dokun, sonra buraya dönüp devam et. Bağlantı başka bir cihazda hata verse de doğrulama tamamlanır.',
+  'verifiedContinue': 'Doğruladım, devam et',
   'resend': 'Doğrulama e-postasını yeniden gönder',
   'changePassword': 'Şifreyi değiştir',
   'savePassword': 'Yeni şifreyi kaydet',
@@ -100,7 +133,7 @@ const _authTr = {
   'googleFailed': 'Google giriş ekranı açılamadı. Yeniden dene.',
   'failed': 'İşlem tamamlanamadı. Bağlantını kontrol edip yeniden dene.',
   'confirmation_sent':
-      'Adresin kayıt için uygunsa doğrulama e-postası gönderildi. Gelen kutunu kontrol et.',
+      'Adresin kayıt için uygunsa doğrulama e-postası gönderildi. Gelen kutunu ve gereksiz posta klasörünü kontrol et.',
   'recovery_sent':
       'Bu adresle bir hesap varsa şifre sıfırlama bağlantısı gönderildi. Bağlantıyı bu cihazda aç.',
   'reauthentication_sent': 'Doğrulama kodu e-posta adresine gönderildi.',
@@ -108,7 +141,7 @@ const _authTr = {
   'oauth_continue':
       'Google ekranında girişini tamamla. İptal ettiysen yeniden deneyebilirsin.',
   'profile_name_not_saved': 'Giriş yapıldı ancak adın kaydedilemedi.',
-  'wait': 'Yeniden göndermek için bekle',
+  'wait': '{seconds} sn sonra yeniden gönderebilirsin.',
 };
 
 const _authEn = {
@@ -132,11 +165,34 @@ const _authEn = {
   'or': 'or',
   'google': 'Continue with Google',
   'apple': 'Continue with Apple',
-  'offlineHelp':
-      'An account is only needed for online features. You can use your tables without signing in.',
+  'accountPurpose': 'Backup, sharing and Premium are tied to your account.',
+  'accountOptional': 'You can keep using your tables without one.',
+  'emailHint': 'name@example.com',
+  'confirmShort': 'Repeat',
+  'codeShort': 'Code',
+  'guestNotice':
+      'You have joined tables as a guest. Signing in ends your guest access, so you will need to rejoin those tables with their codes. Their copies stay on this device.',
+  'backToAccount': 'Back to account',
+  'signOutHint': 'Your tables stay on this device.',
+  'deleteAccount': 'Delete account',
+  'deleteHint': 'Permanently deletes your account and everything in the cloud.',
+  'deleteTitle': 'Permanently delete your account?',
+  'deleteCloud':
+      'Your cloud backups and the tables you share are deleted. People who joined lose access to them.',
+  'deleteLocal': 'Tables and tallies on this device are not deleted.',
+  'deleteSubscription':
+      'A Premium subscription is not cancelled automatically. To stop being charged, cancel it in your {store} subscriptions.',
+  'deleteConfirmWord': 'DELETE',
+  'deleteConfirmLabel': 'Type {word} to confirm',
+  'deleteConfirm': 'Permanently delete my account',
+  'deleteFailed':
+      'Could not delete the account. Check your connection and try again.',
+  'account_deleted':
+      'Your account was deleted. Your tables are still on this device.',
   'verifyTitle': 'Verify your email',
   'verifyHelp':
-      'Open the verification link in your email on this device. Check your inbox and spam folder.',
+      'Tap the link in your email, then come back here and continue. Even if the link shows an error on another device, your email is still verified.',
+  'verifiedContinue': 'I have verified, continue',
   'resend': 'Resend verification email',
   'changePassword': 'Change password',
   'savePassword': 'Save new password',
@@ -171,7 +227,7 @@ const _authEn = {
   'failed':
       'Could not complete the action. Check your connection and try again.',
   'confirmation_sent':
-      'If the address is eligible for registration, a verification email has been sent. Check your inbox.',
+      'If the address is eligible for registration, a verification email has been sent. Check your inbox and spam folder.',
   'recovery_sent':
       'If an account exists for this address, a reset link has been sent. Open it on this device.',
   'reauthentication_sent': 'A verification code has been sent to your email.',
@@ -180,5 +236,5 @@ const _authEn = {
       'Complete sign-in in the Google window. If you canceled, you can try again.',
   'profile_name_not_saved':
       'You are signed in, but your name could not be saved.',
-  'wait': 'Wait before sending again',
+  'wait': 'You can send again in {seconds} s.',
 };

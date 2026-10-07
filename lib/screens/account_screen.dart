@@ -1,17 +1,28 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../config/app_config.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/auth_localizations.dart';
 import '../providers/auth_provider.dart';
+import '../providers/table_provider.dart';
+import '../providers/tally_provider.dart';
+import '../services/supabase_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/auth_validation.dart';
 
 enum _AccountForm { login, register, forgot, verify, password }
 
+/// Giriş, kayıt, şifre işlemleri ve hesap yönetimi.
+///
+/// Form bir tablo gibi çizilir: solda etiket sütunu, sağda değer sütunu,
+/// aralarda ince çizgiler. Uygulamanın işi tablo; hesabın girildiği yer de
+/// öyle görünür.
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
 
@@ -87,9 +98,18 @@ class _AccountScreenState extends State<AccountScreen> {
     context.read<AuthProvider>().clearFeedback();
     setState(() {
       _formKey = GlobalKey<FormState>();
-      _clearPasswords();
-      _mode = mode;
+      _enterMode(mode);
     });
+  }
+
+  /// Doğrulama ekranına geçerken yazılmış şifre bellekte kalır: kişi
+  /// e-postasını doğrulayıp döndüğünde şifresini yeniden yazmadan devam
+  /// edebilsin. Başka her geçişte şifre alanları boşaltılır.
+  void _enterMode(_AccountForm mode) {
+    final password = _password.text;
+    _clearPasswords();
+    if (mode == _AccountForm.verify) _password.text = password;
+    _mode = mode;
   }
 
   Future<void> _submit() async {
@@ -108,7 +128,8 @@ class _AccountScreenState extends State<AccountScreen> {
         _password.text,
       ),
       _AccountForm.forgot => await auth.requestPasswordReset(_email.text),
-      _AccountForm.verify => await auth.resendConfirmation(_email.text),
+      // Doğrulama ekranının kendi düğmeleri var; form oradan gönderilmez.
+      _AccountForm.verify => false,
       _AccountForm.password => await auth.updatePassword(
         _password.text,
         currentPassword: _currentPassword.text,
@@ -122,12 +143,34 @@ class _AccountScreenState extends State<AccountScreen> {
       TextInput.finishAutofillContext();
       setState(() {
         _formKey = GlobalKey<FormState>();
-        _clearPasswords();
-        _mode = mode == _AccountForm.register && !auth.isSignedIn
-            ? _AccountForm.verify
-            : _AccountForm.login;
+        _enterMode(
+          mode == _AccountForm.register && !auth.hasAccount
+              ? _AccountForm.verify
+              : _AccountForm.login,
+        );
       });
     }
+  }
+
+  /// "Doğruladım, devam et": bağlantı hangi cihazda açılmış olursa olsun
+  /// çalışan yol. Doğrulama bağlantısı uygulamayı ancak bu cihazda açabilir;
+  /// e-postasını bilgisayarında açan kişi için sayfa hata verir ama adres
+  /// yine de doğrulanmıştır, geriye yalnızca giriş yapmak kalır.
+  Future<void> _continueAfterVerification() async {
+    if (_password.text.isEmpty) {
+      _changeMode(_AccountForm.login);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    final auth = context.read<AuthProvider>();
+    if (!await auth.signInWithEmail(_email.text, _password.text) || !mounted) {
+      return;
+    }
+    TextInput.finishAutofillContext();
+    setState(() {
+      _formKey = GlobalKey<FormState>();
+      _enterMode(_AccountForm.login);
+    });
   }
 
   Future<void> _signOut() async {
@@ -139,48 +182,353 @@ class _AccountScreenState extends State<AccountScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final auth = context.read<AuthProvider>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _DeleteAccountDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+    if (await auth.deleteAccount() && mounted) {
+      setState(() {
+        _formKey = GlobalKey<FormState>();
+        _clearPasswords();
+        // Silinen hesabın adı ve adresi giriş formunda hazır beklemesin.
+        _name.clear();
+        _email.clear();
+        _mode = _AccountForm.login;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final loc = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final mode = _effectiveMode(auth);
-    final overview = auth.isSignedIn && mode != _AccountForm.password;
+    // Misafir oturumu hesap değildir: profil yerine giriş formunu görür.
+    final overview = auth.hasAccount && mode != _AccountForm.password;
+    final entry =
+        !overview &&
+        (mode == _AccountForm.login || mode == _AccountForm.register);
     final enabled = auth.isAvailable && !auth.isLoading;
     _lastCooldown = auth.emailCooldownSeconds;
     final emailEnabled = enabled && _lastCooldown == 0;
-    final title = overview
-        ? loc.account
-        : loc.authText(switch (mode) {
-            _AccountForm.login => 'login',
-            _AccountForm.register => 'register',
-            _AccountForm.forgot => 'resetTitle',
-            _AccountForm.verify => 'verifyTitle',
-            _AccountForm.password => 'changePassword',
-          });
+    final reauthenticating =
+        !overview &&
+        mode == _AccountForm.password &&
+        auth.needsReauthentication;
+    final reauthenticationFailed =
+        auth.errorMessage == 'reauthentication_needed' ||
+        auth.errorMessage == 'reauthentication_not_valid';
+    // Test ortamında bu sağlayıcılar olmayabilir; uyarı yalnızca kodla
+    // katılınmış bir tablo gerçekten varsa gösterilir.
+    final joinedAsGuest =
+        auth.isAnonymous &&
+        ((context.watch<TableProvider?>()?.hasJoinedTables ?? false) ||
+            (context.watch<TallyProvider?>()?.hasJoinedTallies ?? false));
 
-    Widget feedback(String message, {bool error = false}) => Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Semantics(
-        liveRegion: true,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: error
-                ? theme.colorScheme.errorContainer
-                : theme.colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            message,
-            style: TextStyle(
-              color: error
-                  ? theme.colorScheme.onErrorContainer
-                  : theme.colorScheme.onSecondaryContainer,
+    // Üst bant uygulama çubuğunun devamıdır; kart onun üstüne biner.
+    final band = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final ink =
+        theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+
+    final notes = <Widget>[
+      if (!auth.isAvailable) _Note(loc.onlineServicesUnavailableDescription),
+      if (!auth.isAvailable && _developerHint != null)
+        _Note(_developerHint!, tone: _NoteTone.error),
+      if (auth.errorMessage != null &&
+          !(reauthenticating && reauthenticationFailed))
+        _Note(loc.authError(auth.errorMessage!), tone: _NoteTone.error),
+      if (auth.notice != null)
+        _Note(
+          loc.authText(auth.notice!),
+          tone:
+              auth.notice == 'password_updated' ||
+                  auth.notice == 'account_deleted'
+              ? _NoteTone.success
+              : _NoteTone.info,
+        ),
+      if (entry && joinedAsGuest) _Note(loc.authText('guestNotice')),
+    ];
+
+    final Widget card;
+    if (overview) {
+      card = _Ledger(
+        children: [
+          ...notes,
+          if (auth.hasEmailIdentity)
+            _ActionRow(
+              key: const ValueKey('action-password'),
+              icon: Icons.key_outlined,
+              title: loc.authText('changePassword'),
+              chevron: true,
+              onTap: enabled ? () => _changeMode(_AccountForm.password) : null,
             ),
+          _ActionRow(
+            key: const ValueKey('action-signOut'),
+            icon: Icons.logout_rounded,
+            title: loc.authText('signOut'),
+            subtitle: loc.authText('signOutHint'),
+            onTap: enabled ? _signOut : null,
+          ),
+        ],
+      );
+    } else {
+      card = AutofillGroup(
+        child: Form(
+          key: _formKey,
+          child: _Ledger(
+            children: [
+              if (entry)
+                _ModeTabs(
+                  register: mode == _AccountForm.register,
+                  enabled: enabled,
+                  onChanged: (register) => _changeMode(
+                    register ? _AccountForm.register : _AccountForm.login,
+                  ),
+                ),
+              ...notes,
+              if (mode == _AccountForm.register)
+                _field(
+                  'name',
+                  _name,
+                  enabled: enabled,
+                  hints: const [AutofillHints.name],
+                  validator: (value) =>
+                      value?.trim().isNotEmpty == true ? null : 'requiredName',
+                ),
+              if (mode != _AccountForm.password)
+                _field(
+                  'email',
+                  _email,
+                  enabled: enabled && mode != _AccountForm.verify,
+                  keyboard: TextInputType.emailAddress,
+                  hints: const [AutofillHints.email],
+                  hint: loc.authText('emailHint'),
+                  last: mode == _AccountForm.forgot,
+                  validator: AuthValidation.email,
+                ),
+              if (mode == _AccountForm.password && !auth.isRecovering)
+                _field(
+                  'currentPassword',
+                  _currentPassword,
+                  enabled: enabled,
+                  secret: true,
+                  hints: const [AutofillHints.password],
+                  validator: AuthValidation.password,
+                ),
+              if (mode == _AccountForm.login ||
+                  mode == _AccountForm.register ||
+                  mode == _AccountForm.password)
+                _field(
+                  mode == _AccountForm.password ? 'newPassword' : 'password',
+                  _password,
+                  enabled: enabled,
+                  secret: true,
+                  last: mode == _AccountForm.login,
+                  hint: mode != _AccountForm.login
+                      ? loc.authText('passwordHint')
+                      : null,
+                  hints: [
+                    mode == _AccountForm.login
+                        ? AutofillHints.password
+                        : AutofillHints.newPassword,
+                  ],
+                  validator: (value) => AuthValidation.password(
+                    value,
+                    isNew: mode != _AccountForm.login,
+                  ),
+                ),
+              if (mode == _AccountForm.register ||
+                  mode == _AccountForm.password)
+                _field(
+                  'confirmPassword',
+                  _confirmation,
+                  rowLabel: 'confirmShort',
+                  enabled: enabled,
+                  secret: true,
+                  last: !reauthenticating,
+                  hints: const [AutofillHints.newPassword],
+                  validator: (value) =>
+                      AuthValidation.confirmation(value, _password.text),
+                ),
+              if (reauthenticating) ...[
+                _Note(
+                  loc.authText('reauthenticate'),
+                  tone: reauthenticationFailed
+                      ? _NoteTone.error
+                      : _NoteTone.info,
+                  action: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      alignment: AlignmentDirectional.centerStart,
+                    ),
+                    onPressed: emailEnabled
+                        ? auth.sendReauthenticationCode
+                        : null,
+                    child: Text(loc.authText('sendCode')),
+                  ),
+                ),
+                _field(
+                  'code',
+                  _nonce,
+                  rowLabel: 'codeShort',
+                  enabled: enabled,
+                  last: true,
+                  keyboard: TextInputType.number,
+                  hints: const [AutofillHints.oneTimeCode],
+                  validator: (value) =>
+                      value?.trim().isNotEmpty == true ? null : 'checkFields',
+                ),
+              ],
+            ],
           ),
         ),
+      );
+    }
+
+    final showsCooldown =
+        _lastCooldown > 0 &&
+        (mode == _AccountForm.forgot ||
+            mode == _AccountForm.verify ||
+            reauthenticating);
+    final tall = FilledButton.styleFrom(minimumSize: const Size.fromHeight(52));
+
+    final below = <Widget>[
+      if (overview) ...[
+        const SizedBox(height: 24),
+        _Ledger(
+          children: [
+            _ActionRow(
+              key: const ValueKey('action-delete'),
+              icon: Icons.delete_outline_rounded,
+              title: loc.authText('deleteAccount'),
+              subtitle: loc.authText('deleteHint'),
+              destructive: true,
+              onTap: enabled ? _deleteAccount : null,
+            ),
+          ],
+        ),
+      ] else ...[
+        if (mode == _AccountForm.login)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              onPressed: enabled
+                  ? () => _changeMode(_AccountForm.forgot)
+                  : null,
+              child: Text(loc.authText('forgot')),
+            ),
+          )
+        else
+          const SizedBox(height: 16),
+        FilledButton(
+          style: tall,
+          onPressed: (mode == _AccountForm.forgot ? emailEnabled : enabled)
+              ? mode == _AccountForm.verify
+                    ? _continueAfterVerification
+                    : _submit
+              : null,
+          child: Text(
+            loc.authText(switch (mode) {
+              _AccountForm.login => 'login',
+              _AccountForm.register => 'register',
+              _AccountForm.forgot => 'sendReset',
+              _AccountForm.verify => 'verifiedContinue',
+              _AccountForm.password => 'savePassword',
+            }),
+          ),
+        ),
+        if (mode == _AccountForm.verify)
+          TextButton(
+            onPressed: emailEnabled
+                ? () => auth.resendConfirmation(_email.text)
+                : null,
+            child: Text(loc.authText('resend')),
+          ),
+        if (showsCooldown)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              loc.authText('wait').replaceAll('{seconds}', '$_lastCooldown'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        if (mode == _AccountForm.login &&
+            auth.errorMessage == 'email_not_confirmed')
+          TextButton(
+            onPressed: enabled ? () => _changeMode(_AccountForm.verify) : null,
+            child: Text(loc.authText('resend')),
+          ),
+        if (entry) ...[
+          const SizedBox(height: 20),
+          _OrDivider(loc.authText('or')),
+          const SizedBox(height: 20),
+          // Tek bir düz OutlinedButton: ikonlu kurucu başka bir sınıf üretir.
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              foregroundColor: theme.colorScheme.onSurface,
+              backgroundColor: theme.colorScheme.surface,
+              side: BorderSide(color: theme.dividerColor),
+            ),
+            onPressed: enabled ? auth.signInWithGoogle : null,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox.square(
+                  dimension: 18,
+                  child: CustomPaint(painter: _GoogleMark()),
+                ),
+                const SizedBox(width: 10),
+                Flexible(child: Text(loc.authText('google'))),
+              ],
+            ),
+          ),
+          if (auth.supportsApple) ...[
+            const SizedBox(height: 12),
+            AbsorbPointer(
+              absorbing: !enabled,
+              child: Opacity(
+                opacity: enabled ? 1 : .5,
+                child: SignInWithAppleButton(
+                  onPressed: auth.signInWithApple,
+                  text: loc.authText('apple'),
+                  height: 52,
+                  borderRadius: const BorderRadius.all(Radius.circular(12)),
+                  style: theme.brightness == Brightness.dark
+                      ? SignInWithAppleButtonStyle.white
+                      : SignInWithAppleButtonStyle.black,
+                ),
+              ),
+            ),
+          ],
+        ] else if (auth.isRecovering)
+          TextButton(
+            onPressed: enabled ? _signOut : null,
+            child: Text(loc.authText('cancelRecovery')),
+          )
+        else
+          TextButton(
+            onPressed: enabled ? () => _changeMode(_AccountForm.login) : null,
+            child: Text(
+              loc.authText(auth.hasAccount ? 'backToAccount' : 'backToLogin'),
+            ),
+          ),
+      ],
+    ];
+
+    // Geniş ekranda içerik ortada dar bir sütunda kalır; sütunun içinde
+    // her şey sola yaslıdır, kısa bir başlık bile.
+    Widget centered(Widget child) => Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: SizedBox(width: double.infinity, child: child),
       ),
     );
 
@@ -188,291 +536,653 @@ class _AccountScreenState extends State<AccountScreen> {
       canPop: !auth.isLoading && !auth.isRecovering,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(title),
+          title: Text(loc.account),
           automaticallyImplyLeading: !auth.isRecovering,
+          // Bant çubuğun devamı; kaydırınca aralarında renk farkı oluşmasın.
+          scrolledUnderElevation: 0,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(3),
+            child: auth.isLoading
+                ? const LinearProgressIndicator(minHeight: 3)
+                : const SizedBox(height: 3),
+          ),
         ),
-        body: SafeArea(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  if (auth.isLoading)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 20),
-                      child: LinearProgressIndicator(),
+        body: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: SafeArea(
+            top: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ColoredBox(
+                  color: band,
+                  child: centered(
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
+                      child: _header(auth, mode, overview, ink),
                     ),
-                  if (!auth.isAvailable)
-                    feedback(loc.onlineServicesUnavailableDescription),
-                  if (auth.errorMessage != null)
-                    feedback(loc.authError(auth.errorMessage!), error: true),
-                  if (auth.notice != null) feedback(loc.authText(auth.notice!)),
-                  if (overview) ...[
-                    const CircleAvatar(
-                      radius: 36,
-                      child: Icon(Icons.person_outline, size: 36),
+                  ),
+                ),
+                Stack(
+                  children: [
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 26,
+                      child: ColoredBox(color: band),
                     ),
-                    const SizedBox(height: 16),
-                    if (auth.displayName?.isNotEmpty == true)
-                      Text(
-                        auth.displayName!,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleLarge,
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      auth.email ?? loc.account,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    if (auth.hasEmailIdentity)
-                      OutlinedButton(
-                        onPressed: enabled
-                            ? () => _changeMode(_AccountForm.password)
-                            : null,
-                        child: Text(loc.authText('changePassword')),
-                      ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      onPressed: enabled ? _signOut : null,
-                      icon: const Icon(Icons.logout),
-                      label: Text(loc.authText('signOut')),
-                    ),
-                  ] else ...[
-                    if (mode == _AccountForm.login ||
-                        mode == _AccountForm.register) ...[
-                      Text(
-                        loc.authText('offlineHelp'),
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                    if (mode == _AccountForm.forgot ||
-                        mode == _AccountForm.verify ||
-                        auth.isRecovering) ...[
-                      Text(
-                        loc.authText(
-                          auth.isRecovering
-                              ? 'recoveryHelp'
-                              : mode == _AccountForm.verify
-                              ? 'verifyHelp'
-                              : 'resetHelp',
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    AutofillGroup(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (mode == _AccountForm.register)
-                              _field(
-                                'name',
-                                _name,
-                                enabled: enabled,
-                                hints: const [AutofillHints.name],
-                                validator: (value) =>
-                                    value?.trim().isNotEmpty == true
-                                    ? null
-                                    : 'requiredName',
-                              ),
-                            if (mode != _AccountForm.password)
-                              _field(
-                                'email',
-                                _email,
-                                enabled: enabled && mode != _AccountForm.verify,
-                                keyboard: TextInputType.emailAddress,
-                                hints: const [AutofillHints.email],
-                                validator: AuthValidation.email,
-                              ),
-                            if (mode == _AccountForm.password &&
-                                !auth.isRecovering)
-                              _field(
-                                'currentPassword',
-                                _currentPassword,
-                                enabled: enabled,
-                                secret: true,
-                                hints: const [AutofillHints.password],
-                                validator: AuthValidation.password,
-                              ),
-                            if (mode == _AccountForm.login ||
-                                mode == _AccountForm.register ||
-                                mode == _AccountForm.password)
-                              _field(
-                                mode == _AccountForm.password
-                                    ? 'newPassword'
-                                    : 'password',
-                                _password,
-                                enabled: enabled,
-                                secret: true,
-                                helper: mode != _AccountForm.login
-                                    ? loc.authText('passwordHint')
-                                    : null,
-                                hints: [
-                                  mode == _AccountForm.login
-                                      ? AutofillHints.password
-                                      : AutofillHints.newPassword,
-                                ],
-                                validator: (value) => AuthValidation.password(
-                                  value,
-                                  isNew: mode != _AccountForm.login,
-                                ),
-                              ),
-                            if (mode == _AccountForm.register ||
-                                mode == _AccountForm.password)
-                              _field(
-                                'confirmPassword',
-                                _confirmation,
-                                enabled: enabled,
-                                secret: true,
-                                hints: const [AutofillHints.newPassword],
-                                validator: (value) =>
-                                    AuthValidation.confirmation(
-                                      value,
-                                      _password.text,
-                                    ),
-                              ),
-                            if (mode == _AccountForm.password &&
-                                auth.needsReauthentication) ...[
-                              Text(loc.authText('reauthenticate')),
-                              TextButton(
-                                onPressed: emailEnabled
-                                    ? auth.sendReauthenticationCode
-                                    : null,
-                                child: Text(loc.authText('sendCode')),
-                              ),
-                              _field(
-                                'code',
-                                _nonce,
-                                enabled: enabled,
-                                keyboard: TextInputType.number,
-                                hints: const [AutofillHints.oneTimeCode],
-                                validator: (value) =>
-                                    value?.trim().isNotEmpty == true
-                                    ? null
-                                    : 'checkFields',
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            FilledButton(
-                              onPressed:
-                                  (mode == _AccountForm.forgot ||
-                                          mode == _AccountForm.verify
-                                      ? emailEnabled
-                                      : enabled)
-                                  ? _submit
-                                  : null,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                child: Text(
-                                  loc.authText(switch (mode) {
-                                    _AccountForm.login => 'login',
-                                    _AccountForm.register => 'register',
-                                    _AccountForm.forgot => 'sendReset',
-                                    _AccountForm.verify => 'resend',
-                                    _AccountForm.password => 'savePassword',
-                                  }),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_lastCooldown > 0)
+                    centered(
                       Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          '${loc.authText('wait')} $_lastCooldown s',
-                          textAlign: TextAlign.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: AnimatedSize(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          child: card,
                         ),
                       ),
-                    if (mode == _AccountForm.login) ...[
-                      TextButton(
-                        onPressed: enabled
-                            ? () => _changeMode(_AccountForm.forgot)
-                            : null,
-                        child: Text(loc.authText('forgot')),
-                      ),
-                      if (auth.errorMessage == 'email_not_confirmed')
-                        TextButton(
-                          onPressed: enabled
-                              ? () => _changeMode(_AccountForm.verify)
-                              : null,
-                          child: Text(loc.authText('resend')),
-                        ),
-                    ],
-                    if (mode == _AccountForm.login ||
-                        mode == _AccountForm.register) ...[
-                      TextButton(
-                        onPressed: enabled
-                            ? () => _changeMode(
-                                mode == _AccountForm.login
-                                    ? _AccountForm.register
-                                    : _AccountForm.login,
-                              )
-                            : null,
-                        child: Text(
-                          loc.authText(
-                            mode == _AccountForm.login
-                                ? 'register'
-                                : 'backToLogin',
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Text(
-                          loc.authText('or'),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      OutlinedButton(
-                        onPressed: enabled ? auth.signInWithGoogle : null,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text(loc.authText('google')),
-                        ),
-                      ),
-                      if (auth.supportsApple) ...[
-                        const SizedBox(height: 12),
-                        AbsorbPointer(
-                          absorbing: !enabled,
-                          child: Opacity(
-                            opacity: enabled ? 1 : .5,
-                            child: SignInWithAppleButton(
-                              onPressed: auth.signInWithApple,
-                              text: loc.authText('apple'),
-                              style: theme.brightness == Brightness.dark
-                                  ? SignInWithAppleButtonStyle.white
-                                  : SignInWithAppleButtonStyle.black,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ] else if (auth.isRecovering)
-                      TextButton(
-                        onPressed: enabled ? _signOut : null,
-                        child: Text(loc.authText('cancelRecovery')),
-                      )
-                    else
-                      TextButton(
-                        onPressed: enabled
-                            ? () => _changeMode(_AccountForm.login)
-                            : null,
-                        child: Text(
-                          auth.isSignedIn
-                              ? loc.account
-                              : loc.authText('backToLogin'),
-                        ),
-                      ),
+                    ),
                   ],
+                ),
+                centered(
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: below,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Yalnızca geliştirme derlemesinde: çevrimiçi hizmetin neden kapalı
+  /// olduğu. Kullanıcıya giden sürümde bu durum oluşmaz, metin de derlenmez.
+  static String? get _developerHint {
+    if (!kDebugMode) return null;
+    if (!AppConfig.hasSupabaseConfig) {
+      return 'Geliştirici notu: uygulama Supabase ayarları olmadan '
+          'başlatıldı, bu yüzden düğmeler kapalı. Uygulamayı tamamen durdur '
+          've VS Code\'da "Table Note (Supabase)" ile yeniden başlat.';
+    }
+    final error = SupabaseService.initializationError;
+    return error == null
+        ? null
+        : 'Geliştirici notu: Supabase başlatılamadı: $error';
+  }
+
+  _AccountForm _effectiveMode(AuthProvider auth) => auth.isRecovering
+      ? _AccountForm.password
+      : _mode == _AccountForm.password && !auth.hasAccount
+      ? _AccountForm.login
+      : _mode;
+
+  Widget _header(
+    AuthProvider auth,
+    _AccountForm mode,
+    bool overview,
+    Color ink,
+  ) {
+    final loc = AppLocalizations.of(context);
+    final title = TextStyle(
+      color: ink,
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      height: 1.25,
+      letterSpacing: -0.2,
+    );
+    final body = TextStyle(
+      color: ink.withValues(alpha: .78),
+      fontSize: 14.5,
+      height: 1.45,
+    );
+    if (overview) {
+      final name = auth.displayName?.trim() ?? '';
+      final email = auth.email ?? '';
+      final primary = name.isNotEmpty
+          ? name
+          : email.isNotEmpty
+          ? email
+          : loc.account;
+      return Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ink.withValues(alpha: .14),
+              border: Border.all(color: ink.withValues(alpha: .28)),
+            ),
+            child: ExcludeSemantics(
+              child: Text(
+                _initials(primary, turkish: loc.locale.languageCode == 'tr'),
+                style: TextStyle(
+                  color: ink,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  primary,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: title.copyWith(fontSize: 20),
+                ),
+                if (name.isNotEmpty && email.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: body,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    final (heading, help) = switch (mode) {
+      _AccountForm.login || _AccountForm.register => (
+        'accountPurpose',
+        loc.authText('accountOptional'),
+      ),
+      _AccountForm.forgot => ('resetTitle', loc.authText('resetHelp')),
+      _AccountForm.verify => ('verifyTitle', loc.authText('verifyHelp')),
+      _AccountForm.password => (
+        'changePassword',
+        auth.isRecovering ? loc.authText('recoveryHelp') : auth.email,
+      ),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(loc.authText(heading), style: title),
+        ),
+        if (help != null && help.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(help, style: body),
+          ),
+      ],
+    );
+  }
+
+  /// Ad soyadın baş harfleri; ad yoksa e-postanın ilk harfi.
+  static String _initials(String text, {required bool turkish}) {
+    final words = text
+        .split(RegExp(r'[\s@._-]+'))
+        .where((word) => word.isNotEmpty)
+        .take(text.contains('@') ? 1 : 2);
+    return words.map((word) {
+      final first = String.fromCharCode(word.runes.first);
+      // Dart'ın büyük harfe çevirmesi dile bakmaz: "i" → "I".
+      if (turkish && first == 'i') return 'İ';
+      return first.toUpperCase();
+    }).join();
+  }
+
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    required bool enabled,
+    required String? Function(String?) validator,
+    String? rowLabel,
+    bool secret = false,
+    bool last = false,
+    TextInputType? keyboard,
+    List<String>? hints,
+    String? hint,
+  }) {
+    final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final visible = _visiblePasswords.contains(label);
+    return _LedgerField(
+      key: ValueKey('row-$label'),
+      label: loc.authText(rowLabel ?? label),
+      trailing: secret
+          ? IconButton(
+              tooltip: loc.authText(visible ? 'hidePassword' : 'showPassword'),
+              onPressed: enabled
+                  ? () => setState(() {
+                      visible
+                          ? _visiblePasswords.remove(label)
+                          : _visiblePasswords.add(label);
+                    })
+                  : null,
+              icon: Icon(
+                visible
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 20,
+              ),
+            )
+          : null,
+      builder: (focusNode) => Semantics(
+        // Etiket sütunundaki kısa yazı ekran okuyucuya gizlidir; alanın
+        // adını buradaki tam etiket taşır.
+        label: loc.authText(label),
+        child: TextFormField(
+          key: ValueKey(label),
+          controller: controller,
+          focusNode: focusNode,
+          enabled: enabled,
+          keyboardType: keyboard,
+          autofillHints: hints,
+          textInputAction: last ? TextInputAction.done : TextInputAction.next,
+          onFieldSubmitted: last ? (_) => _submit() : null,
+          textCapitalization: label == 'name'
+              ? TextCapitalization.words
+              : TextCapitalization.none,
+          autocorrect: !secret && keyboard != TextInputType.emailAddress,
+          enableSuggestions: !secret,
+          obscureText: secret && !visible,
+          validator: (value) {
+            final error = validator(value);
+            return error == null ? null : loc.authText(error);
+          },
+          style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .7),
+            ),
+            // Hücrenin çerçevesi tablonun çizgileridir; alanın kendi
+            // çerçevesi ve dolgusu olmaz.
+            filled: false,
+            isDense: true,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
+            // Alt boşluğun kalanı hücrede: hata yazısı çıktığında alt
+            // çizgiye yapışmasın diye.
+            contentPadding: const EdgeInsets.fromLTRB(14, 18, 8, 6),
+            errorMaxLines: 3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Satırları ince çizgilerle ayrılmış tek çerçeveli kart.
+class _Ledger extends StatelessWidget {
+  final List<Widget> children;
+  const _Ledger({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: theme.dividerColor),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < children.length; index++) ...[
+            if (index > 0)
+              Divider(height: 1, thickness: 1, color: theme.dividerColor),
+            children[index],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Tablonun başlık satırı: giriş ile kayıt arasında geçiş.
+class _ModeTabs extends StatelessWidget {
+  final bool register;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+  const _ModeTabs({
+    required this.register,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    Widget tab(
+      String key,
+      String label,
+      bool selected,
+      bool target,
+    ) => Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: Material(
+          // Seçili olmayan sekme sayfanın rengini alır, geride durur.
+          color: selected ? Colors.transparent : theme.scaffoldBackgroundColor,
+          child: InkWell(
+            key: ValueKey(key),
+            onTap: enabled && !selected ? () => onChanged(target) : null,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 50),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    width: 2,
+                    color: selected
+                        ? theme.colorScheme.primary
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          tab('mode-login', loc.authText('login'), !register, false),
+          VerticalDivider(width: 1, thickness: 1, color: theme.dividerColor),
+          tab('mode-register', loc.authText('register'), register, true),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bir tablo satırı: solda etiket hücresi, sağda yazılan değer.
+class _LedgerField extends StatefulWidget {
+  final String label;
+  final Widget Function(FocusNode focusNode) builder;
+  final Widget? trailing;
+  const _LedgerField({
+    super.key,
+    required this.label,
+    required this.builder,
+    this.trailing,
+  });
+
+  @override
+  State<_LedgerField> createState() => _LedgerFieldState();
+}
+
+class _LedgerFieldState extends State<_LedgerField> {
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_onFocusChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final active = _focusNode.hasFocus;
+    // Etiket sütunu büyük yazı ayarında bir miktar genişler, ama değere
+    // yer bırakacak kadar.
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.3);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      decoration: BoxDecoration(
+        // Seçili hücrenin işareti: üzerinde çalışılan satır.
+        border: Border(
+          left: BorderSide(
+            width: 3,
+            color: active ? theme.colorScheme.primary : Colors.transparent,
+          ),
+        ),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _focusNode.requestFocus,
+              child: SizedBox(
+                width: 108 * scale,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(13, 19, 8, 12),
+                  child: ExcludeSemantics(
+                    child: Text(
+                      widget.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                        color: active
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            VerticalDivider(width: 1, thickness: 1, color: theme.dividerColor),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _focusNode.requestFocus,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: widget.builder(_focusNode),
+                ),
+              ),
+            ),
+            if (widget.trailing != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 4),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: widget.trailing,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _NoteTone { info, success, error }
+
+/// Tablonun içinde tam genişlikte bir not satırı: hata, bilgi, uyarı.
+class _Note extends StatelessWidget {
+  final String text;
+  final _NoteTone tone;
+  final Widget? action;
+  const _Note(this.text, {this.tone = _NoteTone.info, this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (background, foreground, accent, icon) = switch (tone) {
+      _NoteTone.error => (
+        theme.colorScheme.errorContainer,
+        theme.colorScheme.onErrorContainer,
+        theme.colorScheme.onErrorContainer,
+        Icons.error_outline_rounded,
+      ),
+      _NoteTone.success => (
+        AppTheme.tintedSurface(context, AppTheme.success),
+        theme.colorScheme.onSurface,
+        AppTheme.readableAccent(context, AppTheme.success),
+        Icons.check_circle_outline_rounded,
+      ),
+      _NoteTone.info => (
+        AppTheme.tintedSurface(context, theme.colorScheme.primary),
+        theme.colorScheme.onSurface,
+        theme.colorScheme.primary,
+        Icons.info_outline_rounded,
+      ),
+    };
+    return Semantics(
+      liveRegion: true,
+      child: ColoredBox(
+        color: background,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 14, 16, action == null ? 14 : 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Icon(icon, size: 18, color: accent),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.4,
+                        color: foreground,
+                      ),
+                    ),
+                    ?action,
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hesap özetindeki dokunulabilir satır.
+class _ActionRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final bool destructive;
+  final bool chevron;
+  const _ActionRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.onTap,
+    this.destructive = false,
+    this.chevron = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final danger = AppTheme.readableAccent(context, theme.colorScheme.error);
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      child: InkWell(
+        onTap: onTap,
+        child: Opacity(
+          opacity: onTap == null ? .5 : 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(icon, size: 22, color: destructive ? danger : muted),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w600,
+                            color: destructive
+                                ? danger
+                                : theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        if (subtitle != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              subtitle!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.35,
+                                color: muted,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (chevron) Icon(Icons.chevron_right_rounded, color: muted),
                 ],
               ),
             ),
@@ -481,67 +1191,225 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
     );
   }
+}
 
-  _AccountForm _effectiveMode(AuthProvider auth) => auth.isRecovering
-      ? _AccountForm.password
-      : _mode == _AccountForm.password && !auth.isSignedIn
-      ? _AccountForm.login
-      : _mode;
+class _OrDivider extends StatelessWidget {
+  final String label;
+  const _OrDivider(this.label);
 
-  Widget _field(
-    String label,
-    TextEditingController controller, {
-    required bool enabled,
-    required String? Function(String?) validator,
-    bool secret = false,
-    TextInputType? keyboard,
-    List<String>? hints,
-    String? helper,
-  }) {
-    final loc = AppLocalizations.of(context);
-    final visible = _visiblePasswords.contains(label);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        key: ValueKey(label),
-        controller: controller,
-        enabled: enabled,
-        keyboardType: keyboard,
-        autofillHints: hints,
-        textInputAction: TextInputAction.next,
-        autocorrect: !secret && keyboard != TextInputType.emailAddress,
-        enableSuggestions: !secret,
-        obscureText: secret && !visible,
-        validator: (value) {
-          final error = validator(value);
-          return error == null ? null : loc.authText(error);
-        },
-        decoration: InputDecoration(
-          labelText: loc.authText(label),
-          helperText: helper,
-          border: const OutlineInputBorder(),
-          errorMaxLines: 3,
-          suffixIcon: secret
-              ? IconButton(
-                  tooltip: loc.authText(
-                    visible ? 'hidePassword' : 'showPassword',
-                  ),
-                  onPressed: enabled
-                      ? () => setState(() {
-                          visible
-                              ? _visiblePasswords.remove(label)
-                              : _visiblePasswords.add(label);
-                        })
-                      : null,
-                  icon: Icon(
-                    visible
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                  ),
-                )
-              : null,
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final line = Expanded(
+      child: Divider(height: 1, thickness: 1, color: theme.dividerColor),
+    );
+    return Row(
+      children: [
+        line,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ),
+        line,
+      ],
+    );
+  }
+}
+
+/// Google'ın dört renkli "G" işareti, kendi 18×18 çiziminden.
+class _GoogleMark extends CustomPainter {
+  const _GoogleMark();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 18, size.height / 18);
+    final paint = Paint()..isAntiAlias = true;
+
+    canvas.drawPath(
+      Path()
+        ..moveTo(17.64, 9.2)
+        ..relativeCubicTo(0, -.637, -.057, -1.251, -.164, -1.84)
+        ..lineTo(9, 7.36)
+        ..relativeLineTo(0, 3.481)
+        ..relativeLineTo(4.844, 0)
+        ..relativeCubicTo(-.209, 1.125, -.843, 2.078, -1.796, 2.716)
+        ..relativeLineTo(0, 2.259)
+        ..relativeLineTo(2.908, 0)
+        ..relativeCubicTo(1.702, -1.567, 2.684, -3.875, 2.684, -6.615)
+        ..close(),
+      paint..color = const Color(0xFF4285F4),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(9, 18)
+        ..relativeCubicTo(2.43, 0, 4.467, -.806, 5.956, -2.18)
+        ..relativeLineTo(-2.908, -2.259)
+        ..relativeCubicTo(-.806, .54, -1.837, .86, -3.048, .86)
+        ..relativeCubicTo(-2.344, 0, -4.328, -1.584, -5.036, -3.711)
+        ..lineTo(.957, 10.71)
+        ..relativeLineTo(0, 2.332)
+        ..arcToPoint(
+          const Offset(9, 18),
+          radius: const Radius.circular(8.997),
+          clockwise: false,
+        )
+        ..close(),
+      paint..color = const Color(0xFF34A853),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(3.964, 10.71)
+        ..arcToPoint(
+          const Offset(3.682, 9),
+          radius: const Radius.circular(5.41),
+        )
+        ..relativeCubicTo(0, -.593, .102, -1.17, .282, -1.71)
+        ..lineTo(3.964, 4.958)
+        ..lineTo(.957, 4.958)
+        ..arcToPoint(
+          const Offset(0, 9),
+          radius: const Radius.circular(8.996),
+          clockwise: false,
+        )
+        ..relativeCubicTo(0, 1.452, .348, 2.827, .957, 4.042)
+        ..relativeLineTo(3.007, -2.332)
+        ..close(),
+      paint..color = const Color(0xFFFBBC05),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(9, 3.58)
+        ..relativeCubicTo(1.321, 0, 2.508, .454, 3.44, 1.345)
+        ..relativeLineTo(2.582, -2.58)
+        ..cubicTo(13.463, .891, 11.426, 0, 9, 0)
+        ..arcToPoint(
+          const Offset(.957, 4.958),
+          radius: const Radius.circular(8.997),
+          clockwise: false,
+        )
+        ..lineTo(3.964, 7.29)
+        ..cubicTo(4.672, 5.163, 6.656, 3.58, 9, 3.58)
+        ..close(),
+      paint..color = const Color(0xFFEA4335),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GoogleMark oldDelegate) => false;
+}
+
+/// Geri alınamayan silme için son onay: neyin gideceği yazar ve onay
+/// sözcüğü elle yazılmadan düğme açılmaz.
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  // Denetleyici diyaloğa aittir; çağıran taraf tutsaydı diyalog kapanırken
+  // hâlâ çizilen alanın altından çekilirdi.
+  final _controller = TextEditingController();
+  bool _matches = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final word = loc.authText('deleteConfirmWord');
+    final store = defaultTargetPlatform == TargetPlatform.iOS
+        ? 'App Store'
+        : 'Google Play';
+
+    Widget point(IconData icon, String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(
+              icon,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, height: 1.4),
+            ),
+          ),
+        ],
       ),
+    );
+
+    return AlertDialog(
+      scrollable: true,
+      title: Text(loc.authText('deleteTitle')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          point(Icons.cloud_off_outlined, loc.authText('deleteCloud')),
+          point(Icons.smartphone_outlined, loc.authText('deleteLocal')),
+          point(
+            Icons.receipt_long_outlined,
+            loc.authText('deleteSubscription').replaceAll('{store}', store),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            key: const ValueKey('deleteConfirmation'),
+            controller: _controller,
+            autocorrect: false,
+            enableSuggestions: false,
+            textCapitalization: TextCapitalization.characters,
+            textInputAction: TextInputAction.done,
+            onChanged: (value) {
+              final matches = AuthValidation.matchesConfirmWord(value, word);
+              if (matches != _matches) setState(() => _matches = matches);
+            },
+            decoration: InputDecoration(
+              labelText: loc
+                  .authText('deleteConfirmLabel')
+                  .replaceAll('{word}', word),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(loc.cancel),
+        ),
+        FilledButton(
+          key: const ValueKey('deleteConfirm'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.readableAccent(
+              context,
+              theme.colorScheme.error,
+            ),
+            foregroundColor: dark ? const Color(0xFF2B0B0B) : Colors.white,
+          ),
+          onPressed: _matches ? () => Navigator.pop(context, true) : null,
+          child: Text(loc.authText('deleteConfirm')),
+        ),
+      ],
     );
   }
 }

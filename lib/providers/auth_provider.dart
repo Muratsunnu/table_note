@@ -9,9 +9,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../services/supabase_service.dart';
 
+/// Buluttaki kimlik degisip bu cihazdaki ortak tablolarin baglantisi
+/// koptugunda cagrilir. [ownedToo] false ise yalnizca katilinanlar koptu.
+typedef SharedAccessLost = void Function({required bool ownedToo});
+
 /// Stores codes rather than server messages so feedback follows the app locale.
 class AuthProvider extends ChangeNotifier {
   final SupabaseClient? _client;
+  final SharedAccessLost? _onSharedAccessLost;
   StreamSubscription<AuthState>? _authSubscription;
   User? _user;
   bool _isLoading = false;
@@ -23,13 +28,20 @@ class AuthProvider extends ChangeNotifier {
   String? _notice;
   DateTime? _nextEmailAt;
 
-  AuthProvider({SupabaseClient? client})
-    : _client = client ?? SupabaseService.client {
+  AuthProvider({SupabaseClient? client, SharedAccessLost? onSharedAccessLost})
+    : _client = client ?? SupabaseService.client,
+      _onSharedAccessLost = onSharedAccessLost {
     _user = _client?.auth.currentUser;
     _authSubscription = _client?.auth.onAuthStateChange.listen(
       (state) {
         if (_disposed) return;
+        final previous = _user;
         _user = state.session?.user;
+        // Google girisi tarayicidan dondugunde oturum buradan degisir;
+        // e-posta ve Apple girisi de ayni olayi uretir. Tek kontrol noktasi.
+        if (replacesGuest(previous, _user)) {
+          _onSharedAccessLost?.call(ownedToo: false);
+        }
         if (state.event == AuthChangeEvent.passwordRecovery) {
           _isRecovering = true;
           _errorMessage = null;
@@ -108,6 +120,28 @@ class AuthProvider extends ChangeNotifier {
 
   /// Gercek bir kimligi olmayan, yalnizca katilmak icin acilmis oturum.
   bool get isAnonymous => _user?.isAnonymous ?? false;
+
+  /// Gercek bir hesabi olan kullanici.
+  ///
+  /// [isSignedIn] bunu soylemez: kodla tabloya katilmak icin sessizce acilan
+  /// misafir oturumu da "giris yapmis" sayilir. Hesap ekrani, satin alma ve
+  /// bulut yedekleme "oturum var mi" diye degil "hesap var mi" diye
+  /// sormali; yoksa misafire cikis dugmesi gosterilir ya da abonelik,
+  /// uygulama silinince kaybolan bir kimlige baglanir.
+  bool get hasAccount => isSignedIn && !isAnonymous;
+
+  /// Misafir oturumunun yerini baska bir hesap mi aldi?
+  ///
+  /// Kodla katilinan tablolardaki uyelik misafir kimligine aittir. Kullanici
+  /// sonradan giris yaparsa o kimlik geri gelmez; katildigi tablolar bu
+  /// cihazda sahipsiz kalir ve temizlenmeleri gerekir.
+  @visibleForTesting
+  static bool replacesGuest(User? before, User? after) =>
+      before != null &&
+      before.isAnonymous &&
+      after != null &&
+      !after.isAnonymous &&
+      after.id != before.id;
 
   Future<bool> signInWithEmail(String email, String password) => _run(() async {
     await _client!.auth.signInWithPassword(
@@ -232,6 +266,29 @@ class AuthProvider extends ChangeNotifier {
         _notice = 'profile_name_not_saved';
       }
     }
+  });
+
+  /// Hesabi ve buluttaki her seyi kalici olarak siler.
+  ///
+  /// Sunucudaki kullanici silindikten sonra yerel oturum da birakilir;
+  /// sunucuya sorulsa artik var olmayan bir kullanici icin hata donerdi.
+  Future<bool> deleteAccount() => _run(() async {
+    try {
+      await _client!.rpc('delete_my_account');
+    } on PostgrestException {
+      throw const AuthException('Delete failed', code: 'delete_failed');
+    }
+    try {
+      await _client.auth.signOut(scope: SignOutScope.local);
+    } catch (_) {
+      // Hesap zaten silindi; yerel temizlik basarisiz olsa da kullaniciya
+      // "silinemedi" demek yanlis olurdu.
+    }
+    _user = null;
+    _isRecovering = false;
+    _needsReauthentication = false;
+    _notice = 'account_deleted';
+    _onSharedAccessLost?.call(ownedToo: true);
   });
 
   Future<bool> signOut() => _run(() async {

@@ -104,4 +104,23 @@ void main() {
       '2026-10-07',
     ]);
   });
+
+  test('hesap değişince katılınan çetele kopar, paylaşılan kalır', () async {
+    final joined = await _seeded(role: 'editor');
+    final joinedId = joined.currentTable!.id;
+    await joined.setCellStatus(0, DateTime(2026, 10, 5), 'v');
+    expect(joined.pendingChangeCount(joinedId), greaterThan(0));
+    expect(joined.hasJoinedTallies, isTrue);
+    await joined.clearSharedState(joinedOnly: true);
+    expect(joined.isSharedTally(joinedId), isFalse);
+    expect(joined.pendingChangeCount(joinedId), 0);
+    expect(joined.tables.length, 1);
+
+    final owned = await _seeded(role: 'owner');
+    final ownedId = owned.currentTable!.id;
+    await owned.clearSharedState(joinedOnly: true);
+    expect(owned.isSharedOwner(ownedId), isTrue);
+    await owned.clearSharedState();
+    expect(owned.isSharedTally(ownedId), isFalse);
+  });
 }

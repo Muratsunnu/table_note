@@ -45,7 +45,9 @@ class SubscriptionProvider extends ChangeNotifier {
   bool get isPremium => _isPremium || (kDebugMode && _temporaryDebugPremium);
   bool get isLoading => _isLoading;
   bool get canPurchase => _yearlyProduct != null && !_isLoading;
-  bool get requiresSignIn => !_auth.isSignedIn;
+  // Misafir oturumu hesap degildir: abonelik ona baglanirsa uygulama
+  // silinince kaybolan bir kimlikte kalir.
+  bool get requiresSignIn => !_auth.hasAccount;
   String? get localizedPrice => _yearlyProduct?.price;
   String? get errorMessage => _errorMessage;
   DateTime? get validUntil => _validUntil;
@@ -96,7 +98,7 @@ class SubscriptionProvider extends ChangeNotifier {
 
   Future<bool> startPurchase() async {
     final product = _yearlyProduct;
-    if (product == null || _isLoading || !_auth.isSignedIn) return false;
+    if (product == null || _isLoading || !_auth.hasAccount) return false;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();

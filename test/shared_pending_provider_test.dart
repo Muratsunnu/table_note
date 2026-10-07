@@ -115,4 +115,43 @@ void main() {
     expect(reopened.sharedRole(id), 'editor');
     expect(reopened.pendingChangeCount(id), 1);
   });
+
+  test('misafir hesaba geçince yalnızca katılınan tablolar kopar', () async {
+    final provider = await _seeded();
+    final joined = _tableId(provider);
+    await provider.addRow(['izmir', '12000']);
+    expect(provider.pendingChangeCount(joined), greaterThan(0));
+    expect(provider.hasJoinedTables, isTrue);
+
+    expect(
+      await provider.createTable('benim', [
+        ColumnModel(name: 'not'),
+      ], isPremium: true),
+      isTrue,
+    );
+    final owned = _tableId(provider);
+    expect(owned, isNot(joined));
+    await provider.setSharedRole(owned, 'owner');
+
+    await provider.clearSharedState(joinedOnly: true);
+    expect(provider.isSharedTable(joined), isFalse);
+    expect(provider.pendingChangeCount(joined), 0);
+    expect(provider.hasJoinedTables, isFalse);
+    // Kullanıcının kendi hesabıyla paylaştığı tablo hâlâ onun.
+    expect(provider.isSharedOwner(owned), isTrue);
+    // Tabloların kendisi cihazda durur.
+    expect(provider.tables.length, 2);
+  });
+
+  test('hesap silinince paylaşılan tablolar da kopar, veri kalır', () async {
+    final provider = await _seeded();
+    final id = _tableId(provider);
+    await provider.setSharedRole(id, 'owner');
+    await provider.addRow(['izmir', '12000']);
+
+    await provider.clearSharedState();
+    expect(provider.isSharedTable(id), isFalse);
+    expect(provider.pendingChangeCount(id), 0);
+    expect(provider.currentTable!.rows.length, 2);
+  });
 }

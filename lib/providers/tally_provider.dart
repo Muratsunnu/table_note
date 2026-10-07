@@ -240,6 +240,8 @@ class TallyProvider extends ChangeNotifier {
   String? sharedRole(String tallyId) => _sharedRoles[tallyId];
   bool isSharedTally(String tallyId) => _sharedRoles.containsKey(tallyId);
   bool isSharedOwner(String tallyId) => _sharedRoles[tallyId] == 'owner';
+  bool get hasJoinedTallies =>
+      _sharedRoles.values.any((role) => role != 'owner');
 
   /// Bu çetelede buluta gönderilmeyi bekleyen öğe sayısı.
   int pendingChangeCount(String tallyId) => _pending[tallyId]?.length ?? 0;
@@ -257,6 +259,23 @@ class TallyProvider extends ChangeNotifier {
       _sharedRoles[tallyId] = role;
     }
     await StorageService.saveSharedTallyRoles(Map.of(_sharedRoles));
+    notifyListeners();
+  }
+
+  /// Buluttaki kimlik değiştiğinde çağrılır; çetelelerin kendisi cihazda
+  /// kalır. Ayrıntı için [TableProvider.clearSharedState].
+  Future<void> clearSharedState({bool joinedOnly = false}) async {
+    final lost = [
+      for (final entry in _sharedRoles.entries)
+        if (!joinedOnly || entry.value != 'owner') entry.key,
+    ];
+    if (lost.isEmpty) return;
+    for (final tallyId in lost) {
+      _sharedRoles.remove(tallyId);
+      _pending.remove(tallyId);
+    }
+    await StorageService.saveSharedTallyRoles(Map.of(_sharedRoles));
+    await StorageService.savePendingTallyChanges(Map.of(_pending));
     notifyListeners();
   }
 

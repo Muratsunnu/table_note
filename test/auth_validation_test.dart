@@ -42,4 +42,39 @@ void main() {
     );
     expect(en.authError('sensitive raw server detail'), en.authText('failed'));
   });
+
+  test('confirm word ignores case and the Turkish dotted/dotless i', () {
+    // Aynı niyetin klavyeye göre değişen yazılışları.
+    for (final typed in ['SİL', 'sil', 'SIL', 'sıl', '  Sil  ']) {
+      expect(AuthValidation.matchesConfirmWord(typed, 'SİL'), isTrue);
+    }
+    expect(AuthValidation.matchesConfirmWord('delete', 'DELETE'), isTrue);
+    for (final typed in ['', 'Sİ', 'SİLL', 'evet', 'delete']) {
+      expect(AuthValidation.matchesConfirmWord(typed, 'SİL'), isFalse);
+    }
+  });
+
+  test('both languages define the same auth strings and placeholders', () {
+    // Eksik anahtar çökmez, sessizce "İşlem tamamlanamadı" yazar; yalnızca
+    // bu test yakalar.
+    final tr = authStrings['tr']!;
+    final en = authStrings['en']!;
+    expect(tr.keys.toSet().difference(en.keys.toSet()), isEmpty);
+    expect(en.keys.toSet().difference(tr.keys.toSet()), isEmpty);
+    Set<String> slots(String text) =>
+        RegExp(r'\{\w+\}').allMatches(text).map((m) => m[0]!).toSet();
+    for (final key in tr.keys) {
+      expect(slots(en[key]!), slots(tr[key]!), reason: key);
+    }
+  });
+
+  test('every code the app raises itself has its own message', () {
+    final en = AppLocalizations(const Locale('en'));
+    for (final code in ['delete_failed', 'apple_failed', 'network']) {
+      expect(en.authError(code), isNot(en.authText('failed')), reason: code);
+    }
+    for (final notice in ['account_deleted', 'password_updated']) {
+      expect(en.authText(notice), isNot(en.authText('failed')), reason: notice);
+    }
+  });
 }

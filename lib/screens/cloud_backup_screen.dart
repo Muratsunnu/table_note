@@ -33,7 +33,7 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
   }
 
   Future<void> _refresh() async {
-    if (!context.read<AuthProvider>().isSignedIn ||
+    if (!context.read<AuthProvider>().hasAccount ||
         !context.read<SubscriptionProvider>().isPremium) {
       return;
     }
@@ -153,7 +153,7 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
               title: loc.onlineServicesUnavailable,
               message: loc.onlineServicesUnavailableDescription,
             )
-          : !auth.isSignedIn
+          : !auth.hasAccount
           ? _AccessCard(
               icon: Icons.person_rounded,
               title: loc.connectAccount,

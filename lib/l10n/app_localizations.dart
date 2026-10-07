@@ -435,6 +435,17 @@ class AppLocalizations {
   // ============== ORTAK TABLO ==============
   String get joinTable => _t('joinTable');
   String get joinCode => _t('joinCode');
+  String get share => _t('share');
+  String get shareSendCode => _t('shareSendCode');
+  String shareCodeMessage(String name, String code) => _t(
+    'shareCodeMessage',
+  ).replaceAll('{name}', name).replaceAll('{code}', code);
+  String get shareHowToJoin =>
+      _t('shareHowToJoin').replaceAll('{join}', joinTable);
+  String get shareNeedsAccount => _t('shareNeedsAccount');
+  String get sharePassword => _t('sharePassword');
+  String get sharePasswordHint => _t('sharePasswordHint');
+  String get shareMembersHistory => _t('shareMembersHistory');
   String get joinPassword => _t('joinPassword');
   String get joinPasswordOptional => _t('joinPasswordOptional');
   String get yourName => _t('yourName');
@@ -481,6 +492,7 @@ class AppLocalizations {
   String get activityRowAdded => _t('activityRowAdded');
   String get activityRowDeleted => _t('activityRowDeleted');
   String get activityActorSelf => _t('activityActorSelf');
+  String get activityActorDeleted => _t('activityActorDeleted');
   String get activityItemAdded => _t('activityItemAdded');
   String get activityItemDeleted => _t('activityItemDeleted');
   String get activityColumnsChanged => _t('activityColumnsChanged');
@@ -913,6 +925,18 @@ class AppLocalizations {
     'undoLastAction': 'Son işlemi geri al',
     'joinTable': 'Tabloya katıl',
     'joinCode': 'Katılım kodu',
+    'share': 'Paylaş',
+    'shareSendCode': 'Kodu gönder',
+    'shareCodeMessage':
+        'Table Note’ta “{name}” paylaşımına katıl.\nKatılım kodu: {code}',
+    'shareHowToJoin':
+        'Kodu alan kişi menüden “{join}” bölümüne girer, kodu ve adını yazar. Hesap açması gerekmez.',
+    'shareNeedsAccount': 'Paylaşmak için hesabına giriş yap.',
+    'sharePassword': 'Şifre koy ya da değiştir',
+    'sharePasswordHint': 'İsteğe bağlı. Kodu öğrenen herkes katılamasın diye.',
+    'shareMembersHistory': 'Katılanlar ve geçmiş',
+    'err_table_owner_required':
+        'Bu tablo başka birinin paylaşımından geldi, buradan paylaşılamaz.',
     'joinPassword': 'Şifre',
     'joinPasswordOptional': 'Şifre (varsa)',
     'yourName': 'Adın',
@@ -962,6 +986,7 @@ class AppLocalizations {
     'activityRowAdded': 'satır ekledi',
     'activityRowDeleted': 'satır sildi',
     'activityActorSelf': 'Sen',
+    'activityActorDeleted': 'Silinmiş hesap',
     'activityItemAdded': 'öğe ekledi',
     'activityItemDeleted': 'öğe sildi',
     'activityColumnsChanged': 'yapıyı değiştirdi',
@@ -1411,6 +1436,18 @@ class AppLocalizations {
     'undoLastAction': 'Undo last action',
     'joinTable': 'Join a table',
     'joinCode': 'Join code',
+    'share': 'Share',
+    'shareSendCode': 'Send code',
+    'shareCodeMessage': 'Join “{name}” on Table Note.\nJoin code: {code}',
+    'shareHowToJoin':
+        'The other person opens “{join}” from the menu and enters the code and their name. No account needed.',
+    'shareNeedsAccount': 'Sign in to your account to share.',
+    'sharePassword': 'Set or change the password',
+    'sharePasswordHint':
+        'Optional. Keeps out people who only learned the code.',
+    'shareMembersHistory': 'Members and history',
+    'err_table_owner_required':
+        'This table came from someone else’s share and cannot be shared from here.',
     'joinPassword': 'Password',
     'joinPasswordOptional': 'Password (if any)',
     'yourName': 'Your name',
@@ -1463,6 +1500,7 @@ class AppLocalizations {
     'activityRowAdded': 'added a row',
     'activityRowDeleted': 'deleted a row',
     'activityActorSelf': 'You',
+    'activityActorDeleted': 'Deleted account',
     'activityItemAdded': 'added an item',
     'activityItemDeleted': 'deleted an item',
     'activityColumnsChanged': 'changed the structure',

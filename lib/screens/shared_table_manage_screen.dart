@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../services/cloud_repository.dart';
+import '../widgets/join_password_dialog.dart';
 
 /// Tabloyu paylasan kisinin yonetim ekrani: kod uretme, istege bagli sifre,
 /// kimlerin katildigi ve degisiklik gecmisi.
@@ -130,39 +131,7 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
 
   Future<void> _setPassword() async {
     final loc = AppLocalizations.of(context);
-    // Denetleyici degil duz degisken: showDialog, kapanma animasyonu
-    // bitmeden doner. Denetleyiciyi doner donmez dispose etmek, hala agacta
-    // duran TextField yuzunden '_dependents.isEmpty' iddiasini patlatiyordu.
-    // Animasyonun bitmesini beklemek yerine dispose edilecek nesneyi ortadan
-    // kaldirmak, zamanlamaya bagli kalmayan tek cozum.
-    var typed = '';
-    final value = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(loc.joinPassword),
-        content: TextField(
-          autofocus: true,
-          onChanged: (text) => typed = text,
-          onSubmitted: (text) => Navigator.pop(dialogContext, text),
-          decoration: InputDecoration(
-            labelText: loc.joinPasswordOptional,
-            // Ipucu tek satira sigmayip ortasindan kesiliyordu.
-            helperText: loc.joinPasswordHint,
-            helperMaxLines: 2,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(loc.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, typed),
-            child: Text(loc.save),
-          ),
-        ],
-      ),
-    );
+    final value = await showJoinPasswordDialog(context);
     if (value == null) return;
     await _run(() async {
       await _repository.setSharedTablePassword(widget.tableId, value);
@@ -384,7 +353,12 @@ class _ActivityRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isSelf ? loc.activityActorSelf : entry.actorName,
+                  isSelf
+                      ? loc.activityActorSelf
+                      // Hesabını silen kişinin adı kayıttan çıkarılır.
+                      : entry.actorName.trim().isEmpty
+                      ? loc.activityActorDeleted
+                      : entry.actorName,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text(detail, style: const TextStyle(fontSize: 13)),

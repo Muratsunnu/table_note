@@ -52,7 +52,16 @@ class TableNoteRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           lazy: false,
-          create: (context) => AuthProvider(),
+          create: (context) => AuthProvider(
+            onSharedAccessLost: ({required ownedToo}) {
+              context.read<TableProvider>().clearSharedState(
+                joinedOnly: !ownedToo,
+              );
+              context.read<TallyProvider>().clearSharedState(
+                joinedOnly: !ownedToo,
+              );
+            },
+          ),
         ),
         ChangeNotifierProvider(
           lazy: false,

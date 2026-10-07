@@ -118,6 +118,11 @@ class TableProvider extends ChangeNotifier {
   bool isSharedTable(String tableId) => _sharedRoles.containsKey(tableId);
   bool isSharedOwner(String tableId) => _sharedRoles[tableId] == 'owner';
 
+  /// Bu cihaz kodla katıldığı bir tabloyu tutuyor mu? Hesap ekranı, giriş
+  /// yapınca bu erişimin kapanacağını yalnızca gerçekten öyleyse söyler.
+  bool get hasJoinedTables =>
+      _sharedRoles.values.any((role) => role != 'owner');
+
   /// Bu tabloda buluta gönderilmeyi bekleyen satır sayısı.
   int pendingChangeCount(String tableId) => _pending[tableId]?.length ?? 0;
 
@@ -134,6 +139,30 @@ class TableProvider extends ChangeNotifier {
       _sharedRoles[tableId] = role;
     }
     await StorageService.saveSharedTableRoles(Map.of(_sharedRoles));
+    notifyListeners();
+  }
+
+  /// Buluttaki kimlik değiştiğinde çağrılır; tabloların kendisi cihazda
+  /// kalır, yalnızca onları buluta bağlayan roller ve bekleyen kuyruk gider.
+  ///
+  /// Hesap silindiyse hepsi temizlenir: paylaşılan tablolar da sunucudan
+  /// silinmiştir. Misafir oturumu gerçek bir hesapla değiştiyse yalnızca
+  /// katılınanlar ([joinedOnly]): üyelik eski misafir kimliğine aitti, ama
+  /// kullanıcının daha önce kendi hesabıyla paylaştıkları hâlâ geçerli.
+  /// Roller durursa senkron servisi erişemediği tablolara göndermeye
+  /// çalışır ve gösterge kalıcı hatada kalır.
+  Future<void> clearSharedState({bool joinedOnly = false}) async {
+    final lost = [
+      for (final entry in _sharedRoles.entries)
+        if (!joinedOnly || entry.value != 'owner') entry.key,
+    ];
+    if (lost.isEmpty) return;
+    for (final tableId in lost) {
+      _sharedRoles.remove(tableId);
+      _pending.remove(tableId);
+    }
+    await StorageService.saveSharedTableRoles(Map.of(_sharedRoles));
+    await StorageService.savePendingRowChanges(Map.of(_pending));
     notifyListeners();
   }
 
