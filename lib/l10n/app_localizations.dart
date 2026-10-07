@@ -487,6 +487,9 @@ class AppLocalizations {
   String get sharedStructureLocked => _t('sharedStructureLocked');
   String get sharedStructureLockedTitle => _t('sharedStructureLockedTitle');
   String get copy => _t('copy');
+  String get columnNameDate => _t('columnNameDate');
+  String get columnNameTime => _t('columnNameTime');
+  String get columnNameOrder => _t('columnNameOrder');
   String get copySuffix => _t('copySuffix');
   String get copied => _t('copied');
   String sharedTableError(String code) => _t('err_$code');
@@ -967,6 +970,9 @@ class AppLocalizations {
         'Yapıyı yalnızca paylaşan kişi değiştirebilir. Kayıtları ve '
         'işaretleri düzenlemeye devam edebilirsin.',
     'copy': 'Kopyala',
+    'columnNameDate': 'tarih',
+    'columnNameTime': 'saat',
+    'columnNameOrder': 'sıra',
     'copySuffix': ' (kopya)',
     'copied': 'Kopyalandı',
     'err_authentication_required': 'Bağlantı kurulamadı, tekrar dene.',
@@ -1465,6 +1471,9 @@ class AppLocalizations {
         'Only the person who shared this can change its structure. You can '
         'still edit records and marks.',
     'copy': 'Copy',
+    'columnNameDate': 'date',
+    'columnNameTime': 'time',
+    'columnNameOrder': 'no',
     'copySuffix': ' (copy)',
     'copied': 'Copied',
     'err_authentication_required': 'Could not connect. Try again.',

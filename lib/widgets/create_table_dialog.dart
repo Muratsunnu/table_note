@@ -12,6 +12,7 @@ import '../providers/subscription_provider.dart';
 import '../providers/template_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/column_naming.dart';
 import '../l10n/ux_localizations.dart';
 import '../services/form_draft_store.dart';
 import '../utils/app_feedback.dart';
@@ -858,6 +859,17 @@ class _CreateTableDialogState extends State<CreateTableDialog>
           if (selected) {
             setState(() {
               column.columnType = type;
+              // Adi kendiliginden belli olan tiplerde ad da dolar;
+              // kullanicinin kendi yazdigi ad ezilmez.
+              final renamed = renamedForType(
+                _columnControllers[index].text,
+                type,
+                AppLocalizations.of(context),
+              );
+              if (renamed != null) {
+                _columnControllers[index].text = renamed;
+                column.name = renamed;
+              }
               // Tip değişince ilgili alanları temizle
               if (type == ColumnType.normal) {
                 column.constantValue = null;

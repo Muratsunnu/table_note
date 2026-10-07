@@ -7,6 +7,7 @@ import '../providers/template_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/column_naming.dart';
 import '../utils/app_feedback.dart';
 
 class CreateTemplateDialog extends StatefulWidget {
@@ -388,6 +389,17 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
         if (selected) {
           setState(() {
             column.columnType = type;
+            // Adi kendiliginden belli olan tiplerde ad da dolar;
+            // kullanicinin kendi yazdigi ad ezilmez.
+            final renamed = renamedForType(
+              _nameControllers[index].text,
+              type,
+              AppLocalizations.of(context),
+            );
+            if (renamed != null) {
+              _nameControllers[index].text = renamed;
+              column.name = renamed;
+            }
             if (type == ColumnType.normal) {
               column.constantValue = null;
               column.formula = null;
