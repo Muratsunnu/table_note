@@ -16,7 +16,17 @@ class SupabaseService {
       _isInitialized ? Supabase.instance.client : null;
 
   static Future<void> initialize() async {
-    if (!AppConfig.hasSupabaseConfig || _isInitialized) return;
+    if (_isInitialized) return;
+    if (!AppConfig.hasSupabaseConfig) {
+      // Uygulama ayarsız da çalışır, yalnızca çevrimiçi özellikler kapanır.
+      // Geliştirirken bu sessiz olursa "hiçbir düğme çalışmıyor" diye görünür.
+      debugPrint(
+        'Supabase ayarları yok: uygulama '
+        '--dart-define-from-file=dart_defines.json olmadan başlatıldı. '
+        'Hesap ve bulut özellikleri kapalı.',
+      );
+      return;
+    }
 
     try {
       await Supabase.initialize(
