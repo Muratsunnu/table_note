@@ -4,6 +4,7 @@ import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/share_table_sheet.dart';
 import '../widgets/shared_sync_indicator.dart';
 import '../widgets/table_list_widget.dart';
 import '../models/overview_grid.dart';
@@ -25,7 +26,6 @@ import '../l10n/app_localizations.dart';
 import '../l10n/ux_localizations.dart';
 import 'tally_screen.dart';
 import 'premium_screen.dart';
-import 'shared_table_manage_screen.dart';
 import '../services/home_widget_service.dart';
 import '../widgets/add_tally_item_dialog.dart';
 
@@ -194,15 +194,47 @@ class _TableScreenState extends State<TableScreen> {
       title: Text(loc.tableNote),
       actions: [
         Consumer<TableProvider>(
-          builder: (context, provider, _) => provider.hasTables
-              ? IconButton(
-                  icon: const Icon(Icons.download_rounded),
-                  onPressed: () => _showExportDialog(context),
-                  tooltip: loc.exportData,
-                )
-              : const SizedBox.shrink(),
+          builder: (context, provider, _) {
+            final table = provider.currentTable;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Kodla katılan kişi tabloyu başkasına açamaz; düğme yalnızca
+                // tablonun sahibinde ve henüz paylaşılmamış tabloda durur.
+                if (table != null && provider.sharedRole(table.id) != 'editor')
+                  _shareButton(
+                    shared: provider.isSharedOwner(table.id),
+                    onPressed: () => ShareTableSheet.show(
+                      context,
+                      tableId: table.id,
+                      isTally: false,
+                    ),
+                  ),
+                if (provider.hasTables)
+                  IconButton(
+                    icon: const Icon(Icons.download_rounded),
+                    onPressed: () => _showExportDialog(context),
+                    tooltip: loc.exportData,
+                  ),
+              ],
+            );
+          },
         ),
       ],
+    );
+  }
+
+  /// Tabloya bakarken tek dokunuşla paylaşım: kodu vermek için ayarlara
+  /// girmek gerekmez. Paylaşımdaki tabloda simge dolu görünür.
+  Widget _shareButton({required bool shared, required VoidCallback onPressed}) {
+    final loc = AppLocalizations.of(context);
+    return IconButton(
+      key: const ValueKey('share-table'),
+      icon: Icon(
+        shared ? Icons.group_rounded : Icons.person_add_alt_1_outlined,
+      ),
+      tooltip: shared ? loc.joinCode : loc.share,
+      onPressed: onPressed,
     );
   }
 
@@ -220,9 +252,19 @@ class _TableScreenState extends State<TableScreen> {
       actions: [
         Consumer<TallyProvider>(
           builder: (context, provider, _) {
+            final tally = provider.currentTable;
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (tally != null && provider.sharedRole(tally.id) != 'editor')
+                  _shareButton(
+                    shared: provider.isSharedOwner(tally.id),
+                    onPressed: () => ShareTableSheet.show(
+                      context,
+                      tableId: tally.id,
+                      isTally: true,
+                    ),
+                  ),
                 if (provider.hasTables)
                   IconButton(
                     icon: const Icon(Icons.download_rounded),
@@ -619,27 +661,6 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
-  bool _isSharedOwner(TableProvider provider) {
-    final table = provider.currentTable;
-    return table != null && provider.isSharedOwner(table.id);
-  }
-
-  void _openShareScreen(TableProvider provider) {
-    final table = provider.currentTable;
-    if (table == null) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SharedTableManageScreen(
-          tableId: table.id,
-          tableName: table.tableName,
-          collaborationEnabled: true,
-          isTally: false,
-        ),
-      ),
-    );
-  }
-
   Widget _buildTableActions(TableProvider provider) {
     final loc = AppLocalizations.of(context);
     return PopupMenuButton<String>(
@@ -665,25 +686,9 @@ class _TableScreenState extends State<TableScreen> {
                 );
         } else if (value == 'templates') {
           _showTemplateDialog(context);
-        } else if (value == 'share') {
-          _openShareScreen(provider);
         }
       },
       itemBuilder: (_) => [
-        // Yalnizca paylasimdaki ve bu cihazin sahibi oldugu tabloda. Kodu
-        // gormek icin Ayarlar > Bulut Yedekleme > paylas simgesi yolunu
-        // izlemek gerekiyordu; kod zaten en cok burada lazim oluyor.
-        if (_isSharedOwner(provider))
-          PopupMenuItem(
-            value: 'share',
-            child: Row(
-              children: [
-                const Icon(Icons.key_rounded, size: 20),
-                const SizedBox(width: 10),
-                Text(loc.joinCode),
-              ],
-            ),
-          ),
         PopupMenuItem(value: 'edit', child: Text(loc.editStructure)),
         PopupMenuItem(value: 'import', child: Text(loc.importCsv)),
         PopupMenuItem(value: 'templates', child: Text(loc.templates)),

@@ -17,7 +17,6 @@ import '../widgets/create_tally_dialog.dart';
 import '../widgets/grid_overview_screen.dart';
 import 'premium_screen.dart';
 import '../widgets/shared_sync_indicator.dart';
-import 'shared_table_manage_screen.dart';
 
 class TallyScreen extends StatefulWidget {
   const TallyScreen({Key? key}) : super(key: key);
@@ -95,22 +94,6 @@ class _TallyScreenState extends State<TallyScreen> {
           ),
         );
       },
-    );
-  }
-
-  void _openShareScreen(TallyProvider provider) {
-    final table = provider.currentTable;
-    if (table == null) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SharedTableManageScreen(
-          tableId: table.id,
-          tableName: table.tableName,
-          collaborationEnabled: true,
-          isTally: true,
-        ),
-      ),
     );
   }
 
@@ -228,23 +211,9 @@ class _TallyScreenState extends State<TallyScreen> {
               _showEditDialog(context);
             } else if (value == 'delete') {
               _showDeleteDialog(context, provider);
-            } else if (value == 'share') {
-              _openShareScreen(provider);
             }
           },
           itemBuilder: (_) => [
-            if (provider.currentTable != null &&
-                provider.isSharedOwner(provider.currentTable!.id))
-              PopupMenuItem(
-                value: 'share',
-                child: Row(
-                  children: [
-                    const Icon(Icons.key_rounded, size: 20),
-                    const SizedBox(width: 10),
-                    Text(loc.joinCode),
-                  ],
-                ),
-              ),
             PopupMenuItem(value: 'summary', child: Text(loc.overallSummary)),
             PopupMenuItem(value: 'reorder', child: Text(loc.reorderRows)),
             PopupMenuItem(value: 'edit', child: Text(loc.edit)),

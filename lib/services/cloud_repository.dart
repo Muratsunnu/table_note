@@ -89,6 +89,7 @@ class SharedTableException implements Exception {
     'display_name_taken',
     'too_many_attempts',
     'table_not_found',
+    'table_owner_required',
     'password_too_short',
     'shared_table_needs_upgrade',
     'shared_table_locked_by_other',
@@ -639,11 +640,44 @@ class CloudRepository {
   }
 
   Future<String> rotateSharedTableCode(String tableId) async {
-    final result = await _client.rpc(
-      'rotate_shared_table_join_code',
-      params: {'target_table_id': tableId},
-    );
-    return result.toString();
+    try {
+      final result = await _client.rpc(
+        'rotate_shared_table_join_code',
+        params: {'target_table_id': tableId},
+      );
+      return result.toString();
+    } on PostgrestException catch (error) {
+      // Sunucunun soylediği neden (Premium yok, sahibi degilsin) kullaniciya
+      // "bir seyler ters gitti" diye degil kendi adiyla gitsin.
+      throw SharedTableException(error.message);
+    }
+  }
+
+  /// Tabloyu ya da ceteleyi tek adimda paylasima acar ve katilim kodunu
+  /// doner. Tablo ekranindaki "Paylas" dugmesi bunu cagirir.
+  ///
+  /// Kod, buluttaki satirin uzerinde durur; satir yoksa uretilecek yer de
+  /// yoktur. Eskiden kullanicinin once Ayarlar > Bulut Yedekleme'den tum
+  /// tablolarini yedeklemesi, sonra listeden bu tabloyu bulup paylasmasi
+  /// gerekiyordu. Burada yalnizca bu tablo yuklenir.
+  ///
+  /// Tablo zaten paylasimdaysa kodu yenilenmez: yeni kod eskisini gecersiz
+  /// kilar ve kodu daha once almis kisileri bosa dusururdu.
+  Future<String> startSharing({
+    TableModel? table,
+    TallyTableModel? tally,
+  }) async {
+    assert((table == null) != (tally == null));
+    final id = table?.id ?? tally!.id;
+    try {
+      await backupTables([?table], [?tally]);
+    } on PostgrestException catch (error) {
+      // Sunucu, Premium'u olmayan hesabin buluta yazmasini burada durdurur
+      // ('owner_premium_required'). Neden, kod uretme adimina varmadan
+      // kaybolmasin.
+      throw SharedTableException(error.message);
+    }
+    return await sharedTableJoinCode(id) ?? await rotateSharedTableCode(id);
   }
 
   Future<void> disableSharedTableCollaboration(String tableId) async {
