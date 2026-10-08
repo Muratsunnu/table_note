@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'compact_layout.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
@@ -28,6 +29,50 @@ class ColumnSumsWidget extends StatelessWidget {
             : isFiltering
             ? const Color(0xFFE65100)
             : const Color(0xFF2E7D32);
+
+        // Yüksekliği dar ekranda tek satır: toplamlar yana kayar.
+        if (isCompactHeight(context)) {
+          return Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isFiltering
+                      ? Icons.filter_list_rounded
+                      : Icons.functions_rounded,
+                  color: darkColor,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final entry in sums.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _sumChip(
+                              context,
+                              entry,
+                              accentColor,
+                              darkColor,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -134,52 +179,56 @@ class ColumnSumsWidget extends StatelessWidget {
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: sums.entries.map((entry) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: accentColor.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            entry.key,
-                            style: TextStyle(
-                              color: darkColor.withValues(alpha: 0.7),
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _formatNumber(
-                              entry.value,
-                              Localizations.localeOf(context).languageCode ==
-                                  'tr',
-                            ),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: darkColor,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                  children: [
+                    for (final entry in sums.entries)
+                      _sumChip(context, entry, accentColor, darkColor),
+                  ],
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _sumChip(
+    BuildContext context,
+    MapEntry<String, double> entry,
+    Color accentColor,
+    Color darkColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            entry.key,
+            style: TextStyle(
+              color: darkColor.withValues(alpha: 0.7),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _formatNumber(
+              entry.value,
+              Localizations.localeOf(context).languageCode == 'tr',
+            ),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: darkColor,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

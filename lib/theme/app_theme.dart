@@ -186,6 +186,24 @@ class AppTheme {
         }),
       ),
 
+      navigationRailTheme: const NavigationRailThemeData(
+        backgroundColor: white,
+        indicatorColor: lightBlue,
+        elevation: 0,
+        selectedIconTheme: IconThemeData(color: primaryBlue),
+        unselectedIconTheme: IconThemeData(color: textSecondary),
+        selectedLabelTextStyle: TextStyle(
+          color: primaryBlue,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelTextStyle: TextStyle(
+          color: textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: white,
         selectedItemColor: primaryBlue,
@@ -373,6 +391,22 @@ class AppTheme {
                 ? FontWeight.w700
                 : FontWeight.w500,
           ),
+        ),
+      ),
+      navigationRailTheme: light.navigationRailTheme.copyWith(
+        backgroundColor: darkSurface,
+        indicatorColor: const Color(0xFF1E3A5F),
+        selectedIconTheme: const IconThemeData(color: darkPrimary),
+        unselectedIconTheme: const IconThemeData(color: darkMutedText),
+        selectedLabelTextStyle: const TextStyle(
+          color: darkPrimary,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelTextStyle: const TextStyle(
+          color: darkMutedText,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(

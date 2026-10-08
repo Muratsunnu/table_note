@@ -82,6 +82,32 @@ class RequestEditAccessButton extends StatelessWidget {
   }
 }
 
+/// Aynı düğmenin yan çubuğa sığan, yalnızca simgeden oluşan hâli.
+class RequestEditAccessIconButton extends StatelessWidget {
+  const RequestEditAccessIconButton({super.key, required this.tableId});
+
+  final String tableId;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final requested = context
+        .watch<SharedSyncService>()
+        .accessFor(tableId)
+        .editRequested;
+    return IconButton.filled(
+      key: const ValueKey('request-edit-access'),
+      tooltip: requested ? loc.editAccessRequested : loc.requestEditAccess,
+      onPressed: requested
+          ? null
+          : () => confirmAndRequestEditAccess(context, tableId: tableId),
+      icon: Icon(
+        requested ? Icons.hourglass_top_rounded : Icons.lock_open_rounded,
+      ),
+    );
+  }
+}
+
 /// Görüntüleyen kişi bir satıra ya da hücreye dokunduğunda: neden bir şey
 /// olmadığını söyler ve yetki istemenin yolunu gösterir.
 void showViewOnlyNotice(BuildContext context, {required String tableId}) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/compact_layout.dart';
 import '../widgets/edit_access.dart';
 import '../widgets/leave_shared_table.dart';
 import '../l10n/app_localizations.dart';
@@ -72,6 +73,9 @@ class _TallyScreenState extends State<TallyScreen> {
         }
 
         final table = provider.currentTable!;
+        // Yan çevrilmiş telefonda başlık tek satıra iner, durum etiketleri
+        // araç satırına katılır; kayıt ekleme düğmesi yandaki çubuktadır.
+        final compact = isCompactHeight(context);
         return LayoutBuilder(
           builder: (context, constraints) => Column(
             children: [
@@ -83,15 +87,25 @@ class _TallyScreenState extends State<TallyScreen> {
                   primary: false,
                   child: Column(
                     children: [
-                      _buildHeader(context, table, provider, loc),
-                      _buildStatusLegend(table),
-                      _buildQuickTools(context, provider),
+                      _buildHeader(
+                        context,
+                        table,
+                        provider,
+                        loc,
+                        compact: compact,
+                      ),
+                      if (!compact) _buildStatusLegend(table),
+                      _buildQuickTools(
+                        context,
+                        provider,
+                        trailing: compact ? _statusChips(table) : const [],
+                      ),
                     ],
                   ),
                 ),
               ),
               Expanded(child: _buildGrid(context, table, provider)),
-              _buildBottomBar(context, provider, loc),
+              if (!compact) _buildBottomBar(context, provider, loc),
             ],
           ),
         );
@@ -101,10 +115,11 @@ class _TallyScreenState extends State<TallyScreen> {
 
   Widget _buildEmptyState(BuildContext context, AppLocalizations loc) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
+        primary: false,
         padding: const EdgeInsets.all(32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.all(24),
@@ -158,8 +173,9 @@ class _TallyScreenState extends State<TallyScreen> {
     BuildContext context,
     TallyTableModel table,
     TallyProvider provider,
-    AppLocalizations loc,
-  ) {
+    AppLocalizations loc, {
+    bool compact = false,
+  }) {
     final material = MaterialLocalizations.of(context);
     final dateFormat =
         '${material.formatShortDate(table.startDate)} – '
@@ -169,6 +185,7 @@ class _TallyScreenState extends State<TallyScreen> {
       title: table.tableName,
       summary: loc.nRecords(table.items.length),
       detail: dateFormat,
+      compact: compact,
       // Ortak olmayan cetelede hicbir sey cizmez.
       titleTrailing: const SharedSyncIndicator(isTally: true),
       actions: [
@@ -245,7 +262,12 @@ class _TallyScreenState extends State<TallyScreen> {
     );
   }
 
-  Widget _buildQuickTools(BuildContext context, TallyProvider provider) {
+  /// [trailing] araçların yanına, aynı kaydırılabilir satıra eklenir.
+  Widget _buildQuickTools(
+    BuildContext context,
+    TallyProvider provider, {
+    List<Widget> trailing = const [],
+  }) {
     final loc = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -309,6 +331,8 @@ class _TallyScreenState extends State<TallyScreen> {
                     ),
                   ],
                   _buildSortMenu(context, provider),
+                  if (trailing.isNotEmpty) const SizedBox(width: 8),
+                  ...trailing,
                 ],
               ),
             ),
@@ -400,48 +424,48 @@ class _TallyScreenState extends State<TallyScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(
-          children: table.statuses.map((s) {
-            return Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Color(s.colorValue).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Color(s.colorValue).withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: AppTheme.readableAccent(
-                        context,
-                        Color(s.colorValue),
-                      ),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${s.code} - ${s.label}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(s.colorValue),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
+        child: Row(children: _statusChips(table)),
       ),
     );
+  }
+
+  List<Widget> _statusChips(TallyTableModel table) {
+    return [
+      for (final s in table.statuses)
+        Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Color(s.colorValue).withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Color(s.colorValue).withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AppTheme.readableAccent(context, Color(s.colorValue)),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${s.code} - ${s.label}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Color(s.colorValue),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ];
   }
 
   Widget _buildGrid(
@@ -475,8 +499,10 @@ class _TallyScreenState extends State<TallyScreen> {
       160.0,
     );
     final dayColWidth = 48 * scale.clamp(1.0, 2.0);
-    final rowHeight = 52 * scale.clamp(1.0, 3.0);
-    final headerHeight = 52 * scale.clamp(1.0, 3.0);
+    // Yüksekliği dar ekranda satırlar alçalır; dokunma alanı 44'ün altına inmez.
+    final compact = isCompactHeight(context);
+    final rowHeight = (compact ? 44 : 52) * scale.clamp(1.0, 3.0);
+    final headerHeight = (compact ? 40 : 52) * scale.clamp(1.0, 3.0);
 
     Widget seqCell(int itemIndex) {
       return Container(
@@ -637,187 +663,197 @@ class _TallyScreenState extends State<TallyScreen> {
       );
     }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          children: [
-            // === ÜST BAŞLIK SATIRI (dikey kaymaz) ===
-            SizedBox(
-              height: headerHeight,
-              child: Row(
-                children: [
-                  // Sıra başlığı (sticky)
-                  Container(
-                    width: seqColWidth,
-                    height: headerHeight,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
+    return MinHeightClip(
+      minHeight: headerHeight + rowHeight + 16,
+      child: Container(
+        margin: EdgeInsets.fromLTRB(16, compact ? 4 : 8, 16, 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Column(
+            children: [
+              // === ÜST BAŞLIK SATIRI (dikey kaymaz) ===
+              SizedBox(
+                height: headerHeight,
+                child: Row(
+                  children: [
+                    // Sıra başlığı (sticky)
+                    Container(
+                      width: seqColWidth,
+                      height: headerHeight,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        border: Border(
+                          right: BorderSide(color: gridLineColor, width: 0.6),
+                        ),
+                      ),
+                      child: Text(
+                        '#',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                    // İsim başlığı (sticky); dokununca ada göre sıralar.
+                    Material(
                       color: Theme.of(context).colorScheme.primaryContainer,
-                      border: Border(
-                        right: BorderSide(color: gridLineColor, width: 0.6),
-                      ),
-                    ),
-                    child: Text(
-                      '#',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                  // İsim başlığı (sticky); dokununca ada göre sıralar.
-                  Material(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    child: InkWell(
-                      onTap: provider.toggleNameSort,
-                      child: Container(
-                        width: nameColWidth,
-                        height: headerHeight,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                AppLocalizations.of(context).tallyItemHeader,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                      child: InkWell(
+                        onTap: provider.toggleNameSort,
+                        child: Container(
+                          width: nameColWidth,
+                          height: headerHeight,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  AppLocalizations.of(context).tallyItemHeader,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                              ),
+                              if (provider.currentSort?.isByName ?? false) ...[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  provider.currentSort!.ascending
+                                      ? Icons.arrow_upward_rounded
+                                      : Icons.arrow_downward_rounded,
+                                  size: 16,
                                   color: Theme.of(
                                     context,
                                   ).colorScheme.onPrimaryContainer,
                                 ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Gün başlıkları (yatay scroll, gövdeyi takip eder)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        controller: _headerHScroll,
+                        physics: const NeverScrollableScrollPhysics(),
+                        child: Row(children: days.map(dayHeaderCell).toList()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // === GÖVDE: TEK DİKEY SCROLL (her iki sütunu da kapsar) ===
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Sol: sabit sıra + isim sütunları (yatay kaymaz)
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              right: BorderSide(
+                                color: gridLineColor,
+                                width: 0.8,
                               ),
                             ),
-                            if (provider.currentSort?.isByName ?? false) ...[
-                              const SizedBox(width: 4),
-                              Icon(
-                                provider.currentSort!.ascending
-                                    ? Icons.arrow_upward_rounded
-                                    : Icons.arrow_downward_rounded,
-                                size: 16,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                width: seqColWidth,
+                                child: Column(
+                                  children: [
+                                    for (int i = 0; i < itemIndices.length; i++)
+                                      seqCell(i),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(
+                                width: nameColWidth,
+                                child: Column(
+                                  children: [
+                                    for (int i = 0; i < itemIndices.length; i++)
+                                      nameCell(
+                                        i,
+                                        itemIndices[i],
+                                        items[itemIndices[i]],
+                                      ),
+                                  ],
+                                ),
                               ),
                             ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Gün başlıkları (yatay scroll, gövdeyi takip eder)
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      controller: _headerHScroll,
-                      physics: const NeverScrollableScrollPhysics(),
-                      child: Row(children: days.map(dayHeaderCell).toList()),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // === GÖVDE: TEK DİKEY SCROLL (her iki sütunu da kapsar) ===
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Sol: sabit sıra + isim sütunları (yatay kaymaz)
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: gridLineColor, width: 0.8),
                           ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              width: seqColWidth,
-                              child: Column(
-                                children: [
-                                  for (int i = 0; i < itemIndices.length; i++)
-                                    seqCell(i),
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              width: nameColWidth,
-                              child: Column(
-                                children: [
-                                  for (int i = 0; i < itemIndices.length; i++)
-                                    nameCell(
-                                      i,
-                                      itemIndices[i],
-                                      items[itemIndices[i]],
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Sağ: günler (yatay scroll). Dikey scroll dışarıdan geliyor.
-                      Expanded(
-                        child: Scrollbar(
-                          controller: _bodyHScroll,
-                          thumbVisibility: days.length > 5,
-                          scrollbarOrientation: ScrollbarOrientation.bottom,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
+                        // Sağ: günler (yatay scroll). Dikey scroll dışarıdan geliyor.
+                        Expanded(
+                          child: Scrollbar(
                             controller: _bodyHScroll,
-                            child: SizedBox(
-                              width: days.length * dayColWidth,
-                              child: Column(
-                                children: [
-                                  for (int i = 0; i < itemIndices.length; i++)
-                                    Container(
-                                      height: rowHeight,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.tableRowColor(
-                                          context,
-                                          i,
-                                        ),
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: gridLineColor,
-                                            width: 0.6,
+                            thumbVisibility: days.length > 5,
+                            scrollbarOrientation: ScrollbarOrientation.bottom,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              controller: _bodyHScroll,
+                              child: SizedBox(
+                                width: days.length * dayColWidth,
+                                child: Column(
+                                  children: [
+                                    for (int i = 0; i < itemIndices.length; i++)
+                                      Container(
+                                        height: rowHeight,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.tableRowColor(
+                                            context,
+                                            i,
+                                          ),
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: gridLineColor,
+                                              width: 0.6,
+                                            ),
                                           ),
                                         ),
+                                        child: Row(
+                                          children: days
+                                              .map(
+                                                (day) => dayCell(
+                                                  itemIndices[i],
+                                                  day,
+                                                ),
+                                              )
+                                              .toList(),
+                                        ),
                                       ),
-                                      child: Row(
-                                        children: days
-                                            .map(
-                                              (day) =>
-                                                  dayCell(itemIndices[i], day),
-                                            )
-                                            .toList(),
-                                      ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

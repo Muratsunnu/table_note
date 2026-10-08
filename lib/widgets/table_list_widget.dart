@@ -167,34 +167,40 @@ class TableListWidget extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SingleChildScrollView(
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(
-                Theme.of(context).colorScheme.primaryContainer,
-              ),
-              headingTextStyle: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontSize: 14,
-              ),
-              dataTextStyle: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 14,
-              ),
-              columnSpacing: 24,
-              horizontalMargin: 16,
-              dividerThickness: 1,
-              sortColumnIndex: provider.sortColumnIndex,
-              sortAscending: provider.sortAscending,
-              columns: _buildColumns(context, currentTable, provider),
-              rows: _buildRows(
-                context,
-                currentTable,
-                displayRows,
-                originalIndices,
-                provider,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            // Tablo ekrandan darsa ortada küçük kalmaz, genişliği doldurur.
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: SingleChildScrollView(
+                child: DataTable(
+                  headingRowColor: WidgetStateProperty.all(
+                    Theme.of(context).colorScheme.primaryContainer,
+                  ),
+                  headingTextStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontSize: 14,
+                  ),
+                  dataTextStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
+                  columnSpacing: 24,
+                  horizontalMargin: 16,
+                  dividerThickness: 1,
+                  sortColumnIndex: provider.sortColumnIndex,
+                  sortAscending: provider.sortAscending,
+                  columns: _buildColumns(context, currentTable, provider),
+                  rows: _buildRows(
+                    context,
+                    currentTable,
+                    displayRows,
+                    originalIndices,
+                    provider,
+                  ),
+                ),
               ),
             ),
           ),

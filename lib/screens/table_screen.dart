@@ -5,6 +5,7 @@ import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/shared_sync_service.dart';
+import '../widgets/compact_layout.dart';
 import '../widgets/edit_access.dart';
 import '../widgets/leave_shared_table.dart';
 import '../widgets/share_table_sheet.dart';
@@ -39,6 +40,9 @@ class TableScreen extends StatefulWidget {
 
 class _TableScreenState extends State<TableScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  // Ekran çevrilince gövde ağaçta yer değiştirir; durumu (arama, kaydırma)
+  // bu anahtarla taşınır.
+  final GlobalKey _bodyKey = GlobalKey();
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   int _currentTab = 0;
@@ -130,36 +134,148 @@ class _TableScreenState extends State<TableScreen> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
+    // Yan çevrilmiş telefonda yükseklik azdır: sekmeler ve kayıt ekleme
+    // düğmesi yandaki çubuğa geçer, alt çubuklar tabloya yer bırakır.
+    final compact = isCompactHeight(context);
+    final body = KeyedSubtree(
+      key: _bodyKey,
+      child: _currentTab == 0 ? _buildTableBody() : const TallyScreen(),
+    );
     return Scaffold(
       key: _scaffoldKey,
       appBar: _currentTab == 0 ? _buildTableAppBar() : _buildTallyAppBar(),
-      drawer: TableDrawer(
-        onTabChanged: (tab) {
-          setState(() => _currentTab = tab);
-          StorageService.saveLastActiveTab(tab);
-        },
-      ),
-      body: _currentTab == 0 ? _buildTableBody() : const TallyScreen(),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentTab,
-        onDestinationSelected: (index) {
-          setState(() => _currentTab = index);
-          StorageService.saveLastActiveTab(index);
-        },
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.table_chart_outlined),
-            selectedIcon: const Icon(Icons.table_chart_rounded),
-            label: loc.tablesTab,
+      drawer: TableDrawer(onTabChanged: _selectTab),
+      // Yan kenarlardaki çentik payı her iki düzende de gövdeden düşülür.
+      body: compact
+          ? Row(
+              children: [
+                _buildNavigationRail(loc),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeLeft: true,
+                    child: SafeArea(top: false, child: body),
+                  ),
+                ),
+              ],
+            )
+          : SafeArea(top: false, bottom: false, child: body),
+      bottomNavigationBar: compact
+          ? null
+          : NavigationBar(
+              selectedIndex: _currentTab,
+              onDestinationSelected: _selectTab,
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.table_chart_outlined),
+                  selectedIcon: const Icon(Icons.table_chart_rounded),
+                  label: loc.tablesTab,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.grid_on_outlined),
+                  selectedIcon: const Icon(Icons.grid_on_rounded),
+                  label: loc.tallyTab,
+                ),
+              ],
+            ),
+    );
+  }
+
+  void _selectTab(int tab) {
+    setState(() => _currentTab = tab);
+    StorageService.saveLastActiveTab(tab);
+  }
+
+  Widget _buildNavigationRail(AppLocalizations loc) {
+    return SafeArea(
+      top: false,
+      right: false,
+      bottom: false,
+      // Çok alçak ekranda çubuk taşmak yerine kayar.
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          primary: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: NavigationRail(
+                selectedIndex: _currentTab,
+                onDestinationSelected: _selectTab,
+                labelType: NavigationRailLabelType.all,
+                leading: _buildRailActions(loc),
+                destinations: [
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.table_chart_outlined),
+                    selectedIcon: const Icon(Icons.table_chart_rounded),
+                    label: Text(loc.tablesTab),
+                  ),
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.grid_on_outlined),
+                    selectedIcon: const Icon(Icons.grid_on_rounded),
+                    label: Text(loc.tallyTab),
+                  ),
+                ],
+              ),
+            ),
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.grid_on_outlined),
-            selectedIcon: const Icon(Icons.grid_on_rounded),
-            label: loc.tallyTab,
-          ),
-        ],
+        ),
       ),
     );
+  }
+
+  /// Alt çubuktaki kayıt ekleme düğmelerinin yan çubuktaki karşılığı.
+  Widget? _buildRailActions(AppLocalizations loc) {
+    if (_currentTab == 1) {
+      final tallies = context.watch<TallyProvider>();
+      final tally = tallies.currentTable;
+      if (tally == null) return null;
+      if (!tallies.canEditCurrent) {
+        return RequestEditAccessIconButton(tableId: tally.id);
+      }
+      return IconButton.filled(
+        tooltip: loc.tallyAddItem,
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (_) => const AddTallyItemDialog(),
+        ),
+        icon: const Icon(Icons.add_rounded),
+      );
+    }
+    final tables = context.watch<TableProvider>();
+    final table = tables.currentTable;
+    if (table == null) return null;
+    if (tables.isSharedViewer(table.id)) {
+      return RequestEditAccessIconButton(tableId: table.id);
+    }
+    final isPremium = context.watch<SubscriptionProvider>().isPremium;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton.filled(
+          tooltip: loc.addRecord,
+          onPressed: () => _showAddRowDialog(context),
+          icon: const Icon(Icons.add_rounded),
+        ),
+        const SizedBox(height: 4),
+        IconButton.filledTonal(
+          tooltip: loc.voiceFill,
+          onPressed: () => _startVoiceAdd(isPremium),
+          icon: Icon(isPremium ? Icons.mic_rounded : Icons.lock_rounded),
+        ),
+      ],
+    );
+  }
+
+  void _startVoiceAdd(bool isPremium) {
+    if (isPremium) {
+      _showVoiceAddRowDialog(context);
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PremiumScreen()),
+      );
+    }
   }
 
   // ============== TABLO TAB ==============
@@ -173,14 +289,40 @@ class _TableScreenState extends State<TableScreen> {
         if (!provider.hasTables) {
           return EmptyStateWidget(onCreate: () => _showCreateTable(context));
         }
-        return Column(
-          children: [
-            _buildTableHeader(provider),
-            _buildSearchBar(provider),
-            Expanded(child: TableListWidget()),
-            const ColumnSumsWidget(),
-            _buildAddRowButton(),
-          ],
+        final compact = isCompactHeight(context);
+        // Başlık ve arama en fazla ekranın yarısını alır, gerekirse kayar;
+        // klavye açıkken de tabloya yer kalır ve hiçbir şey taşmaz.
+        return LayoutBuilder(
+          builder: (context, constraints) => Column(
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.maxHeight * .55,
+                ),
+                child: SingleChildScrollView(
+                  primary: false,
+                  child: Column(
+                    children: [
+                      _buildTableHeader(provider, compact: compact),
+                      _buildSearchBar(provider),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: MinHeightClip(
+                  minHeight: 168,
+                  child: Column(
+                    children: [
+                      Expanded(child: TableListWidget()),
+                      const ColumnSumsWidget(),
+                    ],
+                  ),
+                ),
+              ),
+              if (!compact) _buildAddRowButton(),
+            ],
+          ),
         );
       },
     );
@@ -370,13 +512,14 @@ class _TableScreenState extends State<TableScreen> {
 
   // ============== TABLO ORTAK METOTLAR (DEĞİŞMEDİ) ==============
 
-  Widget _buildTableHeader(TableProvider provider) {
+  Widget _buildTableHeader(TableProvider provider, {bool compact = false}) {
     final table = provider.currentTable;
     if (table == null) return const SizedBox.shrink();
     final loc = AppLocalizations.of(context);
     return TableSectionHeader(
       title: table.tableName,
       summary: loc.nRecords(table.rows.length),
+      compact: compact,
       // Ortak olmayan tabloda hicbir sey cizmez.
       titleTrailing: const SharedSyncIndicator(),
       actions: [
@@ -612,14 +755,7 @@ class _TableScreenState extends State<TableScreen> {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    onPressed: () => isPremium
-                        ? _showVoiceAddRowDialog(context)
-                        : Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PremiumScreen(),
-                            ),
-                          ),
+                    onPressed: () => _startVoiceAdd(isPremium),
                     padding: const EdgeInsets.all(14),
                     tooltip: AppLocalizations.of(context).voiceFill,
                     icon: Icon(
