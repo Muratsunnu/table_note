@@ -15,6 +15,7 @@ import '../providers/tally_provider.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/auth_validation.dart';
+import '../widgets/ledger.dart';
 
 enum _AccountForm { login, register, forgot, verify, password }
 
@@ -235,27 +236,31 @@ class _AccountScreenState extends State<AccountScreen> {
         theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
 
     final notes = <Widget>[
-      if (!auth.isAvailable) _Note(loc.onlineServicesUnavailableDescription),
+      if (!auth.isAvailable)
+        LedgerNote(loc.onlineServicesUnavailableDescription),
       if (!auth.isAvailable && _developerHint != null)
-        _Note(_developerHint!, tone: _NoteTone.error),
+        LedgerNote(_developerHint!, tone: LedgerNoteTone.error),
       if (auth.errorMessage != null &&
           !(reauthenticating && reauthenticationFailed))
-        _Note(loc.authError(auth.errorMessage!), tone: _NoteTone.error),
+        LedgerNote(
+          loc.authError(auth.errorMessage!),
+          tone: LedgerNoteTone.error,
+        ),
       if (auth.notice != null)
-        _Note(
+        LedgerNote(
           loc.authText(auth.notice!),
           tone:
               auth.notice == 'password_updated' ||
                   auth.notice == 'account_deleted'
-              ? _NoteTone.success
-              : _NoteTone.info,
+              ? LedgerNoteTone.success
+              : LedgerNoteTone.info,
         ),
-      if (entry && joinedAsGuest) _Note(loc.authText('guestNotice')),
+      if (entry && joinedAsGuest) LedgerNote(loc.authText('guestNotice')),
     ];
 
     final Widget card;
     if (overview) {
-      card = _Ledger(
+      card = LedgerCard(
         children: [
           ...notes,
           if (auth.hasEmailIdentity)
@@ -279,7 +284,7 @@ class _AccountScreenState extends State<AccountScreen> {
       card = AutofillGroup(
         child: Form(
           key: _formKey,
-          child: _Ledger(
+          child: LedgerCard(
             children: [
               if (entry)
                 _ModeTabs(
@@ -355,11 +360,11 @@ class _AccountScreenState extends State<AccountScreen> {
                       AuthValidation.confirmation(value, _password.text),
                 ),
               if (reauthenticating) ...[
-                _Note(
+                LedgerNote(
                   loc.authText('reauthenticate'),
                   tone: reauthenticationFailed
-                      ? _NoteTone.error
-                      : _NoteTone.info,
+                      ? LedgerNoteTone.error
+                      : LedgerNoteTone.info,
                   action: TextButton(
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
@@ -399,7 +404,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final below = <Widget>[
       if (overview) ...[
         const SizedBox(height: 24),
-        _Ledger(
+        LedgerCard(
           children: [
             _ActionRow(
               key: const ValueKey('action-delete'),
@@ -758,7 +763,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final loc = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final visible = _visiblePasswords.contains(label);
-    return _LedgerField(
+    return LedgerField(
       key: ValueKey('row-$label'),
       label: loc.authText(rowLabel ?? label),
       trailing: secret
@@ -803,58 +808,8 @@ class _AccountScreenState extends State<AccountScreen> {
             return error == null ? null : loc.authText(error);
           },
           style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: .7),
-            ),
-            // Hücrenin çerçevesi tablonun çizgileridir; alanın kendi
-            // çerçevesi ve dolgusu olmaz.
-            filled: false,
-            isDense: true,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            disabledBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            focusedErrorBorder: InputBorder.none,
-            // Alt boşluğun kalanı hücrede: hata yazısı çıktığında alt
-            // çizgiye yapışmasın diye.
-            contentPadding: const EdgeInsets.fromLTRB(14, 18, 8, 6),
-            errorMaxLines: 3,
-          ),
+          decoration: ledgerInputDecoration(context, hint: hint),
         ),
-      ),
-    );
-  }
-}
-
-/// Satırları ince çizgilerle ayrılmış tek çerçeveli kart.
-class _Ledger extends StatelessWidget {
-  final List<Widget> children;
-  const _Ledger({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      surfaceTintColor: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: theme.dividerColor),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var index = 0; index < children.length; index++) ...[
-            if (index > 0)
-              Divider(height: 1, thickness: 1, color: theme.dividerColor),
-            children[index],
-          ],
-        ],
       ),
     );
   }
@@ -930,186 +885,6 @@ class _ModeTabs extends StatelessWidget {
           VerticalDivider(width: 1, thickness: 1, color: theme.dividerColor),
           tab('mode-register', loc.authText('register'), register, true),
         ],
-      ),
-    );
-  }
-}
-
-/// Bir tablo satırı: solda etiket hücresi, sağda yazılan değer.
-class _LedgerField extends StatefulWidget {
-  final String label;
-  final Widget Function(FocusNode focusNode) builder;
-  final Widget? trailing;
-  const _LedgerField({
-    super.key,
-    required this.label,
-    required this.builder,
-    this.trailing,
-  });
-
-  @override
-  State<_LedgerField> createState() => _LedgerFieldState();
-}
-
-class _LedgerFieldState extends State<_LedgerField> {
-  final _focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(_onFocusChanged);
-  }
-
-  void _onFocusChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _focusNode
-      ..removeListener(_onFocusChanged)
-      ..dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final active = _focusNode.hasFocus;
-    // Etiket sütunu büyük yazı ayarında bir miktar genişler, ama değere
-    // yer bırakacak kadar.
-    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.3);
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
-      decoration: BoxDecoration(
-        // Seçili hücrenin işareti: üzerinde çalışılan satır.
-        border: Border(
-          left: BorderSide(
-            width: 3,
-            color: active ? theme.colorScheme.primary : Colors.transparent,
-          ),
-        ),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _focusNode.requestFocus,
-              child: SizedBox(
-                width: 108 * scale,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(13, 19, 8, 12),
-                  child: ExcludeSemantics(
-                    child: Text(
-                      widget.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
-                        color: active
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            VerticalDivider(width: 1, thickness: 1, color: theme.dividerColor),
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _focusNode.requestFocus,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: widget.builder(_focusNode),
-                ),
-              ),
-            ),
-            if (widget.trailing != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, right: 4),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: widget.trailing,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-enum _NoteTone { info, success, error }
-
-/// Tablonun içinde tam genişlikte bir not satırı: hata, bilgi, uyarı.
-class _Note extends StatelessWidget {
-  final String text;
-  final _NoteTone tone;
-  final Widget? action;
-  const _Note(this.text, {this.tone = _NoteTone.info, this.action});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final (background, foreground, accent, icon) = switch (tone) {
-      _NoteTone.error => (
-        theme.colorScheme.errorContainer,
-        theme.colorScheme.onErrorContainer,
-        theme.colorScheme.onErrorContainer,
-        Icons.error_outline_rounded,
-      ),
-      _NoteTone.success => (
-        AppTheme.tintedSurface(context, AppTheme.success),
-        theme.colorScheme.onSurface,
-        AppTheme.readableAccent(context, AppTheme.success),
-        Icons.check_circle_outline_rounded,
-      ),
-      _NoteTone.info => (
-        AppTheme.tintedSurface(context, theme.colorScheme.primary),
-        theme.colorScheme.onSurface,
-        theme.colorScheme.primary,
-        Icons.info_outline_rounded,
-      ),
-    };
-    return Semantics(
-      liveRegion: true,
-      child: ColoredBox(
-        color: background,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 14, 16, action == null ? 14 : 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: Icon(icon, size: 18, color: accent),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      text,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.4,
-                        color: foreground,
-                      ),
-                    ),
-                    ?action,
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
