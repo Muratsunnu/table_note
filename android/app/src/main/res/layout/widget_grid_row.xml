@@ -3,39 +3,66 @@
      widget_grid icine ekler; kullanilmayan hucreler GONE yapilir. GONE
      olan cocuk agirlik harcamadigi icin kalan hucreler genisligi kendi
      aralarinda paylasir. Ilk sutun 2 agirlik alir: hem tablonun ilk
-     sutunu hem de cetelenin oge adi yanindakilerden uzundur. -->
+     sutunu hem de cetelenin oge adi yanindakilerden uzundur.
+
+     Her hucre bir kutu (grid_box) ve icindeki yazidir (grid_cell).
+     Hizalama kutuya verilir, yaziya degil: yazinin hizasi (TextView
+     setGravity) Android 11 ve oncesinde widget'tan degistirilemiyor ve
+     widget "Arac yuklenemiyor" diye bos kaliyordu. Kutununki
+     (LinearLayout setGravity) her surumde degistirilebiliyor. Zemin
+     rengi ve gorunurluk de kutuya aittir. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/grid_row" android:layout_width="match_parent"
     android:layout_height="wrap_content" android:orientation="horizontal"
     android:baselineAligned="false">
-    <TextView android:id="@+id/grid_cell_0" android:layout_width="0dp"
-        android:layout_height="wrap_content" android:layout_weight="2"
+    <LinearLayout android:id="@+id/grid_box_0" android:layout_width="0dp"
+        android:layout_height="match_parent" android:layout_weight="2"
+        android:orientation="horizontal" android:gravity="center_vertical"
         android:paddingStart="4dp" android:paddingEnd="4dp"
-        android:paddingTop="3dp" android:paddingBottom="3dp"
-        android:textSize="11sp"
-        android:maxLines="1" android:ellipsize="end"/>
-    <TextView android:id="@+id/grid_cell_1" android:layout_width="0dp"
-        android:layout_height="wrap_content" android:layout_weight="1"
+        android:paddingTop="3dp" android:paddingBottom="3dp">
+        <TextView android:id="@+id/grid_cell_0" android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1" android:ellipsize="end"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/grid_box_1" android:layout_width="0dp"
+        android:layout_height="match_parent" android:layout_weight="1"
+        android:orientation="horizontal" android:gravity="center_vertical"
         android:paddingStart="4dp" android:paddingEnd="4dp"
-        android:paddingTop="3dp" android:paddingBottom="3dp"
-        android:textSize="11sp"
-        android:maxLines="1" android:ellipsize="end"/>
-    <TextView android:id="@+id/grid_cell_2" android:layout_width="0dp"
-        android:layout_height="wrap_content" android:layout_weight="1"
+        android:paddingTop="3dp" android:paddingBottom="3dp">
+        <TextView android:id="@+id/grid_cell_1" android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1" android:ellipsize="end"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/grid_box_2" android:layout_width="0dp"
+        android:layout_height="match_parent" android:layout_weight="1"
+        android:orientation="horizontal" android:gravity="center_vertical"
         android:paddingStart="4dp" android:paddingEnd="4dp"
-        android:paddingTop="3dp" android:paddingBottom="3dp"
-        android:textSize="11sp"
-        android:maxLines="1" android:ellipsize="end"/>
-    <TextView android:id="@+id/grid_cell_3" android:layout_width="0dp"
-        android:layout_height="wrap_content" android:layout_weight="1"
+        android:paddingTop="3dp" android:paddingBottom="3dp">
+        <TextView android:id="@+id/grid_cell_2" android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1" android:ellipsize="end"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/grid_box_3" android:layout_width="0dp"
+        android:layout_height="match_parent" android:layout_weight="1"
+        android:orientation="horizontal" android:gravity="center_vertical"
         android:paddingStart="4dp" android:paddingEnd="4dp"
-        android:paddingTop="3dp" android:paddingBottom="3dp"
-        android:textSize="11sp"
-        android:maxLines="1" android:ellipsize="end"/>
-    <TextView android:id="@+id/grid_cell_4" android:layout_width="0dp"
-        android:layout_height="wrap_content" android:layout_weight="1"
+        android:paddingTop="3dp" android:paddingBottom="3dp">
+        <TextView android:id="@+id/grid_cell_3" android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1" android:ellipsize="end"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/grid_box_4" android:layout_width="0dp"
+        android:layout_height="match_parent" android:layout_weight="1"
+        android:orientation="horizontal" android:gravity="center_vertical"
         android:paddingStart="4dp" android:paddingEnd="4dp"
-        android:paddingTop="3dp" android:paddingBottom="3dp"
-        android:textSize="11sp"
-        android:maxLines="1" android:ellipsize="end"/>
+        android:paddingTop="3dp" android:paddingBottom="3dp">
+        <TextView android:id="@+id/grid_cell_4" android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1" android:ellipsize="end"/>
+    </LinearLayout>
 </LinearLayout>

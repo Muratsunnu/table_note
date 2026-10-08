@@ -83,6 +83,14 @@ class TableNoteWidgetProvider : AppWidgetProvider() {
             R.id.grid_cell_3, R.id.grid_cell_4,
         )
 
+        /// Hucrelerin kutulari. Hizalama, zemin rengi ve gorunurluk kutuya
+        /// verilir; yaziya (CELLS) yalnizca metin ve yazi rengi. Yazinin
+        /// hizasini degistirmek Android 11 ve oncesinde widget'i bozuyor.
+        private val BOXES = listOf(
+            R.id.grid_box_0, R.id.grid_box_1, R.id.grid_box_2,
+            R.id.grid_box_3, R.id.grid_box_4,
+        )
+
         /// En fazla govde satiri. Uzerinde bir yerde RemoteViews'in bellek
         /// siniri var ve daha fazlasi zaten okunmuyor.
         private const val MAX_ROWS = 6
@@ -292,14 +300,14 @@ class TableNoteWidgetProvider : AppWidgetProvider() {
                     val cell = CELLS[index]
                     headerRow.setTextViewText(cell, column.label)
                     headerRow.setTextColor(cell, onHeader)
-                    headerRow.setInt(cell, "setGravity", gravityFor(column, index))
-                    headerRow.setInt(cell, "setBackgroundColor", if (isToday(column))
+                    headerRow.setInt(BOXES[index], "setGravity", gravityFor(column, index))
+                    headerRow.setInt(BOXES[index], "setBackgroundColor", if (isToday(column))
                         TableNoteWidgetStore.color(snapshot, "todayHeader",
                             TableNoteWidgetStore.wash(accent, 89))
                     else Color.TRANSPARENT)
                 }
-                for (index in columns.size until CELLS.size) {
-                    headerRow.setViewVisibility(CELLS[index], View.GONE)
+                for (index in columns.size until BOXES.size) {
+                    headerRow.setViewVisibility(BOXES[index], View.GONE)
                 }
                 headerRow.setInt(R.id.grid_row, "setBackgroundColor", header)
                 views.addView(R.id.widget_grid, headerRow)
@@ -311,19 +319,19 @@ class TableNoteWidgetProvider : AppWidgetProvider() {
                         val cell = CELLS[index]
                         line.setTextViewText(cell, cellValue(source, column))
                         line.setTextColor(cell, ink(source, column) ?: foreground)
-                        line.setInt(cell, "setGravity", gravityFor(column, index))
+                        line.setInt(BOXES[index], "setGravity", gravityFor(column, index))
                         val status = column.source?.let {
                             TableNoteWidgetStore.colorAt(source, "colors", it)
                         }
-                        line.setInt(cell, "setBackgroundColor", when {
+                        line.setInt(BOXES[index], "setBackgroundColor", when {
                             status != null -> TableNoteWidgetStore.wash(status, 38)
                             isToday(column) -> TableNoteWidgetStore.color(snapshot, "todayCell",
                                 TableNoteWidgetStore.wash(accent, 31))
                             else -> Color.TRANSPARENT
                         })
                     }
-                    for (index in columns.size until CELLS.size) {
-                        line.setViewVisibility(CELLS[index], View.GONE)
+                    for (index in columns.size until BOXES.size) {
+                        line.setViewVisibility(BOXES[index], View.GONE)
                     }
                     // Ekrandaki tablonun kendisiyle ayni sirali zemin.
                     line.setInt(R.id.grid_row, "setBackgroundColor",
@@ -342,10 +350,10 @@ class TableNoteWidgetProvider : AppWidgetProvider() {
                         val cell = CELLS[index]
                         line.setTextViewText(cell, footer[index])
                         line.setTextColor(cell, foreground)
-                        line.setInt(cell, "setGravity", gravityFor(column, index))
+                        line.setInt(BOXES[index], "setGravity", gravityFor(column, index))
                     }
-                    for (index in columns.size until CELLS.size) {
-                        line.setViewVisibility(CELLS[index], View.GONE)
+                    for (index in columns.size until BOXES.size) {
+                        line.setViewVisibility(BOXES[index], View.GONE)
                     }
                     line.setInt(R.id.grid_row, "setBackgroundColor",
                         TableNoteWidgetStore.wash(header, 140))
