@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
+import '../l10n/auth_localizations.dart';
 import '../models/tabel_model.dart';
 import '../models/tally_model.dart';
 import '../providers/auth_provider.dart';
@@ -10,6 +11,8 @@ import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../services/cloud_repository.dart';
 import '../services/storage_service.dart';
+import '../widgets/join_code_cells.dart';
+import '../widgets/ledger.dart';
 
 /// Kayit olmadan bir tabloya katilma. Katilan kisi ne e-posta girer ne sifre
 /// belirler; kimlik arka planda sessizce acilir.
@@ -21,7 +24,10 @@ import '../services/storage_service.dart';
 enum _JoinStep { code, password, name }
 
 class JoinSharedTableScreen extends StatefulWidget {
-  const JoinSharedTableScreen({super.key});
+  const JoinSharedTableScreen({super.key, this.repository});
+
+  @visibleForTesting
+  final CloudRepository? repository;
 
   @override
   State<JoinSharedTableScreen> createState() => _JoinSharedTableScreenState();
@@ -31,11 +37,13 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
-  final _repository = CloudRepository();
+  late final CloudRepository _repository =
+      widget.repository ?? CloudRepository();
 
   _JoinStep _step = _JoinStep.code;
   SharedTablePeek? _peek;
   bool _isBusy = false;
+  bool _passwordVisible = false;
   bool _nameLoaded = false;
   String? _errorCode;
 
@@ -141,16 +149,18 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
         if (mounted) setState(() => _errorCode = 'table_not_found');
         return;
       }
+      // Yeni katilan kisi yalnizca goruntuler; daha once duzenleme yetkisi
+      // almis biri yeniden katiliyorsa yetkisi durur. Hangisi oldugunu
+      // sunucu bilir.
+      final role = await _joinedRole(join.tableId);
       if (entry.kind == 'tally') {
         final joined = TallyTableModel.fromJson(entry.payload);
         await tallies.importCloudTable(joined, overwrite: true);
-        await tallies.setSharedRole(joined.id, 'editor');
+        await tallies.setSharedRole(joined.id, role);
       } else if (entry.kind == 'table') {
         final joined = TableModel.fromJson(entry.payload);
         await tables.importCloudTable(joined, overwrite: true);
-        // Bundan sonra bu tablodaki duzenlemeler kuyruga yazilir ve butonla
-        // gonderilir; aninda gonderim yalnizca paylasan kisidedir.
-        await tables.setSharedRole(joined.id, 'editor');
+        await tables.setSharedRole(joined.id, role);
       } else {
         if (mounted) setState(() => _errorCode = 'table_not_found');
         return;
@@ -161,6 +171,19 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
         SnackBar(content: Text(loc.joinedTable(entry.name))),
       );
     });
+  }
+
+  /// Katilinan tablodaki rol. Okunamazsa goruntuleyen sayilir: yazma yetkisi
+  /// zaten sunucuda denetlenir, yanlis tarafa hata yapmak kullaniciya
+  /// gonderilemeyecek degisiklikler yaptirirdi.
+  Future<String> _joinedRole(String tableId) async {
+    try {
+      final role = (await _repository.sharedTableAccess(tableId)).role;
+      return const {'owner', 'editor'}.contains(role) ? role! : 'viewer';
+    } catch (error) {
+      debugPrint('Katilim rolu okunamadi: $error');
+      return 'viewer';
+    }
   }
 
   /// Geri tusu once adimlari geri alir, en basta ekrani kapatir. Kullanici
@@ -182,6 +205,8 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
+    final peek = _peek;
+    final codeReady = _codeController.text.length == JoinCodeCells.length;
     return Scaffold(
       appBar: AppBar(
         title: Text(loc.joinTable),
@@ -189,44 +214,103 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _isBusy ? null : _back,
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(3),
+          child: _isBusy
+              ? const LinearProgressIndicator(minHeight: 3)
+              : const SizedBox(height: 3),
+        ),
       ),
       body: !_nameLoaded
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                // Hangi tabloya girildigi kod dogrulanir dogrulanmaz yazilir;
-                // kullanici dogru tabloda oldugunu adini yazmadan once gorur.
-                if (_peek != null) ...[
-                  Text(
-                    loc.joiningTable(_peek!.tableName),
-                    style: TextStyle(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w600,
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                  children: [
+                    // Hangi tabloya girildiği kod doğrulanır doğrulanmaz
+                    // yazılır; kişi doğru tabloda olduğunu adını yazmadan
+                    // önce görür. Paylaşan kişinin gördüğü başlıkla aynı.
+                    if (_step != _JoinStep.code && peek != null) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            peek.kind == 'tally'
+                                ? Icons.grid_on_rounded
+                                : Icons.table_chart_rounded,
+                            color: colors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              peek.tableName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: colors.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Text(
+                      switch (_step) {
+                        _JoinStep.code => loc.joinTableExplainer,
+                        _JoinStep.password => loc.joinPasswordRequired,
+                        _JoinStep.name => loc.joinNameStepExplainer,
+                      },
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                ..._stepFields(loc),
-                if (_errorCode != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    loc.sharedTableError(_errorCode!),
-                    style: TextStyle(color: colors.error),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _isBusy ? null : _submitStep,
-                  child: Text(
-                    _isBusy
-                        ? loc.pleaseWait
-                        : (_step == _JoinStep.name
-                              ? loc.joinAction
-                              : loc.continueLabel),
-                  ),
+                    const SizedBox(height: 16),
+                    _stepField(loc),
+                    if (_step == _JoinStep.name) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        loc.yourNameHint,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    if (_errorCode != null) ...[
+                      const SizedBox(height: 12),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          loc.sharedTableError(_errorCode!),
+                          style: TextStyle(color: colors.error, height: 1.4),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      key: const ValueKey('join-submit'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                      onPressed:
+                          _isBusy || (_step == _JoinStep.code && !codeReady)
+                          ? null
+                          : _submitStep,
+                      child: Text(
+                        _step == _JoinStep.name
+                            ? loc.joinAction
+                            : loc.continueLabel,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
     );
   }
@@ -242,75 +326,85 @@ class _JoinSharedTableScreenState extends State<JoinSharedTableScreen> {
     }
   }
 
-  List<Widget> _stepFields(AppLocalizations loc) {
+  /// Adımın tek alanı. Kod, paylaşan kişinin gördüğü hücrelerle yazılır;
+  /// şifre ve ad, hesap ekranındaki tablo satırıyla.
+  Widget _stepField(AppLocalizations loc) {
     final colors = Theme.of(context).colorScheme;
+    const text = TextStyle(fontSize: 16);
     switch (_step) {
       case _JoinStep.code:
-        return [
-          Text(
-            loc.joinTableExplainer,
-            style: TextStyle(color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _codeController,
-            autofocus: true,
-            autocorrect: false,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              LengthLimitingTextInputFormatter(6),
-              FilteringTextInputFormatter.digitsOnly,
-            ],
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 8,
-            ),
-            decoration: InputDecoration(labelText: loc.joinCode),
-            onSubmitted: (_) => _isBusy ? null : _submitCode(),
-          ),
-        ];
+        return JoinCodeInput(
+          controller: _codeController,
+          semanticLabel: loc.joinCode,
+          enabled: !_isBusy,
+          hasError: _errorCode != null,
+          onChanged: (_) {
+            // Rakam eklenip silindikçe düğme açılıp kapanır; düzeltmeye
+            // başlanan kodun hatası da ekranda kalmaz.
+            setState(() => _errorCode = null);
+          },
+          // Altıncı rakamla birlikte kod kendiliğinden sorulur.
+          onCompleted: (_) => _isBusy ? null : _submitCode(),
+        );
       case _JoinStep.password:
-        return [
-          Text(
-            loc.joinPasswordRequired,
-            style: TextStyle(color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _passwordController,
-            autofocus: true,
-            autocorrect: false,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: loc.joinPassword,
-              prefixIcon: const Icon(Icons.lock_outline_rounded),
+        return LedgerCard(
+          children: [
+            LedgerField(
+              key: const ValueKey('row-join-password'),
+              label: loc.joinPassword,
+              trailing: IconButton(
+                tooltip: loc.authText(
+                  _passwordVisible ? 'hidePassword' : 'showPassword',
+                ),
+                onPressed: () =>
+                    setState(() => _passwordVisible = !_passwordVisible),
+                icon: Icon(
+                  _passwordVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 20,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              builder: (focusNode) => TextField(
+                key: const ValueKey('join-password'),
+                controller: _passwordController,
+                focusNode: focusNode,
+                enabled: !_isBusy,
+                autofocus: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                obscureText: !_passwordVisible,
+                textInputAction: TextInputAction.done,
+                style: text,
+                decoration: ledgerInputDecoration(context),
+                onSubmitted: (_) => _isBusy ? null : _submitPassword(),
+              ),
             ),
-            onSubmitted: (_) => _isBusy ? null : _submitPassword(),
-          ),
-        ];
+          ],
+        );
       case _JoinStep.name:
-        return [
-          Text(
-            loc.joinNameStepExplainer,
-            style: TextStyle(color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _nameController,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            inputFormatters: [LengthLimitingTextInputFormatter(32)],
-            decoration: InputDecoration(
-              labelText: loc.yourName,
-              helperText: loc.yourNameHint,
-              helperMaxLines: 2,
-              prefixIcon: const Icon(Icons.person_outline_rounded),
+        return LedgerCard(
+          children: [
+            LedgerField(
+              key: const ValueKey('row-join-name'),
+              label: loc.yourName,
+              builder: (focusNode) => TextField(
+                key: const ValueKey('join-name'),
+                controller: _nameController,
+                focusNode: focusNode,
+                enabled: !_isBusy,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.done,
+                inputFormatters: [LengthLimitingTextInputFormatter(32)],
+                style: text,
+                decoration: ledgerInputDecoration(context),
+                onSubmitted: (_) => _isBusy ? null : _submitName(),
+              ),
             ),
-            onSubmitted: (_) => _isBusy ? null : _submitName(),
-          ),
-        ];
+          ],
+        );
     }
   }
 }

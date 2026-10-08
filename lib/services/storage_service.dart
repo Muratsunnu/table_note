@@ -27,12 +27,19 @@ class StorageService {
   static const String _sharedTableRolesKey = 'shared_table_roles_v1';
   static const String _pendingTallyChangesKey = 'pending_tally_changes_v1';
   static const String _sharedTallyRolesKey = 'shared_tally_roles_v1';
+  static const String _sharedVersionsKey = 'shared_known_versions_v1';
   static const String _legacyBackupSuffix = '_legacy_v1_backup';
 
+  /// Kayitli olabilecek roller. Tanimadigimiz bir deger okunursa atilir;
+  /// 'viewer' buraya eklenmeseydi goruntuleyen kisinin tablosu uygulama
+  /// yeniden acildiginda ortak olmaktan cikar, siradan bir tablo gibi
+  /// duzenlenebilir hale gelirdi.
+  static const _sharedRoles = {'owner', 'editor', 'viewer'};
+
   /// Hangi tablonun ortak oldugu ve bu cihazin oradaki rolu: 'owner' tabloyu
-  /// paylasan kisi, 'editor' koda katilan kisi. Yerelde boyle bir bilgi yoktu;
-  /// senkronun yonu buna gore belirlenir: sahip aninda gonderir, katilan
-  /// degisikliklerini biriktirip butonla atar.
+  /// paylasan kisi; 'editor' ve 'viewer' koda katilan kisi (duzenleyebilen
+  /// ve yalnizca goruntuleyen). Sahip ve duzenleyenin degisiklikleri kisa bir
+  /// gecikmeyle kendiliginden gider; goruntuleyen hic gondermez.
   static Future<Map<String, String>> loadSharedTableRoles() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_sharedTableRolesKey);
@@ -42,13 +49,42 @@ class StorageService {
       if (decoded is! Map) return {};
       return {
         for (final entry in decoded.entries)
-          if (entry.value == 'owner' || entry.value == 'editor')
+          if (_sharedRoles.contains(entry.value))
             entry.key.toString(): entry.value.toString(),
       };
     } catch (e) {
       debugPrint('Ortak tablo rolleri okunamadi: $e');
       return {};
     }
+  }
+
+  /// Ortak tablolarin bu cihazda duran halinin sunucudaki hangi surume
+  /// karsilik geldigi. Uygulama her acildiginda tablonun tamamini yeniden
+  /// indirmemek icin saklanir: surum ayniysa indirilecek bir sey yoktur.
+  static Future<Map<String, Map<String, dynamic>>> loadSharedVersions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_sharedVersionsKey);
+    if (raw == null) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final entry in decoded.entries)
+          if (entry.value is Map && entry.value['revision'] is int)
+            entry.key.toString(): Map<String, dynamic>.from(entry.value as Map),
+      };
+    } catch (e) {
+      debugPrint('Ortak tablo surumleri okunamadi: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> saveSharedVersions(
+    Map<String, Map<String, dynamic>> versions,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (versions.isEmpty) return prefs.remove(_sharedVersionsKey);
+    return prefs.setString(_sharedVersionsKey, json.encode(versions));
   }
 
   static Future<bool> saveSharedTableRoles(Map<String, String> roles) async {
@@ -69,7 +105,7 @@ class StorageService {
       if (decoded is! Map) return {};
       return {
         for (final entry in decoded.entries)
-          if (entry.value == 'owner' || entry.value == 'editor')
+          if (_sharedRoles.contains(entry.value))
             entry.key.toString(): entry.value.toString(),
       };
     } catch (e) {

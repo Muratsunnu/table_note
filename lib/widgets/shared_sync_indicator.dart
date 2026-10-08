@@ -48,9 +48,6 @@ class SharedSyncIndicator extends StatelessWidget {
     final pending = isTally
         ? tallies.pendingChangeCount(id)
         : tables.pendingChangeCount(id);
-    final isOwner = isTally
-        ? tallies.isSharedOwner(id)
-        : tables.isSharedOwner(id);
 
     final IconData icon;
     final Color color;
@@ -74,14 +71,13 @@ class SharedSyncIndicator extends StatelessWidget {
       color = colors.primary;
       label = loc.syncSending;
     } else if (pending > 0) {
-      // Sahip kendiliginden gonderir, bekleme hali onda goz acip kapayincaya
-      // kadar surer; dokunma yalnizca katilan kisi icin anlamli.
-      icon = isOwner ? Icons.cloud_sync_rounded : Icons.cloud_upload_rounded;
+      // Duzenleyebilen herkesin degisikligi kisa bir gecikmeyle kendiliginden
+      // gider; bu hal goz acip kapayincaya kadar surer. Dokunmak beklemeden
+      // gonderir.
+      icon = Icons.cloud_sync_rounded;
       color = colors.primary;
-      label = isOwner ? loc.syncSending : loc.pendingChangeCount(pending);
-      if (!isOwner) {
-        onTap = () => context.read<SharedSyncService>().push(id);
-      }
+      label = loc.syncSending;
+      onTap = () => context.read<SharedSyncService>().push(id);
     } else {
       icon = Icons.cloud_done_rounded;
       color = colors.onSurfaceVariant;

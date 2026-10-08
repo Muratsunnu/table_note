@@ -154,4 +154,61 @@ void main() {
     expect(provider.pendingChangeCount(id), 0);
     expect(provider.currentTable!.rows.length, 2);
   });
+
+  test('görüntüleyen kişi tabloyu hiçbir yoldan değiştiremez', () async {
+    final provider = await _seeded(shared: false);
+    final id = _tableId(provider);
+    await provider.setSharedRole(id, 'viewer');
+    final before = provider.currentTable!.toJson().toString();
+
+    expect(provider.canEditCurrent, isFalse);
+    expect(await provider.addRow(['izmir', '12000']), isFalse);
+    expect(await provider.updateRow(0, ['konya', '1']), isFalse);
+    expect(await provider.deleteRow(0), isFalse);
+    expect(
+      await provider.updateTableStructure('başka ad', [
+        ColumnModel(name: 'x'),
+      ], 2),
+      isFalse,
+    );
+
+    expect(provider.currentTable!.toJson().toString(), before);
+    expect(provider.pendingChangeCount(id), 0);
+    // Katılınmış bir tablo; hesap değişirse bağlantısı temizlenenlerden.
+    expect(provider.hasJoinedTables, isTrue);
+  });
+
+  test('görüntüleme rolü uygulama yeniden açılınca kaybolmaz', () async {
+    // Rol okunurken tanınmayan değer atılır. 'viewer' tanınmasaydı tablo
+    // yeniden açılışta sıradan bir tabloya dönüşür, düzenlenebilirdi.
+    final provider = await _seeded(shared: false);
+    final id = _tableId(provider);
+    await provider.setSharedRole(id, 'viewer');
+
+    final reopened = TableProvider();
+    while (reopened.isLoading) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    expect(reopened.isSharedViewer(id), isTrue);
+    expect(reopened.canEditCurrent, isFalse);
+  });
+
+  test('silinen tablonun rolü ve kuyruğu da silinir', () async {
+    final provider = await _seeded();
+    final id = _tableId(provider);
+    await provider.addRow(['izmir', '12000']);
+    expect(provider.pendingChangeCount(id), greaterThan(0));
+
+    expect(await provider.deleteTable(0), isTrue);
+    expect(provider.isSharedTable(id), isFalse);
+    expect(provider.pendingChangeCount(id), 0);
+    expect(provider.hasJoinedTables, isFalse);
+
+    // Kalıntı diskte de durmamalı.
+    final reopened = TableProvider();
+    while (reopened.isLoading) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    expect(reopened.isSharedTable(id), isFalse);
+  });
 }

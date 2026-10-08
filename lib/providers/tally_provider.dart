@@ -240,6 +240,15 @@ class TallyProvider extends ChangeNotifier {
   String? sharedRole(String tallyId) => _sharedRoles[tallyId];
   bool isSharedTally(String tallyId) => _sharedRoles.containsKey(tallyId);
   bool isSharedOwner(String tallyId) => _sharedRoles[tallyId] == 'owner';
+  bool isSharedViewer(String tallyId) => _sharedRoles[tallyId] == 'viewer';
+
+  /// Açık çetelede işaret konup öğe eklenebilir mi. Ayrıntı için
+  /// [TableProvider.canEditCurrent].
+  bool get canEditCurrent {
+    final table = currentTable;
+    return table == null || !isSharedViewer(table.id);
+  }
+
   bool get hasJoinedTallies =>
       _sharedRoles.values.any((role) => role != 'owner');
 
@@ -410,7 +419,7 @@ class TallyProvider extends ChangeNotifier {
     required List<TallyStatus> newStatuses,
     Map<String, String?> codeRemap = const {},
   }) async {
-    if (currentTable == null) return false;
+    if (currentTable == null || !canEditCurrent) return false;
     final normalizedCodes = newStatuses
         .map((status) => status.code.trim().toLowerCase())
         .toList();
@@ -453,7 +462,16 @@ class TallyProvider extends ChangeNotifier {
   Future<bool> deleteTable(int index) async {
     try {
       if (index >= 0 && index < _tables.length) {
-        _tables.removeAt(index);
+        final removed = _tables.removeAt(index);
+        // Ayrıntı için [TableProvider.deleteTable].
+        final hadRole = _sharedRoles.remove(removed.id) != null;
+        final hadPending = _pending.remove(removed.id) != null;
+        if (hadRole) {
+          await StorageService.saveSharedTallyRoles(Map.of(_sharedRoles));
+        }
+        if (hadPending) {
+          await StorageService.savePendingTallyChanges(Map.of(_pending));
+        }
         if (_currentIndex >= _tables.length) _currentIndex = _tables.length - 1;
         if (_currentIndex < 0) _currentIndex = 0;
         await _save();
@@ -468,7 +486,7 @@ class TallyProvider extends ChangeNotifier {
   }
 
   Future<bool> addItem(String name) async {
-    if (currentTable == null) return false;
+    if (currentTable == null || !canEditCurrent) return false;
     try {
       final item = TallyItemModel(name: name.trim());
       currentTable!.items.add(item);
@@ -487,7 +505,7 @@ class TallyProvider extends ChangeNotifier {
   }
 
   Future<bool> removeItem(int itemIndex) async {
-    if (currentTable == null) return false;
+    if (currentTable == null || !canEditCurrent) return false;
     try {
       if (itemIndex >= 0 && itemIndex < currentTable!.items.length) {
         final removed = currentTable!.items.removeAt(itemIndex);
@@ -508,7 +526,7 @@ class TallyProvider extends ChangeNotifier {
   }
 
   Future<bool> renameItem(int itemIndex, String newName) async {
-    if (currentTable == null) return false;
+    if (currentTable == null || !canEditCurrent) return false;
     try {
       if (itemIndex >= 0 && itemIndex < currentTable!.items.length) {
         final item = currentTable!.items[itemIndex];
@@ -535,7 +553,7 @@ class TallyProvider extends ChangeNotifier {
     DateTime date,
     String? statusCode,
   ) async {
-    if (currentTable == null) return;
+    if (currentTable == null || !canEditCurrent) return;
     if (itemIndex < 0 || itemIndex >= currentTable!.items.length) return;
     final key = TallyTableModel.dateKey(date);
     final oldValue = currentTable!.items[itemIndex].entries[key];
@@ -573,7 +591,7 @@ class TallyProvider extends ChangeNotifier {
     required String? statusCode,
   }) async {
     final table = currentTable;
-    if (table == null || startDate.isAfter(endDate)) return;
+    if (table == null || startDate.isAfter(endDate) || !canEditCurrent) return;
     final changes = <_TallyCellChange>[];
     var day = startDate.isBefore(table.startDate) ? table.startDate : startDate;
     final lastDay = endDate.isAfter(table.endDate) ? table.endDate : endDate;
@@ -617,10 +635,12 @@ class TallyProvider extends ChangeNotifier {
   }
 
   Future<void> undoLastEdit() async {
+    if (!canEditCurrent) return;
     await _stepHistory(from: _undoStack, to: _redoStack);
   }
 
   Future<void> redoLastEdit() async {
+    if (!canEditCurrent) return;
     await _stepHistory(from: _redoStack, to: _undoStack);
   }
 
@@ -679,6 +699,7 @@ class TallyProvider extends ChangeNotifier {
   Future<void> reorderItem(int oldIndex, int newIndex) async {
     final table = currentTable;
     if (table == null || oldIndex < 0 || oldIndex >= table.items.length) return;
+    if (!canEditCurrent) return;
     if (newIndex > oldIndex) newIndex--;
     final item = table.items.removeAt(oldIndex);
     table.items.insert(newIndex.clamp(0, table.items.length), item);
@@ -705,7 +726,7 @@ class TallyProvider extends ChangeNotifier {
   }
 
   Future<void> cycleCellStatus(int itemIndex, DateTime date) async {
-    if (currentTable == null) return;
+    if (currentTable == null || !canEditCurrent) return;
     if (itemIndex < 0 || itemIndex >= currentTable!.items.length) return;
     final key = TallyTableModel.dateKey(date);
     final codes = currentTable!.statusCodes;

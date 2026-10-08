@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_note/models/shared_row_operation.dart';
@@ -26,6 +27,26 @@ class _FakeRepository implements CloudRepository {
   /// Gonderilen sutun yapilari.
   final List<List<Map<String, dynamic>>> sentColumns = [];
 
+  /// Sunucunun bu cihaz icin soyledigi yetki. null ise soru hata verir.
+  SharedAccess? access;
+  int accessReads = 0;
+  Object? requestFailure;
+  int requests = 0;
+
+  @override
+  Future<SharedAccess> sharedTableAccess(String tableId) async {
+    accessReads++;
+    if (access == null) throw StateError('yetki okunamadi');
+    return access!;
+  }
+
+  @override
+  Future<SharedAccess> requestSharedEditAccess(String tableId) async {
+    requests++;
+    if (requestFailure != null) throw requestFailure!;
+    return access = const SharedAccess(role: 'viewer', editRequested: true);
+  }
+
   @override
   Future<SharedRowSyncResult> applySharedTableColumns({
     required String tableId,
@@ -43,6 +64,21 @@ class _FakeRepository implements CloudRepository {
   Future<SharedTableSnapshot?> fetchSharedTable(String tableId) async {
     fetchCount++;
     return snapshot;
+  }
+
+  /// Yalnizca surum soran ucuz istekler.
+  int versionChecks = 0;
+
+  @override
+  Future<SharedTableVersion?> fetchSharedTableVersion(String tableId) async {
+    versionChecks++;
+    final current = snapshot;
+    return current == null
+        ? null
+        : SharedTableVersion(
+            revision: current.revision,
+            updatedAt: current.updatedAt,
+          );
   }
 
   @override
@@ -200,9 +236,11 @@ void main() {
     // Satir kimlikleri korunmali; yoksa bekleyen islemler eslesemez.
     expect(tables.currentTable!.rowIdAt(0), rowId);
 
-    // Ayni surum yeniden indirilmez.
+    // Ayni surum yeniden indirilmez; yalnizca surumu sorulur.
     await sync.pull(table.id);
-    expect(repository.fetchCount, 2);
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(repository.fetchCount, 1);
+    expect(repository.versionChecks, greaterThan(0));
   });
 
   test('bekleyen değişiklik varken indirme yapılmaz', () async {
@@ -234,7 +272,9 @@ void main() {
     expect(tables.pendingChangeCount(table.id), 1);
   });
 
-  test('katılanın değişikliği kendiliğinden gitmez, butonla gider', () async {
+  test('katılanın değişikliği de kendiliğinden gider', () async {
+    // Eskiden butona basana kadar beklerdi; o sırada başkası aynı satırı
+    // eklerse karışıklık çıkıyordu.
     final tables = await _seeded('editor');
     final repository = _FakeRepository();
     final sync = SharedSyncService(
@@ -246,13 +286,200 @@ void main() {
     final id = tables.currentTable!.id;
 
     await tables.updateRow(0, ['konya', '40000']);
-    // A joiner's half-finished edit must not drip onto everyone's screen.
-    await Future<void>.delayed(SharedSyncService.ownerDebounce * 2);
+    // Sahibinkinden uzun bir toplama süresi var; o dolmadan gitmez.
+    await Future<void>.delayed(SharedSyncService.ownerDebounce);
     expect(repository.sent, isEmpty);
 
-    expect(await sync.push(id), isTrue);
+    await Future<void>.delayed(SharedSyncService.editorDebounce);
     expect(repository.sent.single.single.values, ['konya', '40000']);
     expect(tables.pendingChangeCount(id), 0);
+  });
+
+  test('katılanın art arda düzenlemeleri tek istekte toplanır', () async {
+    final tables = await _seeded('editor');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
+    addTearDown(sync.dispose);
+
+    await tables.updateRow(0, ['konya', '40000']);
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await tables.addRow(['izmir', '12000']);
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await tables.updateRow(0, ['konya', '50000']);
+    await Future<void>.delayed(SharedSyncService.editorDebounce * 1.5);
+
+    // Her gönderim, tabloyu açık tutan herkese bir indirme yaptırır.
+    expect(repository.sent, hasLength(1));
+    expect(repository.sent.single, hasLength(2));
+  });
+
+  test('görüntüleyen kişinin kuyruğu kendiliğinden gönderilmez', () async {
+    // Yetkisi alınmış birinin elinde gönderilmemiş değişiklik kalabilir.
+    // Sunucu bunu zaten reddeder; boşuna denenmez.
+    final tables = await _seeded('editor');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
+    addTearDown(sync.dispose);
+    final id = tables.currentTable!.id;
+
+    await tables.updateRow(0, ['konya', '40000']);
+    await tables.setSharedRole(id, 'viewer');
+    await Future<void>.delayed(SharedSyncService.editorDebounce * 1.5);
+
+    expect(repository.sent, isEmpty);
+    expect(tables.pendingChangeCount(id), 1);
+  });
+
+  test('çözülmemiş çakışma tekrar tekrar gönderilmez', () async {
+    final tables = await _seeded('editor');
+    final repository = _FakeRepository();
+    final sync = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
+    addTearDown(sync.dispose);
+    final id = tables.currentTable!.id;
+    final rowId = tables.currentTable!.rowIds.first;
+    repository.responder = (operations) => SharedRowSyncResult(
+      revision: 3,
+      applied: const [],
+      conflicts: [
+        SharedRowConflict(
+          rowId: rowId,
+          reason: 'changed',
+          current: const ['ankara', '35000'],
+        ),
+      ],
+    );
+
+    await tables.updateRow(0, ['konya', '40000']);
+    await Future<void>.delayed(SharedSyncService.editorDebounce * 3);
+    // Reddedilen içerik değişmedi; aynı isteği yinelemek yalnızca masraf.
+    expect(repository.sent, hasLength(1));
+    expect(sync.stateFor(id).hasConflicts, isTrue);
+
+    // Kullanıcı karar verince yeniden gönderilir.
+    repository.responder = null;
+    await sync.keepLocalVersion(id, sync.stateFor(id).conflicts.single);
+    await Future<void>.delayed(SharedSyncService.editorDebounce * 1.5);
+    expect(repository.sent, hasLength(2));
+    expect(tables.pendingChangeCount(id), 0);
+  });
+
+  test(
+    'uygulama arka plana geçerken bekleyen değişiklik hemen gider',
+    () async {
+      final tables = await _seeded('editor');
+      final repository = _FakeRepository();
+      final sync = SharedSyncService(
+        tables: tables,
+        tallies: await _emptyTallies(),
+        repository: repository,
+      );
+      addTearDown(sync.dispose);
+
+      await tables.updateRow(0, ['konya', '40000']);
+      // Sayaç dolmadan uygulama kapatılıyor.
+      sync.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(repository.sent, hasLength(1));
+    },
+  );
+
+  test(
+    'değişmemiş tablo yeniden indirilmez, yalnızca sürümü sorulur',
+    () async {
+      final tables = await _seeded('editor');
+      final repository = _FakeRepository();
+      final sync = SharedSyncService(
+        tables: tables,
+        tallies: await _emptyTallies(),
+        repository: repository,
+      );
+      addTearDown(sync.dispose);
+      final table = tables.currentTable!;
+      repository.snapshot = SharedTableSnapshot(
+        revision: 5,
+        payload: table.toJson(),
+        updatedAt: '2026-10-09T10:00:00Z',
+      );
+
+      // Servis arka planda da soru sorabildiği için sayımlar durulduktan
+      // sonra, bir öncekine göre karşılaştırılır.
+      Future<void> settle() =>
+          Future<void>.delayed(const Duration(milliseconds: 30));
+
+      // İlk seferde sürüm bilinmiyor; tablo indirilir.
+      await sync.pull(table.id);
+      await settle();
+      expect(repository.fetchCount, 1);
+      final checks = repository.versionChecks;
+
+      // Tablo yeniden açıldı, uygulama öne geldi: yalnızca ucuz soru gider.
+      await sync.pull(table.id);
+      await settle();
+      await sync.pull(table.id);
+      await settle();
+      expect(repository.fetchCount, 1);
+      expect(repository.versionChecks, greaterThanOrEqualTo(checks + 2));
+
+      // Sürüm aynı ama içerik değişmiş (paylaşım kapalıyken yedeklenmiş):
+      // değişiklik anı farklıdır, tablo indirilir.
+      final server = TableModel.fromJson(table.toJson());
+      server.replaceRow(0, ['ankara', '35000']);
+      repository.snapshot = SharedTableSnapshot(
+        revision: 5,
+        payload: server.toJson(),
+        updatedAt: '2026-10-09T11:00:00Z',
+      );
+      await sync.pull(table.id);
+      await settle();
+      expect(repository.fetchCount, 2);
+      expect(tables.currentTable!.rows.single, ['ankara', '35000']);
+    },
+  );
+
+  test('bilinen sürüm uygulama yeniden açılınca hatırlanır', () async {
+    final tables = await _seeded('editor');
+    final repository = _FakeRepository();
+    final first = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
+    final table = tables.currentTable!;
+    repository.snapshot = SharedTableSnapshot(
+      revision: 5,
+      payload: table.toJson(),
+      updatedAt: '2026-10-09T10:00:00Z',
+    );
+    await first.pull(table.id);
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    first.dispose();
+    expect(repository.fetchCount, 1);
+    final checks = repository.versionChecks;
+
+    // Uygulama kapanıp açıldı: her açılışta tablonun tamamı inmemeli.
+    final second = SharedSyncService(
+      tables: tables,
+      tallies: await _emptyTallies(),
+      repository: repository,
+    );
+    addTearDown(second.dispose);
+    await second.pull(table.id);
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(repository.fetchCount, 1);
+    expect(repository.versionChecks, greaterThan(checks));
   });
 
   test('sahibin değişikliği gecikmeyle kendiliğinden gider', () async {
@@ -395,5 +622,120 @@ void main() {
     expect(await sync.push(id), isFalse);
     expect(sync.stateFor(id).errorCode, 'owner_premium_required');
     expect(tables.pendingChangeCount(id), 1);
+  });
+
+  group('roller', () {
+    Future<(TableProvider, _FakeRepository, SharedSyncService)> setup(
+      String role,
+    ) async {
+      final tables = await _seeded(role);
+      final repository = _FakeRepository();
+      final sync = SharedSyncService(
+        tables: tables,
+        tallies: await _emptyTallies(),
+        repository: repository,
+      );
+      addTearDown(sync.dispose);
+      addTearDown(repository.live.close);
+      return (tables, repository, sync);
+    }
+
+    test('sahip yetkiyi geri alınca düzenleyen görüntüleyene döner', () async {
+      final (tables, repository, sync) = await setup('editor');
+      final id = tables.currentTable!.id;
+      repository.access = const SharedAccess(role: 'viewer');
+
+      await sync.refreshAccess(id);
+      expect(tables.isSharedViewer(id), isTrue);
+      expect(tables.canEditCurrent, isFalse);
+      // Artık eklenemez; sunucu da zaten reddederdi.
+      expect(await tables.addRow(['izmir', '12000']), isFalse);
+    });
+
+    test('sahip onaylayınca görüntüleyen düzenleyebilir', () async {
+      final (tables, repository, sync) = await setup('viewer');
+      final id = tables.currentTable!.id;
+      expect(await tables.addRow(['izmir', '12000']), isFalse);
+
+      repository.access = const SharedAccess(role: 'editor');
+      // Sahip rolü değiştirdiğinde sürüm artar; ekran bunu canlı duyar.
+      tables.notifyListeners();
+      await Future<void>.delayed(Duration.zero);
+      repository.live.add(4);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(tables.sharedRole(id), 'editor');
+      expect(await tables.addRow(['izmir', '12000']), isTrue);
+    });
+
+    test('sunucunun yanıtı sahipliği ya da üyeliği yerelde silmez', () async {
+      final (tables, repository, sync) = await setup('owner');
+      final id = tables.currentTable!.id;
+      // Yanlış okunan tek bir yanıt tabloyu bulutla bağlantısız bırakmamalı.
+      for (final role in ['viewer', 'editor', null]) {
+        repository.access = SharedAccess(role: role);
+        await sync.refreshAccess(id);
+        expect(tables.isSharedOwner(id), isTrue, reason: '$role');
+      }
+    });
+
+    test('sahip bekleyen talep sayısını görür', () async {
+      final (tables, repository, sync) = await setup('owner');
+      final id = tables.currentTable!.id;
+      expect(sync.accessFor(id).pendingRequests, 0);
+      repository.access = const SharedAccess(role: 'owner', pendingRequests: 2);
+      await sync.refreshAccess(id);
+      expect(sync.accessFor(id).pendingRequests, 2);
+    });
+
+    test('yetki okunamazsa eldeki rol geçerli kalır', () async {
+      final (tables, repository, sync) = await setup('editor');
+      final id = tables.currentTable!.id;
+      repository.access = null;
+      await sync.refreshAccess(id);
+      expect(tables.sharedRole(id), 'editor');
+    });
+
+    test('yetki talebi gönderilir ve yanıt beklediği bilinir', () async {
+      final (tables, repository, sync) = await setup('viewer');
+      final id = tables.currentTable!.id;
+      expect(sync.accessFor(id).editRequested, isFalse);
+
+      expect(await sync.requestEditAccess(id), isNull);
+      expect(repository.requests, 1);
+      expect(sync.accessFor(id).editRequested, isTrue);
+      // Talep göndermek yetki vermez.
+      expect(tables.isSharedViewer(id), isTrue);
+    });
+
+    test('reddedilen talebin nedeni koda çevrilir', () async {
+      final (tables, repository, sync) = await setup('viewer');
+      final id = tables.currentTable!.id;
+      repository.requestFailure = const SharedTableException(
+        'too_many_attempts',
+      );
+      expect(await sync.requestEditAccess(id), 'too_many_attempts');
+      expect(sync.accessFor(id).editRequested, isFalse);
+    });
+
+    test('yetkisi alınan kişinin gönderemediği değişiklik silinmez', () async {
+      final (tables, repository, sync) = await setup('editor');
+      final id = tables.currentTable!.id;
+      await tables.addRow(['izmir', '12000']);
+      expect(tables.pendingChangeCount(id), 1);
+
+      repository
+        ..throwThis = const SharedTableException(
+          'shared_table_edit_access_required',
+        )
+        ..access = const SharedAccess(role: 'viewer');
+      expect(await sync.push(id), isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // Rol güncellendi ama emek yerinde: yetki geri verilirse gönderilir.
+      expect(tables.isSharedViewer(id), isTrue);
+      expect(tables.pendingChangeCount(id), 1);
+      expect(tables.currentTable!.rows.length, 2);
+    });
   });
 }

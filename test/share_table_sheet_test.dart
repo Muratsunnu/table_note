@@ -52,6 +52,27 @@ class _FakeRepository implements CloudRepository {
     return storedCode;
   }
 
+  /// Yanıt bekleyen talepler; rol verilince listeden düşer.
+  List<SharedTableMember> members = [];
+  final roleChanges = <String>[];
+
+  @override
+  Future<List<SharedTableMember>> sharedTableMembers(String tableId) async =>
+      members;
+
+  @override
+  Future<void> setSharedMemberRole(
+    String tableId,
+    String memberUserId,
+    String role,
+  ) async {
+    roleChanges.add('$memberUserId=$role');
+    members = [
+      for (final member in members)
+        if (member.userId != memberUserId) member,
+    ];
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -280,5 +301,56 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('share-start')), findsOneWidget);
     expect(repository.started, isEmpty);
+  });
+
+  testWidgets('the owner answers access requests from the same sheet', (
+    tester,
+  ) async {
+    // Dar bir telefonda çizilir: ad, "Reddet" ve "Onayla" aynı satıra
+    // sığmazsa test taşma hatasıyla düşer.
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await seed(tester);
+    await tester.runAsync(
+      () => tables.setSharedRole(tables.currentTable!.id, 'owner'),
+    );
+    SharedTableMember asking(String id, String name) => SharedTableMember(
+      userId: id,
+      displayName: name,
+      role: 'viewer',
+      joinedAt: DateTime(2026, 10, 9),
+      editRequestOpen: true,
+    );
+    repository
+      ..storedCode = '222778'
+      ..members = [asking('u1', 'Ayşe'), asking('u2', 'Mehmet Yılmazoğlu')];
+    await tester.pumpWidget(sheet());
+    await tester.pumpAndSettle();
+
+    expect(find.text(_en.editRequests), findsOneWidget);
+    expect(find.text('Ayşe'), findsOneWidget);
+    expect(find.text('Mehmet Yılmazoğlu'), findsOneWidget);
+
+    // Onaylamak düzenleme yetkisi verir, reddetmek görüntüleyen bırakır.
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('request-u1')),
+        matching: find.widgetWithText(FilledButton, _en.approve),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('request-u2')),
+        matching: find.widgetWithText(TextButton, _en.decline),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.roleChanges, ['u1=editor', 'u2=viewer']);
+    expect(find.text(_en.editRequests), findsNothing);
+    // Kod yerinde duruyor.
+    expectCodeShown('222778');
   });
 }

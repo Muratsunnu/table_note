@@ -15,6 +15,8 @@ import '../screens/account_screen.dart';
 import '../screens/premium_screen.dart';
 import '../screens/shared_table_manage_screen.dart';
 import '../services/cloud_repository.dart';
+import '../services/shared_sync_service.dart';
+import 'join_code_cells.dart';
 import 'join_password_dialog.dart';
 
 /// Tablo ya da çetele ekranından açılan paylaşım kâğıdı.
@@ -68,6 +70,10 @@ class _ShareTableSheetState extends State<ShareTableSheet> {
 
   /// Beklenmeyen hatanın ham hali; yalnızca geliştirme derlemesinde görünür.
   String? _errorDetail;
+
+  /// Düzenleme yetkisi isteyip yanıt bekleyenler.
+  List<SharedTableMember> _requests = const [];
+  int? _seenPending;
   String? _code;
 
   /// Sunucuya kod soruldu mu? Sorulmadan "kod yok" denmez.
@@ -86,9 +92,55 @@ class _ShareTableSheetState extends State<ShareTableSheet> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Kâğıt açıkken yeni bir talep gelirse ya da biri yanıtlanırsa liste
+    // kendiliğinden tazelenir. Testlerde bu servis olmayabilir.
+    final pending = context
+        .watch<SharedSyncService?>()
+        ?.accessFor(widget.tableId)
+        .pendingRequests;
+    if (pending != null && pending != _seenPending) {
+      final first = _seenPending == null;
+      _seenPending = pending;
+      // İlk yükleme zaten initState'te yapılıyor.
+      if (!first && _isOwner(listen: false)) _loadRequests();
+    }
+  }
+
+  @override
   void dispose() {
     _copiedTimer?.cancel();
     super.dispose();
+  }
+
+  /// Talepler ayrı okunur: okunamamaları kodu göstermeye engel değildir.
+  Future<void> _loadRequests() async {
+    try {
+      final members = await _repository.sharedTableMembers(widget.tableId);
+      if (!mounted) return;
+      setState(
+        () => _requests = [
+          for (final member in members)
+            if (member.editRequestOpen) member,
+        ],
+      );
+    } catch (error) {
+      debugPrint('Yetki talepleri okunamadı: $error');
+    }
+  }
+
+  Future<void> _answerRequest(SharedTableMember member, bool approve) {
+    final sync = context.read<SharedSyncService?>();
+    return _run(() async {
+      await _repository.setSharedMemberRole(
+        widget.tableId,
+        member.userId,
+        approve ? 'editor' : 'viewer',
+      );
+      await _loadRequests();
+      unawaited(sync?.refreshAccess(widget.tableId));
+    });
   }
 
   bool _isOwner({bool listen = true}) => widget.isTally
@@ -156,14 +208,17 @@ class _ShareTableSheetState extends State<ShareTableSheet> {
     }
   }
 
-  Future<void> _loadCode() => _run(() async {
-    final code = await _repository.sharedTableJoinCode(widget.tableId);
-    if (!mounted) return;
-    setState(() {
-      _code = code;
-      _codeAsked = true;
+  Future<void> _loadCode() async {
+    await _run(() async {
+      final code = await _repository.sharedTableJoinCode(widget.tableId);
+      if (!mounted) return;
+      setState(() {
+        _code = code;
+        _codeAsked = true;
+      });
     });
-  });
+    if (mounted) await _loadRequests();
+  }
 
   /// Tabloyu buluta koyar, kodu alır ve bu cihazı sahip olarak işaretler.
   /// Sağlayıcılar await'lerden önce yakalanır: ağ sürerken kâğıt kapatılırsa
@@ -332,8 +387,47 @@ class _ShareTableSheetState extends State<ShareTableSheet> {
       ];
     } else {
       body = [
+        // Yanıt bekleyen talepler en üstte: sahibin burada yapması gereken
+        // bir şey varsa önce onu görür.
+        if (_requests.isNotEmpty) ...[
+          Text(
+            loc.editRequests,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+          for (final member in _requests)
+            ListTile(
+              key: ValueKey('request-${member.userId}'),
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.lock_open_rounded, color: colors.primary),
+              title: Text(member.displayName ?? '—'),
+              subtitle: Text(loc.wantsEditAccess),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _answerRequest(member, false),
+                    child: Text(loc.decline),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: _busy
+                        ? null
+                        : () => _answerRequest(member, true),
+                    child: Text(loc.approve),
+                  ),
+                ],
+              ),
+            ),
+          const Divider(height: 24),
+        ],
         if (_code != null) ...[
-          _CodeCells(code: _code!, label: loc.joinCode),
+          Semantics(
+            // Ekran okuyucu "dört yüz altmış üç bin…" demesin, rakam rakam
+            // okusun.
+            label: '${loc.joinCode}: ${_code!.split('').join(' ')}',
+            child: ExcludeSemantics(child: JoinCodeCells(code: _code!)),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -533,63 +627,5 @@ class _ShareTableSheetState extends State<ShareTableSheet> {
         ),
       ],
     ];
-  }
-}
-
-/// Kod, her rakamı kendi hücresinde: telefonda tek tek okunmak için.
-class _CodeCells extends StatelessWidget {
-  const _CodeCells({required this.code, required this.label});
-
-  final String code;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final digits = code.split('');
-    return Semantics(
-      // Ekran okuyucu "dört yüz altmış üç bin…" demesin, rakam rakam okusun.
-      label: '$label: ${digits.join(' ')}',
-      child: ExcludeSemantics(
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: theme.dividerColor),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var index = 0; index < digits.length; index++) ...[
-                  if (index > 0)
-                    VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: theme.dividerColor,
-                    ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      child: Text(
-                        digits[index],
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/shared_row_operation.dart';
@@ -90,6 +92,7 @@ class SharedTableException implements Exception {
     'too_many_attempts',
     'table_not_found',
     'table_owner_required',
+    'member_not_found',
     'password_too_short',
     'shared_table_needs_upgrade',
     'shared_table_locked_by_other',
@@ -104,21 +107,31 @@ class SharedTableException implements Exception {
 class SharedTableMember {
   final String userId;
   final String? displayName;
+
+  /// 'viewer' ya da 'editor'.
   final String role;
   final DateTime joinedAt;
+
+  /// Sahibin yanitini bekleyen bir duzenleme yetkisi talebi var mi.
+  final bool editRequestOpen;
 
   const SharedTableMember({
     required this.userId,
     required this.displayName,
     required this.role,
     required this.joinedAt,
+    this.editRequestOpen = false,
   });
+
+  bool get canEdit => role == 'editor';
 
   factory SharedTableMember.fromJson(Map<String, dynamic> json) =>
       SharedTableMember(
         userId: json['user_id'].toString(),
         displayName: json['display_name']?.toString(),
-        role: json['role']?.toString() ?? 'editor',
+        // Bilinmeyen deger yetki vermez.
+        role: json['role']?.toString() == 'editor' ? 'editor' : 'viewer',
+        editRequestOpen: json['edit_request_open'] == true,
         // Sunucu UTC gonderir; yerel saate cevrilmezse kullanici saatleri
         // kendi diliminden kaymis gorur.
         joinedAt:
@@ -130,6 +143,30 @@ class SharedTableMember {
 
 /// Gunluk satiri. Ad, kaydin atildigi andaki addir; kisi sonra adini
 /// degistirse de gecmis oldugu gibi kalir.
+/// Bu cihazdaki kisinin bir ortak tablodaki yetkisi.
+class SharedAccess {
+  /// 'owner', 'editor', 'viewer'; artik uye degilse null.
+  final String? role;
+
+  /// Goruntuleyen kisinin yanit bekleyen bir talebi var mi.
+  final bool editRequested;
+
+  /// Yalnizca sahip icin: yanit bekleyen talep sayisi.
+  final int pendingRequests;
+
+  const SharedAccess({
+    this.role,
+    this.editRequested = false,
+    this.pendingRequests = 0,
+  });
+
+  factory SharedAccess.fromJson(Map<String, dynamic> json) => SharedAccess(
+    role: json['role']?.toString(),
+    editRequested: json['editRequested'] == true,
+    pendingRequests: (json['pendingRequests'] as num?)?.toInt() ?? 0,
+  );
+}
+
 class TableActivityEntry {
   final int id;
 
@@ -238,7 +275,24 @@ class SharedTableSnapshot {
   final int revision;
   final Map<String, dynamic> payload;
 
-  const SharedTableSnapshot({required this.revision, required this.payload});
+  /// Sunucudaki son degisiklik ani. Paylasim kapaliyken yuk, surum artmadan
+  /// degisebilir; surumle birlikte buna da bakilir.
+  final String? updatedAt;
+
+  const SharedTableSnapshot({
+    required this.revision,
+    required this.payload,
+    this.updatedAt,
+  });
+}
+
+/// Tablonun yalnizca surum bilgisi: yuku indirmeden degisip degismedigini
+/// anlamak icin.
+class SharedTableVersion {
+  final int revision;
+  final String? updatedAt;
+
+  const SharedTableVersion({required this.revision, this.updatedAt});
 }
 
 /// Satir gonderiminin sonucu. Uygulananlar kuyruktan duser; cakisanlar
@@ -455,7 +509,9 @@ class CloudRepository {
   /// Tablonun uyeleri. Sunucu yalnizca tablo sahibine liste dondurur.
   Future<List<SharedTableMember>> sharedTableMembers(String tableId) async {
     final result = await _client.rpc(
-      'shared_table_members',
+      // Rol ve talep bilgisini de doner; eski 'shared_table_members' yalnizca
+      // ad ve tarihi veriyordu.
+      'shared_table_member_roles',
       params: {'target_table_id': tableId},
     );
     if (result is! List) return const [];
@@ -476,7 +532,7 @@ class CloudRepository {
   Future<SharedTableSnapshot?> fetchSharedTable(String tableId) async {
     final row = await _client
         .from('cloud_tables')
-        .select('payload, revision')
+        .select('payload, revision, updated_at')
         .eq('id', tableId)
         .maybeSingle();
     if (row == null) return null;
@@ -485,6 +541,22 @@ class CloudRepository {
     return SharedTableSnapshot(
       revision: (row['revision'] as num?)?.toInt() ?? 0,
       payload: Map<String, dynamic>.from(payload),
+      updatedAt: row['updated_at']?.toString(),
+    );
+  }
+
+  /// Yalnizca surum ve son degisiklik ani. Birkac yuz baytlik bir yanit;
+  /// tablonun tamami ancak bu degismisse indirilir.
+  Future<SharedTableVersion?> fetchSharedTableVersion(String tableId) async {
+    final row = await _client
+        .from('cloud_tables')
+        .select('revision, updated_at')
+        .eq('id', tableId)
+        .maybeSingle();
+    if (row == null) return null;
+    return SharedTableVersion(
+      revision: (row['revision'] as num?)?.toInt() ?? 0,
+      updatedAt: row['updated_at']?.toString(),
     );
   }
 
@@ -494,15 +566,61 @@ class CloudRepository {
   /// okunuyor; icerigi fetchSharedTable ile almak, indirmenin tek bir
   /// yoldan gecmesini sagliyor. O yolda "bekleyen degisiklik varsa
   /// dokunma" korumasi var ve onu atlamak veri kaybi olurdu.
+  /// Canli yayin baglantisi koptuktan sonra yeniden kuruldugunda yayinlanan
+  /// deger: arada kacirilmis bir degisiklik olabilir, surum bilinmiyor.
+  static const int revisionUnknown = -1;
+
+  /// Tablonun surumu her degistiginde yeni surumu yayinlar.
+  ///
+  /// Bildirim YALNIZCA surum numarasini tasir. Eskiden satirin tamami
+  /// geliyordu: her kayitta tabloyu acik tutan her cihaz butun tabloyu bir
+  /// kez bildirimin icinde, bir kez de ardindan indirerek aliyordu. Ucretsiz
+  /// planda tek mesaj en fazla 256 KB olabildigi icin buyuk bir tablonun
+  /// bildirimi sigmayabiliyordu da.
   Stream<int> watchSharedTableRevision(String tableId) {
-    final dynamic raw = _client
-        .from('cloud_tables')
-        .stream(primaryKey: ['id'])
-        .eq('id', tableId);
-    return (raw as Stream<List<Map<String, dynamic>>>).map((rows) {
-      if (rows.isEmpty) return 0;
-      return (rows.first['revision'] as num?)?.toInt() ?? 0;
-    });
+    final SupabaseClient client = _client;
+    late final StreamController<int> controller;
+    RealtimeChannel? channel;
+    var subscribedOnce = false;
+    controller = StreamController<int>(
+      onListen: () {
+        channel = client
+            .channel('cloud-table-revision:$tableId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'cloud_tables',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'id',
+                value: tableId,
+              ),
+              select: const ['revision'],
+              callback: (payload) {
+                final revision =
+                    (payload.newRecord['revision'] as num?)?.toInt() ?? 0;
+                if (!controller.isClosed) controller.add(revision);
+              },
+            )
+            .subscribe((status, error) {
+              if (controller.isClosed) return;
+              if (status == RealtimeSubscribeStatus.subscribed) {
+                // Ilk baglantida tablo zaten bir kez soruluyor. Sonrakiler
+                // kopup yeniden kurulmus baglantidir.
+                if (subscribedOnce) controller.add(revisionUnknown);
+                subscribedOnce = true;
+              } else if (error != null) {
+                controller.addError(error);
+              }
+            });
+      },
+      onCancel: () async {
+        final open = channel;
+        channel = null;
+        if (open != null) await client.removeChannel(open);
+      },
+    );
+    return controller.stream;
   }
 
   Future<List<TableActivityEntry>> tableActivity(
@@ -678,6 +796,67 @@ class CloudRepository {
       throw SharedTableException(error.message);
     }
     return await sharedTableJoinCode(id) ?? await rotateSharedTableCode(id);
+  }
+
+  /// Bu cihazdaki kisinin tablodaki yetkisi. Sahip icin bekleyen talep
+  /// sayisini da tasir.
+  Future<SharedAccess> sharedTableAccess(String tableId) async {
+    try {
+      final result = await _client.rpc(
+        'shared_table_access',
+        params: {'target_table_id': tableId},
+      );
+      return SharedAccess.fromJson(_resultMap(result));
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
+  /// Goruntuleyen kisi duzenleme yetkisi ister. Karari tablo sahibi verir.
+  Future<SharedAccess> requestSharedEditAccess(String tableId) async {
+    try {
+      final result = await _client.rpc(
+        'request_shared_edit_access',
+        params: {'target_table_id': tableId},
+      );
+      return SharedAccess.fromJson(_resultMap(result));
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
+  /// Sahip bir uyenin rolunu belirler: 'viewer' ya da 'editor'. Ayni rolu
+  /// yeniden vermek, o uyenin acik talebini kapatir (reddetmek budur).
+  Future<void> setSharedMemberRole(
+    String tableId,
+    String memberUserId,
+    String role,
+  ) async {
+    try {
+      await _client.rpc(
+        'set_shared_member_role',
+        params: {
+          'target_table_id': tableId,
+          'member_user_id': memberUserId,
+          'new_role': role,
+        },
+      );
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
+  }
+
+  /// Katilinan tablodan ayrilir: sunucudaki uyelik silinir. Zaten uye
+  /// olmayan icin sessizce basarilidir.
+  Future<void> leaveSharedTable(String tableId) async {
+    try {
+      await _client.rpc(
+        'leave_shared_table',
+        params: {'target_table_id': tableId},
+      );
+    } on PostgrestException catch (error) {
+      throw SharedTableException(error.message);
+    }
   }
 
   Future<void> disableSharedTableCollaboration(String tableId) async {

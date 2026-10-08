@@ -1,3 +1,4 @@
+import 'leave_shared_table.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
@@ -471,7 +472,10 @@ class TableDrawer extends StatelessWidget {
                   color: AppTheme.error,
                 ),
                 title: Text(
-                  AppLocalizations.of(context).deleteTable,
+                  // Katılınan tablo silinmez, ondan ayrılınır.
+                  _joinedTable(provider, index)
+                      ? AppLocalizations.of(context).leaveShared
+                      : AppLocalizations.of(context).deleteTable,
                   style: const TextStyle(color: AppTheme.error),
                 ),
                 onTap: () {
@@ -574,7 +578,9 @@ class TableDrawer extends StatelessWidget {
                   color: AppTheme.error,
                 ),
                 title: Text(
-                  loc.tallyDeleteTable,
+                  _joinedTally(provider, index)
+                      ? loc.leaveShared
+                      : loc.tallyDeleteTable,
                   style: const TextStyle(color: AppTheme.error),
                 ),
                 onTap: () {
@@ -589,12 +595,31 @@ class TableDrawer extends StatelessWidget {
     );
   }
 
+  bool _joinedTable(TableProvider provider, int index) {
+    final id = provider.tables[index].id;
+    return provider.isSharedTable(id) && !provider.isSharedOwner(id);
+  }
+
+  bool _joinedTally(TallyProvider provider, int index) {
+    final id = provider.tables[index].id;
+    return provider.isSharedTally(id) && !provider.isSharedOwner(id);
+  }
+
   void _showDeleteConfirmation(
     BuildContext context,
     TableProvider provider,
     int index,
   ) {
     final table = provider.tables[index];
+    if (_joinedTable(provider, index)) {
+      leaveSharedTableFlow(
+        context,
+        tableId: table.id,
+        tableName: table.tableName,
+        isTally: false,
+      );
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -668,6 +693,15 @@ class TableDrawer extends StatelessWidget {
     int index,
   ) {
     final table = provider.tables[index];
+    if (_joinedTally(provider, index)) {
+      leaveSharedTableFlow(
+        context,
+        tableId: table.id,
+        tableName: table.tableName,
+        isTally: true,
+      );
+      return;
+    }
     final loc = AppLocalizations.of(context);
     showDialog(
       context: context,

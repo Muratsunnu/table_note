@@ -1,3 +1,4 @@
+import 'edit_access.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/tabel_model.dart';
@@ -265,6 +266,9 @@ class TableListWidget extends StatelessWidget {
     TableProvider provider,
   ) {
     final language = AppLocalizations.of(context).locale.languageCode;
+    // Yalnızca görüntüleyen kişide satır düzenlenmez: dokunmak nedenini
+    // söyler, düzenle ve sil düğmeleri de çizilmez.
+    final canEdit = provider.canEditCurrent;
 
     return displayRows.asMap().entries.map((entry) {
       final displayIndex = entry.key;
@@ -291,30 +295,35 @@ class TableListWidget extends StatelessWidget {
                 raw: value,
                 language: language,
               ),
-              onTap: () => _showEditDialog(context, originalIndex, row),
+              onTap: () => canEdit
+                  ? _showEditDialog(context, originalIndex, row)
+                  : showViewOnlyNotice(context, tableId: table.id),
             );
           }),
           DataCell(
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  color: AppTheme.primaryBlue,
-                  onPressed: () => _showEditDialog(context, originalIndex, row),
-                  tooltip: AppLocalizations.of(context).edit,
-                  visualDensity: VisualDensity.compact,
-                  splashRadius: 20,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                  color: AppTheme.error,
-                  onPressed: () =>
-                      _showDeleteDialog(context, originalIndex, provider),
-                  tooltip: AppLocalizations.of(context).delete,
-                  visualDensity: VisualDensity.compact,
-                  splashRadius: 20,
-                ),
+                if (canEdit) ...[
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    color: AppTheme.primaryBlue,
+                    onPressed: () =>
+                        _showEditDialog(context, originalIndex, row),
+                    tooltip: AppLocalizations.of(context).edit,
+                    visualDensity: VisualDensity.compact,
+                    splashRadius: 20,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                    color: AppTheme.error,
+                    onPressed: () =>
+                        _showDeleteDialog(context, originalIndex, provider),
+                    tooltip: AppLocalizations.of(context).delete,
+                    visualDensity: VisualDensity.compact,
+                    splashRadius: 20,
+                  ),
+                ],
               ],
             ),
           ),

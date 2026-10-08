@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../services/cloud_repository.dart';
+import '../services/shared_sync_service.dart';
 import '../widgets/join_password_dialog.dart';
 
 /// Tabloyu paylasan kisinin yonetim ekrani: kod uretme, istege bagli sifre,
@@ -115,6 +118,23 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
     });
   }
 
+  /// Sahip bir üyenin rolünü belirler. Aynı rolü yeniden vermek o üyenin
+  /// açık talebini kapatır; "reddet" budur.
+  Future<void> _setRole(SharedTableMember member, String role) {
+    // Rozet ve üyenin kendi ekranı bu servisten beslenir.
+    final sync = context.read<SharedSyncService>();
+    return _run(() async {
+      await _repository.setSharedMemberRole(
+        widget.tableId,
+        member.userId,
+        role,
+      );
+      final members = await _repository.sharedTableMembers(widget.tableId);
+      if (mounted) setState(() => _members = members);
+      unawaited(sync.refreshAccess(widget.tableId));
+    });
+  }
+
   Future<void> _disable() {
     final setRole = _roleWriter();
     return _run(() async {
@@ -211,13 +231,56 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
               )
             else
               for (final member in _members)
-                ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.person_outline_rounded),
-                  title: Text(member.displayName ?? '—'),
-                  subtitle: Text(_date(member.joinedAt)),
-                ),
+                if (member.editRequestOpen)
+                  // Yanıt bekleyen talep: onayla ya da reddet.
+                  ListTile(
+                    key: ValueKey('member-${member.userId}'),
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.lock_open_rounded,
+                      color: colors.primary,
+                    ),
+                    title: Text(member.displayName ?? '—'),
+                    subtitle: Text(
+                      loc.wantsEditAccess,
+                      style: TextStyle(color: colors.primary),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _setRole(member, 'viewer'),
+                          child: Text(loc.decline),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: _busy
+                              ? null
+                              : () => _setRole(member, 'editor'),
+                          child: Text(loc.approve),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  // Anahtar açıkken kişi düzenleyebilir; sahip dilediği
+                  // zaman verir ya da geri alır.
+                  SwitchListTile(
+                    key: ValueKey('member-${member.userId}'),
+                    contentPadding: EdgeInsets.zero,
+                    secondary: const Icon(Icons.person_outline_rounded),
+                    title: Text(member.displayName ?? '—'),
+                    subtitle: Text(
+                      '${loc.roleLabel(member.role)} · '
+                      '${_date(member.joinedAt)}',
+                    ),
+                    value: member.canEdit,
+                    onChanged: _busy
+                        ? null
+                        : (canEdit) =>
+                              _setRole(member, canEdit ? 'editor' : 'viewer'),
+                  ),
             const SizedBox(height: 24),
             Text(
               loc.activityLog,
@@ -325,6 +388,12 @@ class _ActivityRow extends StatelessWidget {
         '${entry.columnName}: '
             '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
       'columns_changed' => loc.activityColumnsChanged,
+      'edit_requested' => loc.activityEditRequested,
+      'left' => loc.activityLeft,
+      'role_changed' =>
+        '${_orDash(entry.columnName)}: '
+            '${loc.roleLabel(entry.oldValue)} → '
+            '${loc.roleLabel(entry.newValue)}',
       'item_added' => loc.activityItemAdded,
       'item_deleted' => loc.activityItemDeleted,
       // Ad degisikligi ve gun isareti ayni bicimde okunur: eski → yeni.

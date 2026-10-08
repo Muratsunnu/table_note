@@ -446,6 +446,33 @@ class AppLocalizations {
   String get sharePassword => _t('sharePassword');
   String get sharePasswordHint => _t('sharePasswordHint');
   String get shareMembersHistory => _t('shareMembersHistory');
+  String get roleViewer => _t('roleViewer');
+  String get roleEditor => _t('roleEditor');
+  String roleLabel(String? role) => role == 'editor' ? roleEditor : roleViewer;
+  String get memberCanEdit => _t('memberCanEdit');
+  String get requestEditAccess => _t('requestEditAccess');
+  String get editAccessRequested => _t('editAccessRequested');
+  String get requestEditAccessTitle => _t('requestEditAccessTitle');
+  String get requestEditAccessMessage => _t('requestEditAccessMessage');
+  String get sendRequest => _t('sendRequest');
+  String get editAccessRequestSent => _t('editAccessRequestSent');
+  String get viewOnlyNotice => _t('viewOnlyNotice');
+  String get viewOnlyRequested => _t('viewOnlyRequested');
+  String get editRequests => _t('editRequests');
+  String get wantsEditAccess => _t('wantsEditAccess');
+  String get approve => _t('approve');
+  String get decline => _t('decline');
+  String get activityEditRequested => _t('activityEditRequested');
+  String get activityLeft => _t('activityLeft');
+  String get leaveShared => _t('leaveShared');
+  String leaveSharedConfirm(String name) =>
+      _t('leaveSharedConfirm').replaceAll('{name}', name);
+  String leavePendingWillSend(int count) =>
+      _t('leavePendingWillSend').replaceAll('{count}', '$count');
+  String get leaveSendFailed => _t('leaveSendFailed');
+  String get leaveAction => _t('leaveAction');
+  String get leaveAnyway => _t('leaveAnyway');
+  String leftShared(String name) => _t('leftShared').replaceAll('{name}', name);
   String get joinPassword => _t('joinPassword');
   String get joinPasswordOptional => _t('joinPasswordOptional');
   String get yourName => _t('yourName');
@@ -935,6 +962,36 @@ class AppLocalizations {
     'sharePassword': 'Şifre koy ya da değiştir',
     'sharePasswordHint': 'İsteğe bağlı. Kodu öğrenen herkes katılamasın diye.',
     'shareMembersHistory': 'Katılanlar ve geçmiş',
+    'roleViewer': 'Yalnızca görüntüler',
+    'roleEditor': 'Düzenleyebilir',
+    'memberCanEdit': 'Düzenleme yetkisi',
+    'requestEditAccess': 'Yetki iste',
+    'editAccessRequested': 'Yetki talebi gönderildi',
+    'requestEditAccessTitle': 'Düzenleme yetkisi iste',
+    'requestEditAccessMessage':
+        'Tablo sahibine düzenleme yetkisi talebi gönderilecek. Onaylıyor musun?',
+    'sendRequest': 'Talebi gönder',
+    'editAccessRequestSent':
+        'Talebin gönderildi. Tablo sahibi onaylayınca düzenleyebilirsin.',
+    'viewOnlyNotice': 'Burayı yalnızca görüntüleyebilirsin.',
+    'viewOnlyRequested':
+        'Burayı yalnızca görüntüleyebilirsin. Yetki talebin yanıt bekliyor.',
+    'editRequests': 'Yetki talepleri',
+    'wantsEditAccess': 'Düzenleme yetkisi istiyor',
+    'approve': 'Onayla',
+    'decline': 'Reddet',
+    'activityEditRequested': 'Düzenleme yetkisi istedi',
+    'activityLeft': 'paylaşımdan ayrıldı',
+    'leaveShared': 'Paylaşımdan ayrıl',
+    'leaveSharedConfirm':
+        '“{name}” paylaşımından ayrılırsın ve bu cihazdan kaldırılır. Yeniden katılmak için kodu tekrar girmen gerekir.',
+    'leavePendingWillSend':
+        'Gönderilmemiş {count} değişikliğin ayrılmadan önce gönderilecek.',
+    'leaveSendFailed':
+        'Değişikliklerin gönderilemedi. Yine de ayrılırsan silinirler.',
+    'leaveAction': 'Ayrıl',
+    'leaveAnyway': 'Yine de ayrıl',
+    'leftShared': '“{name}” paylaşımından ayrıldın.',
     'err_table_owner_required':
         'Bu tablo başka birinin paylaşımından geldi, buradan paylaşılamaz.',
     'joinPassword': 'Şifre',
@@ -1446,6 +1503,36 @@ class AppLocalizations {
     'sharePasswordHint':
         'Optional. Keeps out people who only learned the code.',
     'shareMembersHistory': 'Members and history',
+    'roleViewer': 'View only',
+    'roleEditor': 'Can edit',
+    'memberCanEdit': 'Edit access',
+    'requestEditAccess': 'Request access',
+    'editAccessRequested': 'Access requested',
+    'requestEditAccessTitle': 'Request edit access',
+    'requestEditAccessMessage':
+        'A request for edit access will be sent to the table owner. Do you confirm?',
+    'sendRequest': 'Send request',
+    'editAccessRequestSent':
+        'Your request was sent. You can edit once the owner approves.',
+    'viewOnlyNotice': 'You can only view this.',
+    'viewOnlyRequested':
+        'You can only view this. Your access request is waiting for a reply.',
+    'editRequests': 'Access requests',
+    'wantsEditAccess': 'Is asking for edit access',
+    'approve': 'Approve',
+    'decline': 'Decline',
+    'activityEditRequested': 'Asked for edit access',
+    'activityLeft': 'left the table',
+    'leaveShared': 'Leave shared table',
+    'leaveSharedConfirm':
+        'You will leave “{name}” and it will be removed from this device. To join again you will need the code.',
+    'leavePendingWillSend':
+        '{count} unsent changes will be sent before you leave.',
+    'leaveSendFailed':
+        'Your changes could not be sent. If you leave anyway they will be lost.',
+    'leaveAction': 'Leave',
+    'leaveAnyway': 'Leave anyway',
+    'leftShared': 'You left “{name}”.',
     'err_table_owner_required':
         'This table came from someone else’s share and cannot be shared from here.',
     'joinPassword': 'Password',

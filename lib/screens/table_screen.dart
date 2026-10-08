@@ -4,6 +4,9 @@ import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
+import '../services/shared_sync_service.dart';
+import '../widgets/edit_access.dart';
+import '../widgets/leave_shared_table.dart';
 import '../widgets/share_table_sheet.dart';
 import '../widgets/shared_sync_indicator.dart';
 import '../widgets/table_list_widget.dart';
@@ -193,17 +196,20 @@ class _TableScreenState extends State<TableScreen> {
       ),
       title: Text(loc.tableNote),
       actions: [
-        Consumer<TableProvider>(
-          builder: (context, provider, _) {
+        Consumer2<TableProvider, SharedSyncService>(
+          builder: (context, provider, sync, _) {
             final table = provider.currentTable;
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Kodla katılan kişi tabloyu başkasına açamaz; düğme yalnızca
                 // tablonun sahibinde ve henüz paylaşılmamış tabloda durur.
-                if (table != null && provider.sharedRole(table.id) != 'editor')
+                if (table != null &&
+                    (!provider.isSharedTable(table.id) ||
+                        provider.isSharedOwner(table.id)))
                   _shareButton(
                     shared: provider.isSharedOwner(table.id),
+                    pendingRequests: sync.accessFor(table.id).pendingRequests,
                     onPressed: () => ShareTableSheet.show(
                       context,
                       tableId: table.id,
@@ -226,14 +232,26 @@ class _TableScreenState extends State<TableScreen> {
 
   /// Tabloya bakarken tek dokunuşla paylaşım: kodu vermek için ayarlara
   /// girmek gerekmez. Paylaşımdaki tabloda simge dolu görünür.
-  Widget _shareButton({required bool shared, required VoidCallback onPressed}) {
+  Widget _shareButton({
+    required bool shared,
+    required int pendingRequests,
+    required VoidCallback onPressed,
+  }) {
     final loc = AppLocalizations.of(context);
+    final icon = Icon(
+      shared ? Icons.group_rounded : Icons.person_add_alt_1_outlined,
+    );
     return IconButton(
       key: const ValueKey('share-table'),
-      icon: Icon(
-        shared ? Icons.group_rounded : Icons.person_add_alt_1_outlined,
-      ),
-      tooltip: shared ? loc.joinCode : loc.share,
+      // Yanıt bekleyen yetki talebi varsa simgenin üstünde sayısı görünür.
+      icon: pendingRequests > 0
+          ? Badge(label: Text('$pendingRequests'), child: icon)
+          : icon,
+      tooltip: pendingRequests > 0
+          ? loc.editRequests
+          : shared
+          ? loc.joinCode
+          : loc.share,
       onPressed: onPressed,
     );
   }
@@ -250,15 +268,18 @@ class _TableScreenState extends State<TableScreen> {
       ),
       title: Text(loc.tallyTab),
       actions: [
-        Consumer<TallyProvider>(
-          builder: (context, provider, _) {
+        Consumer2<TallyProvider, SharedSyncService>(
+          builder: (context, provider, sync, _) {
             final tally = provider.currentTable;
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (tally != null && provider.sharedRole(tally.id) != 'editor')
+                if (tally != null &&
+                    (!provider.isSharedTally(tally.id) ||
+                        provider.isSharedOwner(tally.id)))
                   _shareButton(
                     shared: provider.isSharedOwner(tally.id),
+                    pendingRequests: sync.accessFor(tally.id).pendingRequests,
                     onPressed: () => ShareTableSheet.show(
                       context,
                       tableId: tally.id,
@@ -697,13 +718,16 @@ class _TableScreenState extends State<TableScreen> {
           value: 'delete',
           child: Row(
             children: [
+              // Katılınan tablo silinmez, ondan ayrılınır.
               Icon(
-                Icons.delete_outline,
+                _isJoined(provider)
+                    ? Icons.logout_rounded
+                    : Icons.delete_outline,
                 color: Theme.of(context).colorScheme.error,
               ),
               const SizedBox(width: 10),
               Text(
-                loc.delete,
+                _isJoined(provider) ? loc.leaveShared : loc.delete,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
@@ -713,9 +737,26 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
+  /// Açık tablo kodla katılınmış bir tablo mu (sahibi başkası).
+  bool _isJoined(TableProvider provider) {
+    final table = provider.currentTable;
+    return table != null &&
+        provider.isSharedTable(table.id) &&
+        !provider.isSharedOwner(table.id);
+  }
+
   void _confirmTableDeletion(TableProvider provider) {
     final table = provider.currentTable;
     if (table == null) return;
+    if (_isJoined(provider)) {
+      leaveSharedTableFlow(
+        context,
+        tableId: table.id,
+        tableName: table.tableName,
+        isTally: false,
+      );
+      return;
+    }
     final loc = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
@@ -784,6 +825,10 @@ class _TableScreenState extends State<TableScreen> {
 
   Widget _buildAddRowButton() {
     final isPremium = context.watch<SubscriptionProvider>().isPremium;
+    final tables = context.watch<TableProvider>();
+    final table = tables.currentTable;
+    // Yalnızca görüntüleyen kişide kayıt eklenmez; aynı yerde yetki istenir.
+    final viewOnly = table != null && tables.isSharedViewer(table.id);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -793,35 +838,44 @@ class _TableScreenState extends State<TableScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
-          children: [
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () => _showAddRowDialog(context),
-                icon: const Icon(Icons.add_rounded),
-                label: Text(AppLocalizations.of(context).addRecord),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: () => isPremium
-                  ? _showVoiceAddRowDialog(context)
-                  : Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PremiumScreen()),
+        child: viewOnly
+            ? SizedBox(
+                width: double.infinity,
+                child: RequestEditAccessButton(tableId: table.id),
+              )
+            : Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _showAddRowDialog(context),
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(AppLocalizations.of(context).addRecord),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
-              padding: const EdgeInsets.all(14),
-              tooltip: AppLocalizations.of(context).voiceFill,
-              icon: Icon(isPremium ? Icons.mic_rounded : Icons.lock_rounded),
-            ),
-          ],
-        ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: () => isPremium
+                        ? _showVoiceAddRowDialog(context)
+                        : Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PremiumScreen(),
+                            ),
+                          ),
+                    padding: const EdgeInsets.all(14),
+                    tooltip: AppLocalizations.of(context).voiceFill,
+                    icon: Icon(
+                      isPremium ? Icons.mic_rounded : Icons.lock_rounded,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

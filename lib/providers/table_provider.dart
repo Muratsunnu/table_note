@@ -22,7 +22,7 @@ class TableProvider extends ChangeNotifier {
   // Sıralama yalnızca görünümü etkiler; tablo kimliğine göre kalıcı tutulur.
   final Map<String, TableSortPreference> _sorts = {};
 
-  // Ortak tablolar: kimlik -> 'owner' | 'editor'.
+  // Ortak tablolar: kimlik -> 'owner' | 'editor' | 'viewer'.
   final Map<String, String> _sharedRoles = {};
 
   // Buluta gönderilmeyi bekleyen satır değişiklikleri, tablo kimliğine göre.
@@ -117,6 +117,17 @@ class TableProvider extends ChangeNotifier {
   String? sharedRole(String tableId) => _sharedRoles[tableId];
   bool isSharedTable(String tableId) => _sharedRoles.containsKey(tableId);
   bool isSharedOwner(String tableId) => _sharedRoles[tableId] == 'owner';
+
+  /// Kodla katılmış ve yalnızca görüntüleme yetkisi olan tablo.
+  bool isSharedViewer(String tableId) => _sharedRoles[tableId] == 'viewer';
+
+  /// Açık tabloda kayıt eklenip değiştirilebilir mi. Arayüz düğmeleri buna
+  /// göre çizer; aşağıdaki metotlar da aynı kurala bakar, böylece arayüzde
+  /// unutulan bir yol tabloyu yine de değiştiremez.
+  bool get canEditCurrent {
+    final table = currentTable;
+    return table == null || !isSharedViewer(table.id);
+  }
 
   /// Bu cihaz kodla katıldığı bir tabloyu tutuyor mu? Hesap ekranı, giriş
   /// yapınca bu erişimin kapanacağını yalnızca gerçekten öyleyse söyler.
@@ -532,7 +543,7 @@ class TableProvider extends ChangeNotifier {
 
   // Satır ekle
   Future<bool> addRow(List<String> rowData) async {
-    if (_isCommittingForm) return false;
+    if (_isCommittingForm || !canEditCurrent) return false;
     final table = currentTable;
     if (table == null || rowData.length != table.columns.length) return false;
     final index = _currentTableIndex;
@@ -559,7 +570,7 @@ class TableProvider extends ChangeNotifier {
 
   // Satır güncelle
   Future<bool> updateRow(int rowIndex, List<String> newRowData) async {
-    if (_isCommittingForm) return false;
+    if (_isCommittingForm || !canEditCurrent) return false;
     final table = currentTable;
     if (table == null ||
         rowIndex < 0 ||
@@ -595,6 +606,7 @@ class TableProvider extends ChangeNotifier {
 
   // Satır sil
   Future<bool> deleteRow(int rowIndex) async {
+    if (!canEditCurrent) return false;
     try {
       if (currentTable != null && rowIndex < currentTable!.rows.length) {
         final table = _tables[_currentTableIndex];
@@ -621,7 +633,17 @@ class TableProvider extends ChangeNotifier {
   Future<bool> deleteTable(int tableIndex) async {
     try {
       if (tableIndex >= 0 && tableIndex < _tables.length) {
-        _tables.removeAt(tableIndex);
+        final removed = _tables.removeAt(tableIndex);
+        // Tablo gidince onu buluta bağlayan kayıtlar da gider; yoksa silinmiş
+        // bir tablo "katılınmış tablo var" diye görünmeye devam ederdi.
+        final hadRole = _sharedRoles.remove(removed.id) != null;
+        final hadPending = _pending.remove(removed.id) != null;
+        if (hadRole) {
+          await StorageService.saveSharedTableRoles(Map.of(_sharedRoles));
+        }
+        if (hadPending) {
+          await StorageService.savePendingRowChanges(Map.of(_pending));
+        }
 
         if (_currentTableIndex >= _tables.length) {
           _currentTableIndex = _tables.length - 1;
@@ -663,7 +685,7 @@ class TableProvider extends ChangeNotifier {
     int originalColumnCount,
   ) async {
     try {
-      if (currentTable == null) return false;
+      if (currentTable == null || !canEditCurrent) return false;
 
       final table = currentTable!;
 

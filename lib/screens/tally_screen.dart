@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/edit_access.dart';
+import '../widgets/leave_shared_table.dart';
 import '../l10n/app_localizations.dart';
 import '../models/tally_model.dart';
 import '../models/overview_grid.dart';
@@ -222,10 +224,16 @@ class _TallyScreenState extends State<TallyScreen> {
               value: 'delete',
               child: Row(
                 children: [
-                  const Icon(Icons.delete_outline, color: AppTheme.error),
+                  // Katılınan çetele silinmez, ondan ayrılınır.
+                  Icon(
+                    _isJoined(provider)
+                        ? Icons.logout_rounded
+                        : Icons.delete_outline,
+                    color: AppTheme.error,
+                  ),
                   const SizedBox(width: 10),
                   Text(
-                    loc.delete,
+                    _isJoined(provider) ? loc.leaveShared : loc.delete,
                     style: const TextStyle(color: AppTheme.error),
                   ),
                 ],
@@ -269,30 +277,37 @@ class _TallyScreenState extends State<TallyScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  FilledButton.tonalIcon(
-                    onPressed: () => _runPremium(
-                      () => showDialog(
-                        context: context,
-                        builder: (_) => const TallyBulkEditDialog(),
+                  // Yalnızca görüntüleyen kişide işaretleme araçları durmaz.
+                  if (provider.canEditCurrent) ...[
+                    FilledButton.tonalIcon(
+                      onPressed: () => _runPremium(
+                        () => showDialog(
+                          context: context,
+                          builder: (_) => const TallyBulkEditDialog(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.select_all_rounded),
+                      label: Text(loc.bulkMark),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                       ),
                     ),
-                    icon: const Icon(Icons.select_all_rounded),
-                    label: Text(loc.bulkMark),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: provider.canUndo
+                          ? provider.undoLastEdit
+                          : null,
+                      tooltip: loc.undoLastAction,
+                      icon: const Icon(Icons.undo_rounded),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: provider.canUndo ? provider.undoLastEdit : null,
-                    tooltip: loc.undoLastAction,
-                    icon: const Icon(Icons.undo_rounded),
-                  ),
-                  IconButton(
-                    onPressed: provider.canRedo ? provider.redoLastEdit : null,
-                    tooltip: loc.redoLastAction,
-                    icon: const Icon(Icons.redo_rounded),
-                  ),
+                    IconButton(
+                      onPressed: provider.canRedo
+                          ? provider.redoLastEdit
+                          : null,
+                      tooltip: loc.redoLastAction,
+                      icon: const Icon(Icons.redo_rounded),
+                    ),
+                  ],
                   _buildSortMenu(context, provider),
                 ],
               ),
@@ -489,7 +504,10 @@ class _TallyScreenState extends State<TallyScreen> {
     Widget nameCell(int visibleIndex, int itemIndex, TallyItemModel item) {
       return GestureDetector(
         onTap: () => _showSummary(context, provider, itemIndex),
-        onLongPress: () => _showItemOptions(context, provider, itemIndex, item),
+        // Ad değiştirme ve silme yalnızca düzenleyebilen kişide.
+        onLongPress: provider.canEditCurrent
+            ? () => _showItemOptions(context, provider, itemIndex, item)
+            : null,
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: nameColWidth,
@@ -570,13 +588,22 @@ class _TallyScreenState extends State<TallyScreen> {
             '${items[itemIndex].name}, '
             '${MaterialLocalizations.of(context).formatFullDate(day)}, '
             '${status?.label ?? AppLocalizations.of(context).tallyClear}',
-        onTap: () => provider.cycleCellStatus(itemIndex, day),
-        onLongPress: () => _showStatusPicker(context, provider, itemIndex, day),
+        onTap: () =>
+            _editCell(provider, () => provider.cycleCellStatus(itemIndex, day)),
+        onLongPress: () => _editCell(
+          provider,
+          () => _showStatusPicker(context, provider, itemIndex, day),
+        ),
         excludeSemantics: true,
         child: GestureDetector(
-          onTap: () => provider.cycleCellStatus(itemIndex, day),
-          onLongPress: () =>
-              _showStatusPicker(context, provider, itemIndex, day),
+          onTap: () => _editCell(
+            provider,
+            () => provider.cycleCellStatus(itemIndex, day),
+          ),
+          onLongPress: () => _editCell(
+            provider,
+            () => _showStatusPicker(context, provider, itemIndex, day),
+          ),
           behavior: HitTestBehavior.opaque,
           child: Container(
             width: dayColWidth,
@@ -810,19 +837,37 @@ class _TallyScreenState extends State<TallyScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: FilledButton.icon(
-          onPressed: () => _showAddItemDialog(context),
-          icon: const Icon(Icons.add_rounded),
-          label: Text(loc.tallyAddItem),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
+        // Yalnızca görüntüleyen kişide öğe eklenmez; aynı yerde yetki istenir.
+        child: provider.canEditCurrent
+            ? FilledButton.icon(
+                onPressed: () => _showAddItemDialog(context),
+                icon: const Icon(Icons.add_rounded),
+                label: Text(loc.tallyAddItem),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              )
+            : SizedBox(
+                width: double.infinity,
+                child: RequestEditAccessButton(
+                  tableId: provider.currentTable!.id,
+                ),
+              ),
       ),
     );
+  }
+
+  /// Hücreye dokunma: düzenleyebilen kişide işaretler, görüntüleyen kişide
+  /// neden bir şey olmadığını söyler.
+  void _editCell(TallyProvider provider, VoidCallback edit) {
+    if (provider.canEditCurrent) {
+      edit();
+    } else {
+      showViewOnlyNotice(context, tableId: provider.currentTable!.id);
+    }
   }
 
   // ============== DİALOGLAR ==============
@@ -837,9 +882,26 @@ class _TallyScreenState extends State<TallyScreen> {
     );
   }
 
+  /// Açık çetele kodla katılınmış bir çetele mi (sahibi başkası).
+  bool _isJoined(TallyProvider provider) {
+    final table = provider.currentTable;
+    return table != null &&
+        provider.isSharedTally(table.id) &&
+        !provider.isSharedOwner(table.id);
+  }
+
   void _showDeleteDialog(BuildContext context, TallyProvider provider) {
     final loc = AppLocalizations.of(context);
     final table = provider.currentTable!;
+    if (_isJoined(provider)) {
+      leaveSharedTableFlow(
+        context,
+        tableId: table.id,
+        tableName: table.tableName,
+        isTally: true,
+      );
+      return;
+    }
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(

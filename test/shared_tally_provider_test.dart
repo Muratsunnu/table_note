@@ -123,4 +123,34 @@ void main() {
     await owned.clearSharedState();
     expect(owned.isSharedTally(ownedId), isFalse);
   });
+
+  test('görüntüleyen kişi çeteleyi hiçbir yoldan değiştiremez', () async {
+    final provider = await _seeded(role: 'viewer');
+    final id = provider.currentTable!.id;
+    final day = DateTime(2026, 10, 5);
+    final before = provider.currentTable!.toJson().toString();
+
+    expect(provider.canEditCurrent, isFalse);
+    await provider.cycleCellStatus(0, day);
+    await provider.setCellStatus(0, day, 'v');
+    await provider.setBulkStatus(
+      itemIndices: [0],
+      startDate: day,
+      endDate: day,
+      statusCode: 'v',
+    );
+    expect(await provider.addItem('Mehmet'), isFalse);
+    expect(await provider.renameItem(0, 'Ali'), isFalse);
+    expect(await provider.removeItem(0), isFalse);
+    await provider.reorderItem(0, 1);
+
+    expect(provider.currentTable!.toJson().toString(), before);
+    expect(provider.pendingChangeCount(id), 0);
+    expect(provider.canUndo, isFalse);
+
+    // Yetki verilince aynı işlem geçer.
+    await provider.setSharedRole(id, 'editor');
+    await provider.setCellStatus(0, day, 'v');
+    expect(provider.pendingChangeCount(id), 1);
+  });
 }
