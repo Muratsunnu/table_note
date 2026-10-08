@@ -6,19 +6,22 @@ import 'onboarding_screen.dart';
 import 'table_screen.dart';
 
 class AppLaunchGate extends StatefulWidget {
-  const AppLaunchGate({super.key});
+  /// Uygulama başlamadan çözülmüşse verilir; yoksa burada çözülür.
+  final bool? showOnboarding;
+
+  const AppLaunchGate({super.key, this.showOnboarding});
 
   @override
   State<AppLaunchGate> createState() => _AppLaunchGateState();
 }
 
 class _AppLaunchGateState extends State<AppLaunchGate> {
-  bool? _showOnboarding;
+  late bool? _showOnboarding = widget.showOnboarding;
 
   @override
   void initState() {
     super.initState();
-    _resolveStartScreen();
+    if (_showOnboarding == null) _resolveStartScreen();
   }
 
   Future<void> _resolveStartScreen() async {
