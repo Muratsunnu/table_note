@@ -552,7 +552,7 @@ class _TallyTemplateFormDialogState extends State<TallyTemplateFormDialog> {
         ? await provider.updateTemplate(widget.templateIndex!, template)
         : await provider.createTemplate(
             template,
-            isPremium: context.read<SubscriptionProvider>().isPremium,
+            isPremium: context.read<SubscriptionProvider>().hasUnlimitedPlan,
           );
 
     if (!mounted) return;

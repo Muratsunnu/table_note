@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -13,7 +14,9 @@ import '../providers/table_provider.dart';
 import '../services/form_draft_store.dart';
 import '../services/formula_service.dart';
 import '../services/voice_row_parser.dart';
+import '../theme/app_theme.dart';
 import 'form_draft_guard.dart';
+import 'ledger.dart';
 
 enum _SpeechProblem { permission, unavailable, noSpeech, recognition }
 
@@ -29,12 +32,16 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
   final _speech = SpeechToText();
   final _parser = const VoiceRowParser();
   final _transcript = TextEditingController();
-  final _reviewKey = GlobalKey();
   final _highlightTimers = <int, Timer>{};
   final _highlightedFields = <int>{};
+
+  /// Söylenenin sayıya çevrilemediği sayısal sütunlar.
+  Set<int> _unreadNumbers = {};
+
+  /// Kaydetmeye çalışılırken sayı olmayan bir şey yazılı bulunan sütunlar.
+  final _invalidNumbers = <int>{};
   late final List<ColumnModel> _columns;
   late final List<TextEditingController> _controllers;
-  late final List<FocusNode> _fieldFocus;
   late final String _tableId;
   late final String _tableName;
   late final String _schema;
@@ -44,7 +51,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
   bool _listening = false;
   bool _acceptResults = false;
   bool _sessionHadResult = false;
-  bool _reviewing = false;
   bool _saving = false;
   bool _restoringDraft = true;
   bool _draftTouched = false;
@@ -66,7 +72,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
       _columns.length,
       (index) => TextEditingController(text: _defaultValue(index, table)),
     );
-    _fieldFocus = List.generate(_columns.length, (_) => FocusNode());
     _recalculateFormulas();
     _draft = FormDraftStore('voice_row_$_tableId');
     _restoreDraft();
@@ -100,7 +105,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     _recalculateFormulas();
     setState(() {
       _draftRestored = true;
-      _reviewing = true;
       _restoringDraft = false;
     });
   }
@@ -135,7 +139,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     if (!mounted || _saving || !_acceptResults) return;
     setState(() {
       _listening = _problem == null && status == 'listening';
-      if (!_listening && _sessionHadResult) _reviewing = true;
     });
   }
 
@@ -148,7 +151,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
           : problem;
       _listening = false;
       _starting = false;
-      if (_sessionHadResult) _reviewing = true;
     });
   }
 
@@ -207,7 +209,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
       _saveFailed = false;
       _sessionHadResult = false;
       _acceptResults = true;
-      _reviewing = false;
     });
     try {
       if (!_ready && !await _initializeSpeech()) return;
@@ -221,10 +222,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
           _applyTranscript(fromSpeech: true);
           if (result.finalResult) {
             _acceptResults = false;
-            setState(() {
-              _listening = false;
-              _reviewing = true;
-            });
+            setState(() => _listening = false);
           }
         },
         listenOptions: SpeechListenOptions(
@@ -257,16 +255,19 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     }
     if (!mounted) return;
     _acceptResults = false;
-    setState(() {
-      _listening = false;
-      _reviewing = true;
-    });
+    setState(() => _listening = false);
   }
 
   void _applyTranscript({required bool fromSpeech}) {
     if (!fromSpeech) _acceptResults = false;
-    final values = _parser.parse(_transcript.text, _columns);
-    for (final entry in values.entries) {
+    final result = _parser.parse(
+      _transcript.text,
+      _columns,
+      languageCode: Localizations.localeOf(context).languageCode,
+    );
+    _unreadNumbers = result.unreadNumbers;
+    for (final entry in result.values.entries) {
+      _invalidNumbers.remove(entry.key);
       if (_controllers[entry.key].text == entry.value) continue;
       _controllers[entry.key].text = entry.value;
       if (fromSpeech) {
@@ -283,10 +284,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     }
     _recalculateFormulas();
     _saveDraft();
-    setState(() {
-      if (!fromSpeech) _reviewing = true;
-      _saveFailed = false;
-    });
+    setState(() => _saveFailed = false);
   }
 
   void _recalculateFormulas() {
@@ -313,27 +311,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
       ? value.toInt().toString()
       : value.toStringAsFixed(2);
 
-  Future<void> _typeInstead() async {
-    if (_restoringDraft || _saving || _starting) return;
-    _acceptResults = false;
-    await _stopListening();
-    if (!mounted) return;
-    final reviewContext = _reviewKey.currentContext;
-    if (reviewContext != null && reviewContext.mounted) {
-      await Scrollable.ensureVisible(
-        reviewContext,
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 250),
-      );
-    }
-    if (!mounted) return;
-    final firstEditable = _columns.indexWhere(
-      (column) => !column.isAutoNumber && !column.isFormula,
-    );
-    if (firstEditable >= 0) _fieldFocus[firstEditable].requestFocus();
-  }
-
   Future<void> _confirm() async {
     if (_saving || _listening || _starting || _restoringDraft) return;
     final provider = context.read<TableProvider>();
@@ -346,6 +323,28 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
       return;
     }
     _acceptResults = false;
+    // Sayısal bir hücreye yazı girerse toplam onu sıfır sayar ve kimse fark
+    // etmez. Kaydetmeden önce her sayısal hücre gerçekten sayı mı diye
+    // bakılır; virgüllü yazılan ondalık da noktaya çevrilir.
+    final invalid = <int>{};
+    for (var index = 0; index < _columns.length; index++) {
+      if (!_typedNumber(_columns[index])) continue;
+      final text = _controllers[index].text.trim().replaceAll(',', '.');
+      if (text.isEmpty) continue;
+      if (double.tryParse(text) == null) {
+        invalid.add(index);
+      } else {
+        _controllers[index].text = text;
+      }
+    }
+    if (invalid.isNotEmpty) {
+      setState(() {
+        _invalidNumbers
+          ..clear()
+          ..addAll(invalid);
+      });
+      return;
+    }
     FocusScope.of(context).unfocus();
     setState(() {
       _saving = true;
@@ -375,6 +374,11 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     }
   }
 
+  /// Kullanıcının kendi yazdığı ya da söylediği sayısal sütun; formül ve
+  /// sıra numarası kendiliğinden hesaplandığı için bunlara dahil değildir.
+  bool _typedNumber(ColumnModel column) =>
+      column.isEffectivelyNumeric && !column.isFormula && !column.isAutoNumber;
+
   Future<void> _discardDraft() async {
     if (_saving || _restoringDraft || _starting) return;
     _acceptResults = false;
@@ -389,13 +393,14 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
       _controllers[i].text = _defaultValue(i, table);
     }
     _transcript.clear();
+    _unreadNumbers = {};
+    _invalidNumbers.clear();
     _recalculateFormulas();
     await _draft.clear();
     if (!mounted) return;
     setState(() {
       _draftRestored = false;
       _restoringDraft = false;
-      _reviewing = false;
     });
   }
 
@@ -415,9 +420,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     for (final controller in _controllers) {
       controller.dispose();
     }
-    for (final node in _fieldFocus) {
-      node.dispose();
-    }
     super.dispose();
   }
 
@@ -426,6 +428,9 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     final loc = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final busy = _saving || _starting || _restoringDraft;
+    final canSpeak = _columns.any((column) => column.isNormal);
+    final hasTranscript = _transcript.text.trim().isNotEmpty;
     return FormDraftGuard(
       isSaving: _saving || _restoringDraft,
       child: Scaffold(
@@ -433,13 +438,42 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
         appBar: AppBar(
           backgroundColor: colors.surface,
           foregroundColor: colors.onSurface,
-          toolbarHeight: (MediaQuery.textScalerOf(context).scale(20) + 32)
+          // Temanın başlık yazısı koyu çubuk için beyazdır; bu ekranın çubuğu
+          // açık renk olduğundan başlık açık temada görünmez kalıyordu.
+          titleTextStyle: theme.appBarTheme.titleTextStyle?.copyWith(
+            color: colors.onSurface,
+          ),
+          toolbarHeight: (MediaQuery.textScalerOf(context).scale(36) + 28)
               .clamp(56.0, 112.0),
-          title: Text(loc.voiceFill),
+          // Hangi tabloya eklendiği başlığın altında durur; gövdede ayrı bir
+          // satır tutmaz.
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(loc.voiceFill),
+              Text(
+                _tableName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
           leading: IconButton(
             tooltip: loc.close,
             onPressed: _saving ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.close_rounded),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(3),
+            child: _restoringDraft
+                ? const LinearProgressIndicator(minHeight: 3)
+                : const SizedBox(height: 3),
           ),
         ),
         body: SafeArea(
@@ -447,62 +481,154 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
           bottom: false,
           child: ListView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              Text(_tableName, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              _buildSteps(loc),
-              const SizedBox(height: 16),
-              if (_restoringDraft) ...[
-                const LinearProgressIndicator(),
-                const SizedBox(height: 12),
-              ],
               if (_draftRestored) ...[
-                _buildNotice(loc.draftRestored, Icons.history_rounded),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: _discardDraft,
-                    child: Text(loc.discardDraft),
+                _boxed(
+                  LedgerNote(
+                    loc.draftRestored,
+                    action: TextButton(
+                      style: _inlineAction,
+                      onPressed: _discardDraft,
+                      child: Text(loc.discardDraft),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
               ],
-              _buildVoiceCard(loc),
+              // Ekranın işi tek bir şey: mikrofona basıp konuşmak.
+              Center(
+                child: _MicButton(
+                  listening: _listening,
+                  starting: _starting,
+                  semanticLabel: _listening
+                      ? loc.stopListening
+                      : loc.tapToSpeak,
+                  onPressed: _saving || _restoringDraft || !canSpeak
+                      ? null
+                      : _toggleListening,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  !canSpeak
+                      ? loc.voiceNoEditableColumns
+                      : _starting
+                      ? loc.preparingMicrophone
+                      : _listening
+                      ? loc.listening
+                      : loc.tapToSpeak,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _listening ? colors.primary : colors.onSurface,
+                  ),
+                ),
+              ),
+              // Ne söyleneceğinin örneği yalnızca henüz konuşulmamışken durur.
+              if (canSpeak && !hasTranscript) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _example(loc),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.35,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                if (!_listening) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.phonelink_lock_rounded,
+                        size: 14,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          loc.onDeviceRecognition,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
               if (_problem != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _buildSpeechError(loc),
               ],
-              const SizedBox(height: 16),
-              TextField(
-                controller: _transcript,
-                minLines: 2,
-                maxLines: 5,
-                readOnly: _listening || _starting || _saving || _restoringDraft,
-                onChanged: (_) => _applyTranscript(fromSpeech: false),
-                decoration: InputDecoration(
-                  labelText: loc.recognizedSpeech,
-                  hintText: loc.recognizedSpeechHint,
-                  prefixIcon: const Icon(Icons.graphic_eq_rounded),
+              // Konuşma başlayınca söylenen burada belirir; yanlış duyulan
+              // yer elle düzeltilebilir ve alanlar yeniden doldurulur.
+              if (hasTranscript || _listening) ...[
+                const SizedBox(height: 18),
+                _sectionLabel(loc.recognizedSpeech),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.tintedSurface(context, colors.primary),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Icon(
+                          Icons.graphic_eq_rounded,
+                          size: 20,
+                          color: colors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          key: const ValueKey('voice-transcript'),
+                          controller: _transcript,
+                          minLines: 1,
+                          maxLines: 5,
+                          readOnly: _listening || busy,
+                          onChanged: (_) => _applyTranscript(fromSpeech: false),
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            height: 1.35,
+                            color: colors.onSurface,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: loc.recognizedSpeechHint,
+                            filled: false,
+                            isCollapsed: true,
+                            // Temanın iç boşluğu yazıyı simgeden aşağı itiyor.
+                            contentPadding: EdgeInsets.zero,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ],
+              const SizedBox(height: 22),
+              _sectionLabel(loc.reviewFields),
+              // Eklenecek satır, tablodaki haliyle: solda sütun, sağda değer.
+              LedgerCard(
+                children: [
+                  for (final entry in _columns.asMap().entries)
+                    _buildFieldRow(entry.key, entry.value),
+                ],
               ),
-              const SizedBox(height: 24),
-              Text(
-                loc.reviewFields,
-                key: _reviewKey,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                loc.voiceReviewHint,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 14),
-              ..._columns.asMap().entries.map(_buildFieldCard),
             ],
           ),
         ),
@@ -531,12 +657,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
                       const SizedBox(height: 10),
                     ],
                     FilledButton.icon(
-                      onPressed:
-                          _saving ||
-                              _listening ||
-                              _starting ||
-                              _tableChanged ||
-                              _restoringDraft
+                      onPressed: busy || _listening || _tableChanged
                           ? null
                           : _confirm,
                       icon: _saving
@@ -563,39 +684,30 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     );
   }
 
-  Widget _buildSteps(AppLocalizations loc) {
-    final colors = Theme.of(context).colorScheme;
-    final current = _saving ? 2 : (_reviewing ? 1 : 0);
-    final labels = [loc.voiceStepSpeak, loc.voiceStepReview, loc.voiceStepAdd];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(labels.length, (index) {
-        final selected = index == current;
-        return Semantics(
-          selected: selected,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected
-                  ? colors.primaryContainer
-                  : colors.surfaceContainer,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Text(
-              '${index + 1}  ${labels[index]}',
-              style: TextStyle(
-                color: selected
-                    ? colors.onPrimaryContainer
-                    : colors.onSurfaceVariant,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
+  /// Not içindeki düğme, notun yazısıyla aynı hizadan başlar.
+  static final _inlineAction = TextButton.styleFrom(
+    padding: EdgeInsets.zero,
+    alignment: AlignmentDirectional.centerStart,
+  );
+
+  /// Tek başına duran bir not satırına kartın köşelerini verir.
+  Widget _boxed(Widget child) =>
+      ClipRRect(borderRadius: BorderRadius.circular(14), child: child);
+
+  Widget _sectionLabel(String text) => Padding(
+    padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+    child: Semantics(
+      header: true,
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ),
+  );
 
   String _example(AppLocalizations loc) {
     final spokenColumns = _columns.where((column) => column.isNormal).take(3);
@@ -612,212 +724,226 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     return loc.voiceExampleFor(parts.join(', '));
   }
 
-  Widget _buildVoiceCard(AppLocalizations loc) {
-    final colors = Theme.of(context).colorScheme;
-    final canSpeak = _columns.any((column) => column.isNormal);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.phonelink_lock_rounded,
-                size: 20,
-                color: colors.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  loc.onDeviceRecognition,
-                  style: TextStyle(color: colors.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(loc.voiceInstructions),
-          const SizedBox(height: 8),
-          Text(_example(loc), style: TextStyle(color: colors.onSurfaceVariant)),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _saving || _starting || _restoringDraft || !canSpeak
-                ? null
-                : _toggleListening,
-            style: _listening
-                ? FilledButton.styleFrom(
-                    backgroundColor: colors.error,
-                    foregroundColor: colors.onError,
-                  )
-                : null,
-            icon: _starting
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(_listening ? Icons.stop_rounded : Icons.mic_rounded),
-            label: Text(
-              _starting
-                  ? loc.preparingMicrophone
-                  : _listening
-                  ? loc.stopListening
-                  : loc.tapToSpeak,
-              textAlign: TextAlign.center,
-            ),
-          ),
-          if (_listening) ...[
-            const SizedBox(height: 10),
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                loc.listening,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: colors.primary),
-              ),
-            ),
-          ],
-          TextButton.icon(
-            onPressed: _saving || _starting || _restoringDraft
-                ? null
-                : _typeInstead,
-            icon: const Icon(Icons.keyboard_alt_outlined),
-            label: Text(loc.voiceTypeInstead, textAlign: TextAlign.center),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSpeechError(AppLocalizations loc) {
-    final colors = Theme.of(context).colorScheme;
     final message = switch (_problem!) {
       _SpeechProblem.permission => loc.voicePermissionDenied,
       _SpeechProblem.unavailable => loc.voiceServiceUnavailable,
       _SpeechProblem.noSpeech => loc.voiceNoSpeech,
       _SpeechProblem.recognition => loc.voiceRecognitionFailed,
     };
-    return Semantics(
-      liveRegion: true,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colors.errorContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(message, style: TextStyle(color: colors.onErrorContainer)),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _saving || _starting ? null : _toggleListening,
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text(loc.voiceTryAgain),
-                style: TextButton.styleFrom(
-                  foregroundColor: colors.onErrorContainer,
-                ),
-              ),
-            ),
-          ],
+    return _boxed(
+      LedgerNote(
+        message,
+        tone: LedgerNoteTone.error,
+        action: TextButton(
+          style: _inlineAction,
+          onPressed: _saving || _starting ? null : _toggleListening,
+          child: Text(loc.voiceTryAgain),
         ),
       ),
     );
   }
 
-  Widget _buildNotice(String message, IconData icon) {
-    final colors = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: colors.primary),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            message,
-            style: TextStyle(color: colors.onSurfaceVariant),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFieldCard(MapEntry<int, ColumnModel> entry) {
-    final column = entry.value;
+  /// Eklenecek satırın bir hücresi. Konuşmayla az önce dolan hücre kısa bir
+  /// süre renklenir ki neyin anlaşıldığı görülsün.
+  Widget _buildFieldRow(int index, ColumnModel column) {
     final loc = AppLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
-    final highlighted = _highlightedFields.contains(entry.key);
-    final readOnly = column.isFormula || column.isAutoNumber;
-    return AnimatedContainer(
-      duration: MediaQuery.disableAnimationsOf(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 250),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: highlighted ? colors.primaryContainer : colors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        controller: _controllers[entry.key],
-        focusNode: _fieldFocus[entry.key],
+    final highlighted = _highlightedFields.contains(index);
+    // Sıra numarası ve formül kendiliğinden hesaplanır.
+    final computed = column.isFormula || column.isAutoNumber;
+    final Widget? mark = highlighted
+        ? Tooltip(
+            message: loc.voiceFilledField,
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              size: 20,
+              color: colors.primary,
+              semanticLabel: loc.voiceFilledField,
+            ),
+          )
+        : computed
+        ? Icon(_columnIcon(column), size: 18, color: colors.onSurfaceVariant)
+        : null;
+    return LedgerField(
+      key: ValueKey('voice-field-$index'),
+      label: column.name,
+      highlighted: highlighted,
+      trailing: mark == null
+          ? null
+          : SizedBox.square(dimension: 48, child: Center(child: mark)),
+      builder: (focusNode) => TextField(
+        controller: _controllers[index],
+        focusNode: focusNode,
         readOnly:
-            readOnly || _listening || _starting || _saving || _restoringDraft,
+            computed || _listening || _starting || _saving || _restoringDraft,
         keyboardType: column.isEffectivelyNumeric
             ? const TextInputType.numberWithOptions(decimal: true, signed: true)
             : TextInputType.text,
-        onTap: () {
-          if (!_listening && !_starting && !_saving && !_reviewing) {
-            setState(() => _reviewing = true);
-          }
-        },
+        textInputAction: TextInputAction.next,
+        // Sayısal hücreye harf yazılamaz.
+        inputFormatters: _typedNumber(column)
+            ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,\-]'))]
+            : null,
         onChanged: (_) {
           _acceptResults = false;
           _recalculateFormulas();
           _saveDraft();
           setState(() {
-            _reviewing = true;
             _saveFailed = false;
+            _unreadNumbers.remove(index);
+            _invalidNumbers.remove(index);
           });
         },
-        decoration: InputDecoration(
-          labelText: column.name,
-          prefixIcon: Icon(_columnIcon(column), color: colors.primary),
-          suffixIcon: highlighted
-              ? Tooltip(
-                  message: loc.voiceFilledField,
-                  child: Icon(
-                    Icons.auto_awesome_rounded,
-                    color: colors.primary,
-                    semanticLabel: loc.voiceFilledField,
-                  ),
-                )
-              : readOnly
-              ? const Icon(Icons.lock_outline_rounded, size: 18)
+        style: TextStyle(
+          fontSize: 16,
+          color: computed ? colors.onSurfaceVariant : colors.onSurface,
+        ),
+        decoration: ledgerInputDecoration(context).copyWith(
+          errorText: _invalidNumbers.contains(index)
+              ? loc.numberOnly
+              : _unreadNumbers.contains(index)
+              ? loc.voiceNumberUnread
               : null,
-          filled: false,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: highlighted ? colors.primary : colors.outlineVariant,
-              width: highlighted ? 2 : 1,
-            ),
-          ),
         ),
       ),
     );
   }
 
-  IconData _columnIcon(ColumnModel column) {
-    if (column.isDate) return Icons.calendar_today_rounded;
-    if (column.isTime) return Icons.schedule_rounded;
-    if (column.isAutoNumber) return Icons.tag_rounded;
-    if (column.isFormula) return Icons.functions_rounded;
-    if (column.isEffectivelyNumeric) return Icons.numbers_rounded;
-    return Icons.short_text_rounded;
+  IconData _columnIcon(ColumnModel column) =>
+      column.isAutoNumber ? Icons.tag_rounded : Icons.functions_rounded;
+}
+
+/// Ekranın tek büyük düğmesi: mavi bir daire. Dinlerken kırmızıya döner,
+/// durdurma simgesi gösterir ve çevresinde bir halka genişleyip söner.
+class _MicButton extends StatefulWidget {
+  const _MicButton({
+    required this.listening,
+    required this.starting,
+    required this.semanticLabel,
+    required this.onPressed,
+  });
+
+  final bool listening;
+  final bool starting;
+  final String semanticLabel;
+  final VoidCallback? onPressed;
+
+  @override
+  State<_MicButton> createState() => _MicButtonState();
+}
+
+class _MicButtonState extends State<_MicButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_MicButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  /// Halka yalnızca dinlerken ve hareket azaltma kapalıyken döner.
+  void _sync() {
+    final animate =
+        widget.listening && !MediaQuery.disableAnimationsOf(context);
+    if (animate) {
+      if (!_pulse.isAnimating) _pulse.repeat();
+    } else if (_pulse.isAnimating || _pulse.value != 0) {
+      _pulse
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final enabled = widget.onPressed != null && !widget.starting;
+    final fill = widget.onPressed == null
+        ? colors.onSurface.withValues(alpha: .12)
+        : widget.listening
+        ? colors.error
+        : colors.primary;
+    final ink = widget.onPressed == null
+        ? colors.onSurface.withValues(alpha: .38)
+        : widget.listening
+        ? colors.onError
+        : colors.onPrimary;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.semanticLabel,
+      child: ExcludeSemantics(
+        child: SizedBox.square(
+          dimension: 136,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AnimatedBuilder(
+                animation: _pulse,
+                builder: (context, _) {
+                  final t = _pulse.value;
+                  return Container(
+                    width: 96 + 40 * t,
+                    height: 96 + 40 * t,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: fill.withValues(
+                        alpha: widget.listening ? .26 * (1 - t) : 0,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              Material(
+                key: const ValueKey('voice-mic'),
+                color: fill,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: enabled ? widget.onPressed : null,
+                  child: SizedBox.square(
+                    dimension: 96,
+                    child: Center(
+                      child: widget.starting
+                          ? SizedBox.square(
+                              dimension: 30,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: ink,
+                              ),
+                            )
+                          : Icon(
+                              widget.listening
+                                  ? Icons.stop_rounded
+                                  : Icons.mic_rounded,
+                              size: 44,
+                              color: ink,
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

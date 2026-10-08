@@ -66,11 +66,16 @@ class LedgerField extends StatefulWidget {
   final String label;
   final Widget Function(FocusNode focusNode) builder;
   final Widget? trailing;
+
+  /// Satır kısa süreliğine öne çıkarılır: değeri az önce başka bir yoldan
+  /// (örneğin konuşarak) dolduruldu.
+  final bool highlighted;
   const LedgerField({
     super.key,
     required this.label,
     required this.builder,
     this.trailing,
+    this.highlighted = false,
   });
 
   @override
@@ -108,6 +113,9 @@ class _LedgerFieldState extends State<LedgerField> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       decoration: BoxDecoration(
+        color: widget.highlighted
+            ? AppTheme.tintedSurface(context, theme.colorScheme.primary)
+            : theme.colorScheme.surface.withValues(alpha: 0),
         // Seçili hücrenin işareti: üzerinde çalışılan satır.
         border: Border(
           left: BorderSide(

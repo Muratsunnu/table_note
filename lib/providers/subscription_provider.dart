@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import '../config/app_config.dart';
+import '../models/plan_offer.dart';
 import '../services/billing_service.dart';
 import '../services/entitlement_service.dart';
 import 'auth_provider.dart';
@@ -18,16 +20,22 @@ class SubscriptionProvider extends ChangeNotifier {
   AuthProvider _auth;
   String? _authUserId;
   bool _disposed = false;
-  ProductDetails? _yearlyProduct;
+  List<PlanOffer> _plans = const [];
   bool _isPremium = false;
   bool _isLoading = true;
   String? _errorMessage;
   DateTime? _validUntil;
 
+  /// Ücretsiz sınırlar gelmeden önceki sürümden gelen kullanıcı. Tablo,
+  /// çetele ve şablon sayısında sınırsız kalır; sesle doldurma, bulut ve
+  /// paylaşım gibi yeni özellikler onun için de Premium'dur.
+  final bool legacyUnlimited;
+
   SubscriptionProvider(
     this._auth, {
     BillingService? billing,
     EntitlementService? entitlements,
+    this.legacyUnlimited = false,
   }) : _billing = billing ?? BillingService(),
        _entitlements = entitlements ?? EntitlementService() {
     _authUserId = _auth.user?.id;
@@ -43,12 +51,25 @@ class SubscriptionProvider extends ChangeNotifier {
   }
 
   bool get isPremium => _isPremium || (kDebugMode && _temporaryDebugPremium);
+
+  /// Tablo, çetele ve şablon oluştururken sınır uygulanmıyor mu.
+  bool get hasUnlimitedPlan => isPremium || legacyUnlimited;
   bool get isLoading => _isLoading;
-  bool get canPurchase => _yearlyProduct != null && !_isLoading;
   // Misafir oturumu hesap degildir: abonelik ona baglanirsa uygulama
   // silinince kaybolan bir kimlikte kalir.
   bool get requiresSignIn => !_auth.hasAccount;
-  String? get localizedPrice => _yearlyProduct?.price;
+
+  /// Mağazanın sunduğu paketler, fiyatlarıyla. Mağazaya ulaşılamadıysa
+  /// boştur; uygulama kendi başına fiyat göstermez.
+  List<PlanOffer> get plans => _plans;
+
+  PlanOffer? plan(PlanPeriod period) {
+    for (final plan in _plans) {
+      if (plan.period == period) return plan;
+    }
+    return null;
+  }
+
   String? get errorMessage => _errorMessage;
   DateTime? get validUntil => _validUntil;
 
@@ -72,7 +93,7 @@ class SubscriptionProvider extends ChangeNotifier {
       final userId = _authUserId;
       final cached = await _entitlements.loadCached();
       if (_authUserId == userId) _apply(cached);
-      _yearlyProduct = await _billing.loadYearlyProduct();
+      _plans = await _billing.loadPlans();
       if (_auth.isSignedIn) await refreshEntitlement(notify: false);
     } catch (error) {
       _errorMessage = error.toString();
@@ -96,14 +117,28 @@ class SubscriptionProvider extends ChangeNotifier {
     if (notify) notifyListeners();
   }
 
-  Future<bool> startPurchase() async {
-    final product = _yearlyProduct;
-    if (product == null || _isLoading || !_auth.hasAccount) return false;
+  /// Paketler açılışta alınamadıysa (mağazaya ulaşılamadı) yeniden dener.
+  Future<void> reloadPlans() async {
+    if (_isLoading) return;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      _plans = await _billing.loadPlans();
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> startPurchase(PlanOffer plan) async {
+    if (_isLoading || !_auth.hasAccount) return false;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      return await _billing.purchase(product);
+      return await _billing.purchase(plan.product);
     } catch (error) {
       _errorMessage = error.toString();
       return false;
@@ -128,8 +163,7 @@ class SubscriptionProvider extends ChangeNotifier {
 
   Future<void> _handlePurchases(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
-      if (purchase.productID != _yearlyProduct?.id &&
-          purchase.productID != 'table_note_premium_yearly') {
+      if (!AppConfig.premiumProductIds.containsValue(purchase.productID)) {
         continue;
       }
       if (purchase.status == PurchaseStatus.error) {

@@ -31,9 +31,17 @@ Deno.serve(async (request) => {
     const productId = String(body.productId ?? "");
     const source = String(body.source ?? "");
     const purchaseToken = String(body.verificationData ?? "");
-    const expectedProductId = Deno.env.get("GOOGLE_PLAY_PRODUCT_ID") ??
-      "table_note_premium_yearly";
-    if (source !== "google_play" || productId !== expectedProductId || !purchaseToken) {
+    // Yillik ve aylik paket. Ortam degiskeni virgulle ayrilmis bir liste
+    // alir; eski tekil GOOGLE_PLAY_PRODUCT_ID de gecerli olmaya devam eder.
+    const allowedProductIds = new Set(
+      (Deno.env.get("GOOGLE_PLAY_PRODUCT_IDS") ??
+        Deno.env.get("GOOGLE_PLAY_PRODUCT_ID") ??
+        "table_note_premium_yearly,table_note_premium_monthly")
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0),
+    );
+    if (source !== "google_play" || !allowedProductIds.has(productId) || !purchaseToken) {
       return json({ error: "Invalid purchase data" }, 400);
     }
 

@@ -20,7 +20,7 @@ import '../widgets/voice_add_row_dialog.dart';
 import '../widgets/csv_import_dialog.dart';
 import '../widgets/template_management_dialog.dart';
 import '../widgets/column_sums_widget.dart';
-import '../widgets/export_dialog.dart';
+import '../widgets/share_file_sheet.dart';
 import '../widgets/table_drawer.dart';
 import '../widgets/create_table_dialog.dart';
 import '../services/export_service.dart';
@@ -216,11 +216,14 @@ class _TableScreenState extends State<TableScreen> {
                       isTally: false,
                     ),
                   ),
+                // İndirme değil paylaşma: çoğu kişi dosyayı cihazına almak
+                // değil birine göndermek istiyor.
                 if (provider.hasTables)
                   IconButton(
-                    icon: const Icon(Icons.download_rounded),
-                    onPressed: () => _showExportDialog(context),
-                    tooltip: loc.exportData,
+                    key: const ValueKey('share-file'),
+                    icon: Icon(Icons.adaptive.share_rounded),
+                    onPressed: () => _shareTableFile(provider),
+                    tooltip: loc.shareAsFile,
                   ),
               ],
             );
@@ -251,7 +254,7 @@ class _TableScreenState extends State<TableScreen> {
           ? loc.editRequests
           : shared
           ? loc.joinCode
-          : loc.share,
+          : loc.invitePeople,
       onPressed: onPressed,
     );
   }
@@ -288,9 +291,10 @@ class _TableScreenState extends State<TableScreen> {
                   ),
                 if (provider.hasTables)
                   IconButton(
-                    icon: const Icon(Icons.download_rounded),
-                    onPressed: () => _showTallyExportDialog(context, provider),
-                    tooltip: loc.exportData,
+                    key: const ValueKey('share-file'),
+                    icon: Icon(Icons.adaptive.share_rounded),
+                    onPressed: () => _shareTallyFile(provider),
+                    tooltip: loc.shareAsFile,
                   ),
               ],
             );
@@ -300,336 +304,67 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
-  void _showTallyExportDialog(BuildContext context, TallyProvider provider) {
-    if (!provider.hasTables) return;
+  /// Çeteleyi dosya olarak paylaşma kâğıdı.
+  void _shareTallyFile(TallyProvider provider) {
+    final table = provider.currentTable;
+    if (table == null) return;
     final loc = AppLocalizations.of(context);
-    final table = provider.currentTable!;
-    bool isExporting = false;
-    String? exportedFilePath;
-    String? exportFormat;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.download_rounded,
-                  color: AppTheme.primaryBlue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  loc.exportTitle,
-                  style: const TextStyle(fontSize: 18),
-                ),
-              ),
-            ],
-          ),
-          content: isExporting
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 16),
-                    Text(
-                      loc.creatingFile,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                )
-              : exportedFilePath != null
-              ? Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.tintedSurface(context, Colors.green),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Theme.of(context).dividerColor),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: AppTheme.readableAccent(context, Colors.green),
-                        size: 48,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        loc.fileCreated(exportFormat!.toUpperCase()),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.readableAccent(context, Colors.green),
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () async {
-                            await ExportService.shareFile(
-                              exportedFilePath!,
-                              '${table.tableName} - ${exportFormat!.toUpperCase()}',
-                            );
-                          },
-                          icon: const Icon(Icons.share),
-                          label: Text(loc.shareWhatsApp),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final savedPath =
-                                await ExportService.saveToDownloads(
-                                  exportedFilePath!,
-                                );
-                            if (savedPath != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.check,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          loc.fileSaved(
-                                            savedPath.split('/').last,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(loc.fileSaveFailed),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.save_alt),
-                          label: Text(loc.saveToDevice),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextButton(
-                        onPressed: () {
-                          setDialogState(() {
-                            exportedFilePath = null;
-                            exportFormat = null;
-                          });
-                        },
-                        child: Text(loc.selectAnotherFormat),
-                      ),
-                    ],
-                  ),
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.grid_on_rounded,
-                            color: AppTheme.primaryBlue,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  table.tableName,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  '${table.items.length} ${loc.tallyItems} • ${table.dayCount} ${loc.tallyDays}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      loc.selectFormat,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildExportOption(
-                      icon: Icons.description,
-                      title: 'CSV',
-                      subtitle: loc.csvDesc,
-                      color: Colors.green,
-                      onTap: () async {
-                        setDialogState(() => isExporting = true);
-                        try {
-                          final path = await ExportService.exportTallyCsv(
-                            table,
-                          );
-                          setDialogState(() {
-                            isExporting = false;
-                            exportedFilePath = path;
-                            exportFormat = 'csv';
-                          });
-                        } catch (e) {
-                          setDialogState(() => isExporting = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${loc.error}: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _buildExportOption(
-                      icon: Icons.picture_as_pdf,
-                      title: 'PDF',
-                      subtitle: loc.pdfDesc,
-                      color: Colors.red,
-                      onTap: () async {
-                        setDialogState(() => isExporting = true);
-                        try {
-                          final path = await ExportService.exportTallyPdf(
-                            table,
-                            loc: loc,
-                          );
-                          setDialogState(() {
-                            isExporting = false;
-                            exportedFilePath = path;
-                            exportFormat = 'pdf';
-                          });
-                        } catch (e) {
-                          setDialogState(() => isExporting = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${loc.error}: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-          actions: [
-            if (!isExporting)
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(exportedFilePath != null ? loc.close : loc.cancel),
-              ),
-          ],
+    ShareFileSheet.show(
+      context,
+      name: table.tableName,
+      summary:
+          '${table.items.length} ${loc.tallyItems} • '
+          '${table.dayCount} ${loc.tallyDays}',
+      icon: Icons.grid_on_rounded,
+      formats: [
+        ShareFileFormat(
+          label: 'PDF',
+          description: loc.pdfDesc,
+          icon: Icons.picture_as_pdf_rounded,
+          color: AppTheme.error,
+          create: () => ExportService.exportTallyPdf(table, loc: loc),
         ),
-      ),
+        ShareFileFormat(
+          label: 'CSV',
+          description: loc.csvDesc,
+          icon: Icons.description_rounded,
+          color: AppTheme.success,
+          create: () => ExportService.exportTallyCsv(table),
+        ),
+      ],
     );
   }
 
-  Widget _buildExportOption({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).dividerColor),
-          borderRadius: BorderRadius.circular(8),
+  /// Tabloyu dosya olarak paylaşma kâğıdı.
+  void _shareTableFile(TableProvider provider) {
+    final table = provider.currentTable;
+    if (table == null) return;
+    final loc = AppLocalizations.of(context);
+    ShareFileSheet.show(
+      context,
+      name: table.tableName,
+      summary: loc.recordsAndColumns(table.rows.length, table.columns.length),
+      icon: Icons.table_chart_rounded,
+      formats: [
+        ShareFileFormat(
+          label: 'PDF',
+          description: loc.pdfDesc,
+          icon: Icons.picture_as_pdf_rounded,
+          color: AppTheme.error,
+          create: () => ExportService.exportToPdf(
+            table,
+            loc: loc,
+            columnSums: provider.calculateFilteredColumnSums(),
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              size: 16,
-            ),
-          ],
+        ShareFileFormat(
+          label: 'CSV',
+          description: loc.csvDesc,
+          icon: Icons.description_rounded,
+          color: AppTheme.success,
+          create: () => ExportService.exportToCsv(table),
         ),
-      ),
+      ],
     );
   }
 
@@ -786,6 +521,21 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
+  /// Arama kutusunun altındaki tek satırlık ipucu: kutu boşken tek sütunda
+  /// aramanın nasıl yapıldığını öğretir, öyle yazıldığında da anlaşıldığını
+  /// doğrular.
+  String? _searchHelper(TableProvider provider) {
+    final loc = AppLocalizations.of(context);
+    final table = provider.currentTable;
+    if (table == null || table.columns.isEmpty) return null;
+    final scoped = provider.searchColumnIndex;
+    if (scoped != null && scoped < table.columns.length) {
+      return loc.searchingInColumn(table.columns[scoped].name);
+    }
+    if (_searchController.text.isNotEmpty) return null;
+    return loc.searchColumnHint(table.columns.first.name.toLowerCase());
+  }
+
   Widget _buildSearchBar(TableProvider provider) {
     return AnimatedSize(
       duration: MediaQuery.disableAnimationsOf(context)
@@ -800,6 +550,8 @@ class _TableScreenState extends State<TableScreen> {
                 autofocus: true,
                 decoration: InputDecoration(
                   hintText: AppLocalizations.of(context).searchInTable,
+                  helperText: _searchHelper(provider),
+                  helperMaxLines: 2,
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
@@ -910,6 +662,4 @@ class _TableScreenState extends State<TableScreen> {
       builder: (_) => const TemplateManagementDialog(),
     ),
   );
-  void _showExportDialog(BuildContext context) =>
-      showDialog(context: context, builder: (_) => const ExportDialog());
 }

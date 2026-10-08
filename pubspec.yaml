@@ -16,6 +16,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   in_app_purchase: ^3.3.0
+  in_app_purchase_android: ^0.5.3
+  in_app_purchase_storekit: ^0.4.11+2
   path_provider: ^2.1.5
   pdf: ^3.11.3
   provider: ^6.0.5

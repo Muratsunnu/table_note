@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show Rect;
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -638,9 +639,23 @@ class ExportService {
     return file.path;
   }
 
-  /// Dosyayı paylaş
-  static Future<void> shareFile(String filePath, String subject) async {
-    await Share.shareXFiles([XFile(filePath)], subject: subject);
+  /// Dosyayı sistemin paylaşım penceresiyle paylaşır.
+  ///
+  /// Kullanıcı pencereyi bir yere göndermeden kapattıysa false döner.
+  /// Android çoğu zaman sonucu bildirmez; bildirilmeyen sonuç gönderilmiş
+  /// sayılır. [origin], iPad'de pencerenin bağlanacağı yerdir; orada bu
+  /// olmadan paylaşım açılmaz.
+  static Future<bool> shareFile(
+    String filePath,
+    String subject, {
+    Rect? origin,
+  }) async {
+    final result = await Share.shareXFiles(
+      [XFile(filePath)],
+      subject: subject,
+      sharePositionOrigin: origin,
+    );
+    return result.status != ShareResultStatus.dismissed;
   }
 
   /// Dosyayı cihaza kaydet (Downloads klasörüne)

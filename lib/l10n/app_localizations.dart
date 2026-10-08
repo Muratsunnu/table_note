@@ -71,10 +71,25 @@ class AppLocalizations {
   String get premiumImportFeature => _t('premiumImportFeature');
   String get premiumUnlimitedFeature => _t('premiumUnlimitedFeature');
   String get premiumTallyFeature => _t('premiumTallyFeature');
-  String get plannedAnnualPrice => _t('plannedAnnualPrice');
-  String get sevenDayTrial => _t('sevenDayTrial');
+  String get planYearly => _t('planYearly');
+  String get planMonthly => _t('planMonthly');
+  String get perYear => _t('perYear');
+  String get perMonth => _t('perMonth');
+  String trialBadge(int days) => _t('trialBadge').replaceAll('{days}', '$days');
+  String savingBadge(int percent) =>
+      _t('savingBadge').replaceAll('{percent}', '$percent');
+  String startTrial(int days) => _t('startTrial').replaceAll('{days}', '$days');
+  String get subscribeNow => _t('subscribeNow');
+  String trialTerms(int days, String price, String unit) => _t('trialTerms')
+      .replaceAll('{days}', '$days')
+      .replaceAll('{price}', price)
+      .replaceAll('{unit}', unit);
+  String renewalTerms(String price, String unit) => _t(
+    'renewalTerms',
+  ).replaceAll('{price}', price).replaceAll('{unit}', unit);
+  String get priceUnavailable => _t('priceUnavailable');
+  String get retry => _t('retry');
   String get billingPreparing => _t('billingPreparing');
-  String get startFreeTrial => _t('startFreeTrial');
   String get restorePurchases => _t('restorePurchases');
   String get signInToSubscribe => _t('signInToSubscribe');
   String get purchaseCouldNotBeVerified => _t('purchaseCouldNotBeVerified');
@@ -103,6 +118,9 @@ class AppLocalizations {
       _t('shareCodeValidity').replaceAll('{code}', code);
   String get addSharedTable => _t('addSharedTable');
   String get premiumRequired => _t('premiumRequired');
+  String freeQuotaUsed(int used, int limit) => _t(
+    'freeQuotaUsed',
+  ).replaceAll('{used}', '$used').replaceAll('{limit}', '$limit');
   String get cloudPremiumMessage => _t('cloudPremiumMessage');
   String get viewPremium => _t('viewPremium');
   String get connectAccount => _t('connectAccount');
@@ -136,6 +154,10 @@ class AppLocalizations {
   String get templates => _t('templates');
   String get addRecord => _t('addRecord');
   String get searchInTable => _t('searchInTable');
+  String searchColumnHint(String column) =>
+      _t('searchColumnHint').replaceAll('{column}', column);
+  String searchingInColumn(String column) =>
+      _t('searchingInColumn').replaceAll('{column}', column);
   String nRecords(int n) => _t('nRecords').replaceAll('{n}', n.toString());
   String nColumns(int n) => _t('nColumns').replaceAll('{n}', n.toString());
   String recordsAndColumns(int r, int c) => '${nRecords(r)} • ${nColumns(c)}';
@@ -236,6 +258,7 @@ class AppLocalizations {
   String get formulaLabel => _t('formulaLabel');
   String get quickSelect => _t('quickSelect');
   String get today => _t('today');
+  String get yesterday => _t('yesterday');
   String get selectDate => _t('selectDate');
   String get now => _t('now');
   String get selectTime => _t('selectTime');
@@ -435,7 +458,8 @@ class AppLocalizations {
   // ============== ORTAK TABLO ==============
   String get joinTable => _t('joinTable');
   String get joinCode => _t('joinCode');
-  String get share => _t('share');
+  String get invitePeople => _t('invitePeople');
+  String get shareAsFile => _t('shareAsFile');
   String get shareSendCode => _t('shareSendCode');
   String shareCodeMessage(String name, String code) => _t(
     'shareCodeMessage',
@@ -464,6 +488,7 @@ class AppLocalizations {
   String get decline => _t('decline');
   String get activityEditRequested => _t('activityEditRequested');
   String get activityLeft => _t('activityLeft');
+  String get activityTableReplaced => _t('activityTableReplaced');
   String get leaveShared => _t('leaveShared');
   String leaveSharedConfirm(String name) =>
       _t('leaveSharedConfirm').replaceAll('{name}', name);
@@ -625,10 +650,21 @@ class AppLocalizations {
     'premiumImportFeature': 'CSV dosyasından içe aktarma',
     'premiumUnlimitedFeature': 'Sınırsız tablo, çetele ve şablon',
     'premiumTallyFeature': 'Gelişmiş çetele araçları',
-    'plannedAnnualPrice': '₺200 / yıl',
-    'sevenDayTrial': 'İlk 7 gün ücretsiz, ardından yıllık yenilenir',
+    'planYearly': 'Yıllık',
+    'planMonthly': 'Aylık',
+    'perYear': 'yıl',
+    'perMonth': 'ay',
+    'trialBadge': '{days} gün ücretsiz',
+    'savingBadge': '%{percent} tasarruf',
+    'startTrial': '{days} Gün Ücretsiz Dene',
+    'subscribeNow': 'Abone ol',
+    'trialTerms':
+        'İlk {days} gün ücretsiz, sonra {price}/{unit}. Kendiliğinden yenilenir; mağaza aboneliklerinden istediğin zaman iptal edebilirsin.',
+    'renewalTerms':
+        '{price}/{unit}. Kendiliğinden yenilenir; mağaza aboneliklerinden istediğin zaman iptal edebilirsin.',
+    'priceUnavailable': 'Fiyat şu anda mağazadan alınamıyor.',
+    'retry': 'Yeniden dene',
     'billingPreparing': 'Abonelik bağlantısı hazırlanıyor',
-    'startFreeTrial': '7 Gün Ücretsiz Dene',
     'restorePurchases': 'Satın Almaları Geri Yükle',
     'signInToSubscribe': 'Üyelik için giriş yap',
     'purchaseCouldNotBeVerified':
@@ -660,6 +696,7 @@ class AppLocalizations {
         '{code}\n\nKod 7 gün geçerli ve bir kez kullanılabilir.',
     'addSharedTable': 'Paylaşılmış tabloyu ekle',
     'premiumRequired': 'Premium gerekli',
+    'freeQuotaUsed': '{used}/{limit} ücretsiz',
     'cloudPremiumMessage': 'Bulut yedekleme ve paylaşım Premium özelliğidir.',
     'viewPremium': 'Premium’u Gör',
     'connectAccount': 'Hesabını bağla',
@@ -693,6 +730,8 @@ class AppLocalizations {
     'templates': 'Şablonlar',
     'addRecord': 'Kayıt Ekle',
     'searchInTable': 'Tabloda ara...',
+    'searchColumnHint': 'Tek sütunda aramak için “{column}: …” yaz',
+    'searchingInColumn': 'Yalnızca “{column}” sütununda aranıyor',
     'nRecords': '{n} kayıt',
     'nColumns': '{n} sütun',
     'welcome': 'Hoş Geldiniz!',
@@ -784,6 +823,7 @@ class AppLocalizations {
     'formulaLabel': 'Formül',
     'quickSelect': 'Hızlı Seç',
     'today': 'Bugün',
+    'yesterday': 'Dün',
     'selectDate': 'Tarih Seç',
     'now': 'Şu an',
     'selectTime': 'Saat Seç',
@@ -952,7 +992,8 @@ class AppLocalizations {
     'undoLastAction': 'Son işlemi geri al',
     'joinTable': 'Tabloya katıl',
     'joinCode': 'Katılım kodu',
-    'share': 'Paylaş',
+    'invitePeople': 'Kişi davet et',
+    'shareAsFile': 'Dosya olarak paylaş',
     'shareSendCode': 'Kodu gönder',
     'shareCodeMessage':
         'Table Note’ta “{name}” paylaşımına katıl.\nKatılım kodu: {code}',
@@ -980,7 +1021,8 @@ class AppLocalizations {
     'wantsEditAccess': 'Düzenleme yetkisi istiyor',
     'approve': 'Onayla',
     'decline': 'Reddet',
-    'activityEditRequested': 'Düzenleme yetkisi istedi',
+    'activityEditRequested': 'düzenleme yetkisi istedi',
+    'activityTableReplaced': 'tabloyu baştan yükledi',
     'activityLeft': 'paylaşımdan ayrıldı',
     'leaveShared': 'Paylaşımdan ayrıl',
     'leaveSharedConfirm':
@@ -1171,10 +1213,21 @@ class AppLocalizations {
     'premiumImportFeature': 'Import from CSV files',
     'premiumUnlimitedFeature': 'Unlimited tables, tallies, and templates',
     'premiumTallyFeature': 'Advanced tally tools',
-    'plannedAnnualPrice': '₺200 / year',
-    'sevenDayTrial': 'First 7 days free, then renews yearly',
+    'planYearly': 'Yearly',
+    'planMonthly': 'Monthly',
+    'perYear': 'year',
+    'perMonth': 'month',
+    'trialBadge': '{days} days free',
+    'savingBadge': 'Save {percent}%',
+    'startTrial': 'Try {days} Days Free',
+    'subscribeNow': 'Subscribe',
+    'trialTerms':
+        'Free for {days} days, then {price}/{unit}. Renews automatically; cancel anytime in your store subscriptions.',
+    'renewalTerms':
+        '{price}/{unit}. Renews automatically; cancel anytime in your store subscriptions.',
+    'priceUnavailable': 'The price is not available from the store right now.',
+    'retry': 'Try again',
     'billingPreparing': 'Subscription connection is being prepared',
-    'startFreeTrial': 'Try 7 Days Free',
     'restorePurchases': 'Restore Purchases',
     'signInToSubscribe': 'Sign in to subscribe',
     'purchaseCouldNotBeVerified':
@@ -1206,6 +1259,7 @@ class AppLocalizations {
         '{code}\n\nThe code is valid for 7 days and can be used once.',
     'addSharedTable': 'Add shared table',
     'premiumRequired': 'Premium required',
+    'freeQuotaUsed': '{used}/{limit} free',
     'cloudPremiumMessage': 'Cloud backup and sharing are Premium features.',
     'viewPremium': 'View Premium',
     'connectAccount': 'Connect your account',
@@ -1238,6 +1292,8 @@ class AppLocalizations {
     'templates': 'Templates',
     'addRecord': 'Add Record',
     'searchInTable': 'Search in table...',
+    'searchColumnHint': 'To search one column, type “{column}: …”',
+    'searchingInColumn': 'Searching only in “{column}”',
     'nRecords': '{n} records',
     'nColumns': '{n} columns',
     'welcome': 'Welcome!',
@@ -1329,6 +1385,7 @@ class AppLocalizations {
     'formulaLabel': 'Formula',
     'quickSelect': 'Quick Select',
     'today': 'Today',
+    'yesterday': 'Yesterday',
     'selectDate': 'Select Date',
     'now': 'Now',
     'selectTime': 'Select Time',
@@ -1493,7 +1550,8 @@ class AppLocalizations {
     'undoLastAction': 'Undo last action',
     'joinTable': 'Join a table',
     'joinCode': 'Join code',
-    'share': 'Share',
+    'invitePeople': 'Invite people',
+    'shareAsFile': 'Share as a file',
     'shareSendCode': 'Send code',
     'shareCodeMessage': 'Join “{name}” on Table Note.\nJoin code: {code}',
     'shareHowToJoin':
@@ -1521,7 +1579,8 @@ class AppLocalizations {
     'wantsEditAccess': 'Is asking for edit access',
     'approve': 'Approve',
     'decline': 'Decline',
-    'activityEditRequested': 'Asked for edit access',
+    'activityEditRequested': 'asked for edit access',
+    'activityTableReplaced': 'replaced the whole table',
     'activityLeft': 'left the table',
     'leaveShared': 'Leave shared table',
     'leaveSharedConfirm':

@@ -72,7 +72,7 @@ class TableListWidget extends StatelessWidget {
                 children: [
                   TextSpan(text: '${AppLocalizations.of(context).filter}: '),
                   TextSpan(
-                    text: '"${provider.searchQuery}"',
+                    text: '"${provider.searchLabel}"',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   TextSpan(
@@ -134,7 +134,7 @@ class TableListWidget extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               provider.isFiltering
-                  ? loc.noMatchingRecord(provider.searchQuery)
+                  ? loc.noMatchingRecord(provider.searchLabel)
                   : loc.tapToAddFirst,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
@@ -291,7 +291,9 @@ class TableListWidget extends StatelessWidget {
               _buildCellContent(
                 context,
                 shown,
-                provider.searchQuery,
+                // Arama bir sütuna sınırlıysa öteki sütunlarda eşleşme
+                // vurgulanmaz.
+                provider.searchTermFor(columnIndex),
                 raw: value,
                 language: language,
               ),

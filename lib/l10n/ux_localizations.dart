@@ -48,6 +48,12 @@ extension UxLocalizations on AppLocalizations {
       ? 'Speech recognition stopped. Try again or enter the values below.'
       : 'Konuşma algılama durdu. Yeniden dene veya değerleri aşağıya yaz.';
   String get voiceTryAgain => _english ? 'Try again' : 'Yeniden dene';
+  String get voiceNumberUnread => _english
+      ? 'Could not read a number. Type it in digits.'
+      : 'Sayı anlaşılamadı. Rakamla yaz.';
+  String get numberOnly => _english
+      ? 'Only a number can go here.'
+      : 'Buraya yalnızca sayı yazılabilir.';
   String get voiceTypeInstead => _english ? 'Enter manually' : 'Yazarak doldur';
   String get voiceReviewHint => _english
       ? 'Review the values, correct anything needed, then confirm.'

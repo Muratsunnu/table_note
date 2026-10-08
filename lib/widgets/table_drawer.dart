@@ -738,6 +738,22 @@ class TableDrawer extends StatelessWidget {
 
   // ============== FOOTER ==============
 
+  /// "3/5 ücretsiz": üstündeki düğmeyle açılan türden kaç tane kullanıldı.
+  Widget _quota(BuildContext context, int used, int limit) {
+    final colors = Theme.of(context).colorScheme;
+    final full = used >= limit;
+    return Text(
+      AppLocalizations.of(context).freeQuotaUsed(used, limit),
+      key: ValueKey('quota-$limit-$used'),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 11.5,
+        fontWeight: full ? FontWeight.w700 : FontWeight.w400,
+        color: full ? colors.primary : colors.onSurfaceVariant,
+      ),
+    );
+  }
+
   Widget _buildFooter(BuildContext context) {
     final loc = AppLocalizations.of(context);
     return Container(
@@ -754,10 +770,12 @@ class TableDrawer extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () {
                     final navigator = Navigator.of(context);
-                    final atLimit =
-                        context.read<TableProvider>().tables.length >=
-                        PlanLimits.freeTables;
-                    if (!context.read<SubscriptionProvider>().isPremium &&
+                    final atLimit = !context
+                        .read<TableProvider>()
+                        .canCreateFreeTable;
+                    if (!context
+                            .read<SubscriptionProvider>()
+                            .hasUnlimitedPlan &&
                         atLimit) {
                       navigator.pop();
                       navigator.push(
@@ -792,10 +810,12 @@ class TableDrawer extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () {
                     final navigator = Navigator.of(context);
-                    final atLimit =
-                        context.read<TallyProvider>().tables.length >=
-                        PlanLimits.freeTallies;
-                    if (!context.read<SubscriptionProvider>().isPremium &&
+                    final atLimit = !context
+                        .read<TallyProvider>()
+                        .canCreateFreeTally;
+                    if (!context
+                            .read<SubscriptionProvider>()
+                            .hasUnlimitedPlan &&
                         atLimit) {
                       navigator.pop();
                       navigator.push(
@@ -827,6 +847,31 @@ class TableDrawer extends StatelessWidget {
               ),
             ],
           ),
+          // Ücretsiz kullanımda ne kadar yer kaldığı, sınıra çarpmadan önce
+          // görünür. Sınırsız kullanıcıda hiç çizilmez.
+          if (!context.watch<SubscriptionProvider>().hasUnlimitedPlan)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _quota(
+                      context,
+                      context.watch<TableProvider>().ownedTableCount,
+                      PlanLimits.freeTables,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _quota(
+                      context,
+                      context.watch<TallyProvider>().ownedTallyCount,
+                      PlanLimits.freeTallies,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           Row(
             children: [

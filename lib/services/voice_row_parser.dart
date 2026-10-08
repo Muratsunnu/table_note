@@ -1,9 +1,26 @@
 import '../models/tabel_model.dart';
+import '../utils/spoken_number.dart';
+
+/// Konuşmadan çıkarılan hücre değerleri.
+class VoiceRowResult {
+  const VoiceRowResult(this.values, this.unreadNumbers);
+
+  /// Sütun sırasına göre doldurulacak değerler.
+  final Map<int, String> values;
+
+  /// Sayısal olduğu halde söylenenin sayıya çevrilemediği sütunlar. Bunlara
+  /// değer yazılmaz: sayısal bir hücreye yazı girerse toplam sessizce bozulur.
+  final Set<int> unreadNumbers;
+}
 
 class VoiceRowParser {
   const VoiceRowParser();
 
-  Map<int, String> parse(String transcript, List<ColumnModel> columns) {
+  VoiceRowResult parse(
+    String transcript,
+    List<ColumnModel> columns, {
+    String languageCode = 'tr',
+  }) {
     final text = _normalize(transcript, trim: false);
     final matches = <_ColumnMatch>[];
     for (var index = 0; index < columns.length; index++) {
@@ -21,6 +38,7 @@ class VoiceRowParser {
     matches.sort((a, b) => a.start.compareTo(b.start));
 
     final values = <int, String>{};
+    final unreadNumbers = <int>{};
     for (var index = 0; index < matches.length; index++) {
       final match = matches[index];
       final end = index + 1 < matches.length
@@ -31,13 +49,18 @@ class VoiceRowParser {
           .trim()
           .replaceAll(RegExp(r'^[,.: -]+|[,.: -]+$'), '');
       if (columns[match.columnIndex].isNumeric) {
-        value =
-            RegExp(r'-?\d+(?:[.,]\d+)?').firstMatch(value)?.group(0) ?? value;
-        value = value.replaceAll(',', '.');
+        // Ses tanıma sayıyı sözcükle ("yüz") ya da dilin alışkanlığıyla
+        // ("35.000") yazabilir; hücreye yalnızca rakam girer.
+        final number = parseSpokenNumber(value, languageCode: languageCode);
+        if (number == null) {
+          if (value.isNotEmpty) unreadNumbers.add(match.columnIndex);
+          continue;
+        }
+        value = number;
       }
       if (value.isNotEmpty) values[match.columnIndex] = value;
     }
-    return values;
+    return VoiceRowResult(values, unreadNumbers);
   }
 
   List<String> _markers(ColumnModel column) {

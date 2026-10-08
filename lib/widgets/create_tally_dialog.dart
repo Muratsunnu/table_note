@@ -1009,7 +1009,8 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
     );
 
     final provider = Provider.of<TallyProvider>(context, listen: false);
-    final isPremium = context.read<SubscriptionProvider>().isPremium;
+    // Premium ya da sınırlardan önceki sürümden gelen kullanıcı.
+    final isPremium = context.read<SubscriptionProvider>().hasUnlimitedPlan;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _isSaving = true);
     try {

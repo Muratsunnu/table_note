@@ -53,9 +53,17 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 subtitle: Text(
+                  // Deneme süresi mağazadan gelir; mağaza deneme vermiyorsa
+                  // vaat de edilmez.
                   subscription.isPremium
                       ? loc.premiumActiveDescription
-                      : loc.sevenDayTrial,
+                      : switch (subscription.plans
+                            .map((plan) => plan.trialDays)
+                            .nonNulls
+                            .firstOrNull) {
+                          final days? => loc.trialBadge(days),
+                          null => loc.premiumDescription,
+                        },
                   style: const TextStyle(color: Colors.white70),
                 ),
                 trailing: const Icon(

@@ -809,7 +809,7 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     final success = await provider.createTemplate(
       templateName,
       validColumns,
-      isPremium: context.read<SubscriptionProvider>().isPremium,
+      isPremium: context.read<SubscriptionProvider>().hasUnlimitedPlan,
     );
 
     if (!mounted) return;

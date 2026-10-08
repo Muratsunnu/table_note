@@ -11,6 +11,8 @@ import 'providers/auth_provider.dart';
 import 'providers/subscription_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/app_launch_gate.dart';
+import 'services/onboarding_service.dart';
+import 'services/storage_service.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
@@ -22,14 +24,35 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.initialize();
   final themeProvider = await ThemeProvider.load();
+  // Sağlayıcılar veriye dokunmadan önce: önceki sürümden kalan veri var mı?
+  final legacyUnlimited = await StorageService.resolveLegacyUnlimited();
+  // Açılış ekranı kapanınca ilk kare doğrudan gerçek ekran olsun.
+  final showOnboarding = await OnboardingService.shouldShow();
 
-  runApp(TableNoteRoot(themeProvider: themeProvider));
+  runApp(
+    TableNoteRoot(
+      themeProvider: themeProvider,
+      legacyUnlimited: legacyUnlimited,
+      showOnboarding: showOnboarding,
+    ),
+  );
 }
 
 class TableNoteRoot extends StatelessWidget {
   final ThemeProvider themeProvider;
 
-  const TableNoteRoot({super.key, required this.themeProvider});
+  /// Ücretsiz sınırlar gelmeden önceki sürümden gelen kullanıcı.
+  final bool legacyUnlimited;
+
+  /// Açılışta önceden çözülmüşse başlangıç ekranı beklemeden gösterilir.
+  final bool? showOnboarding;
+
+  const TableNoteRoot({
+    super.key,
+    required this.themeProvider,
+    this.legacyUnlimited = false,
+    this.showOnboarding,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -71,21 +94,25 @@ class TableNoteRoot extends StatelessWidget {
           ),
         ),
         ChangeNotifierProxyProvider<AuthProvider, SubscriptionProvider>(
-          create: (context) =>
-              SubscriptionProvider(context.read<AuthProvider>()),
+          create: (context) => SubscriptionProvider(
+            context.read<AuthProvider>(),
+            legacyUnlimited: legacyUnlimited,
+          ),
           update: (context, auth, subscription) {
             subscription!.updateAuth(auth);
             return subscription;
           },
         ),
       ],
-      child: const TableNoteApp(),
+      child: TableNoteApp(showOnboarding: showOnboarding),
     );
   }
 }
 
 class TableNoteApp extends StatefulWidget {
-  const TableNoteApp({super.key});
+  final bool? showOnboarding;
+
+  const TableNoteApp({super.key, this.showOnboarding});
 
   @override
   State<TableNoteApp> createState() => _TableNoteAppState();
@@ -145,7 +172,7 @@ class _TableNoteAppState extends State<TableNoteApp> {
               ),
             );
           },
-          home: const AppLaunchGate(),
+          home: AppLaunchGate(showOnboarding: widget.showOnboarding),
         );
       },
     );

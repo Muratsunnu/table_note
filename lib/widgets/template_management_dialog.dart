@@ -612,7 +612,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                         newColumns,
                         isPremium: context
                             .read<SubscriptionProvider>()
-                            .isPremium,
+                            .hasUnlimitedPlan,
                       );
 
                       if (!dialogContext.mounted) return;

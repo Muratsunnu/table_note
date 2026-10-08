@@ -252,6 +252,15 @@ class TallyProvider extends ChangeNotifier {
   bool get hasJoinedTallies =>
       _sharedRoles.values.any((role) => role != 'owner');
 
+  /// Kullanıcının kendi çeteleleri. Ayrıntı için
+  /// [TableProvider.ownedTableCount].
+  int get ownedTallyCount => _tables.where((table) {
+    final role = _sharedRoles[table.id];
+    return role == null || role == 'owner';
+  }).length;
+
+  bool get canCreateFreeTally => ownedTallyCount < PlanLimits.freeTallies;
+
   /// Bu çetelede buluta gönderilmeyi bekleyen öğe sayısı.
   int pendingChangeCount(String tallyId) => _pending[tallyId]?.length ?? 0;
 
@@ -396,7 +405,7 @@ class TallyProvider extends ChangeNotifier {
     bool isPremium = false,
   }) async {
     try {
-      if (!isPremium && _tables.length >= PlanLimits.freeTallies) return false;
+      if (!isPremium && !canCreateFreeTally) return false;
       if (!await StorageService.saveTallyTables([..._tables, table]))
         return false;
       _tables.add(table);

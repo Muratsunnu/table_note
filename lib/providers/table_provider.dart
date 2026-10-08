@@ -1,3 +1,4 @@
+import '../utils/table_search.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -17,6 +18,9 @@ class TableProvider extends ChangeNotifier {
 
   // Filtreleme için state
   String _searchQuery = '';
+
+  /// [_searchQuery]'nin açık tablonun sütunlarına göre çözülmüş hali.
+  TableSearch _search = TableSearch.none;
   List<int> _filteredRowIndices = [];
 
   // Sıralama yalnızca görünümü etkiler; tablo kimliğine göre kalıcı tutulur.
@@ -38,7 +42,28 @@ class TableProvider extends ChangeNotifier {
 
   // Filtreleme getters
   String get searchQuery => _searchQuery;
-  bool get isFiltering => _searchQuery.isNotEmpty;
+
+  /// Aranacak bir söz var mı. "yükleme:" yazılıp henüz söz girilmemişken
+  /// arama kutusu dolu ama süzülecek bir şey yoktur.
+  bool get isFiltering => !_search.isEmpty;
+
+  /// Aramanın sınırlandığı sütun; her sütunda aranıyorsa null.
+  int? get searchColumnIndex => _search.columnIndex;
+
+  /// Aramanın ekranda yazılacak hali: sütuna sınırlıysa sütunun adıyla.
+  String get searchLabel {
+    final column = _search.columnIndex;
+    final table = currentTable;
+    if (column == null || table == null || column >= table.columns.length) {
+      return _search.term;
+    }
+    return '${table.columns[column].name}: ${_search.term}';
+  }
+
+  /// Bu sütundaki hücrelerde vurgulanacak söz. Arama başka bir sütuna
+  /// sınırlıysa boştur: aranmayan sütunda eşleşme gösterilmez.
+  String searchTermFor(int columnIndex) =>
+      _search.covers(columnIndex) ? _search.term : '';
   List<int> get filteredRowIndices => _filteredRowIndices;
 
   // Filtrelenmiş satırları döndür
@@ -133,6 +158,17 @@ class TableProvider extends ChangeNotifier {
   /// yapınca bu erişimin kapanacağını yalnızca gerçekten öyleyse söyler.
   bool get hasJoinedTables =>
       _sharedRoles.values.any((role) => role != 'owner');
+
+  /// Kullanıcının kendi tabloları; ücretsiz sınıra yalnızca bunlar sayılır.
+  /// Kodla katılınan tablo başkasınındır: davet edilen kişi sınıra takılıp
+  /// giremezse bunun bedelini davet eden öder.
+  int get ownedTableCount => _tables.where((table) {
+    final role = _sharedRoles[table.id];
+    return role == null || role == 'owner';
+  }).length;
+
+  /// Ücretsiz kullanımda yeni bir tablo oluşturulabilir mi.
+  bool get canCreateFreeTable => ownedTableCount < PlanLimits.freeTables;
 
   /// Bu tabloda buluta gönderilmeyi bekleyen satır sayısı.
   int pendingChangeCount(String tableId) => _pending[tableId]?.length ?? 0;
@@ -390,40 +426,52 @@ class TableProvider extends ChangeNotifier {
   // Aramayı temizle
   void clearSearch() {
     _searchQuery = '';
+    _search = TableSearch.none;
     _filteredRowIndices.clear();
     notifyListeners();
   }
 
   // Filtreleme uygula
   void _applyFilter() {
-    if (currentTable == null || _searchQuery.isEmpty) {
+    final table = currentTable;
+    // Sütunlar değişmiş olabilir; arama her seferinde bugünkü sütunlara göre
+    // yeniden çözülür.
+    _search = table == null
+        ? TableSearch.none
+        : TableSearch.parse(_searchQuery, table.columns);
+    if (table == null || _search.isEmpty) {
       _filteredRowIndices.clear();
       return;
     }
 
     _filteredRowIndices = [];
-    final columns = currentTable!.columns;
+    final columns = table.columns;
+    final term = _search.term;
+    // Sayı sütunları ekranda binlik ayraçlı görünür; "35.000" yazan bir
+    // kullanıcı gördüğü satırı bulabilsin diye o biçim de denenir.
+    final tryGrouped = term.contains(RegExp(r'[.,]'));
 
-    for (int rowIndex = 0; rowIndex < currentTable!.rows.length; rowIndex++) {
-      final row = currentTable!.rows[rowIndex];
+    for (int rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+      final row = table.rows[rowIndex];
 
-      // Satırdaki herhangi bir hücre arama sorgusunu içeriyor mu?
-      bool matches = row.any(
-        (cell) => cell.toLowerCase().contains(_searchQuery),
-      );
-
-      // Sayı sütunları ekranda binlik ayraçlı görünür; "35.000" yazan bir
-      // kullanıcı gördüğü satırı bulabilsin diye o biçim de denenir.
-      if (!matches && _searchQuery.contains(RegExp(r'[.,]'))) {
-        matches = () {
-          for (var c = 0; c < row.length && c < columns.length; c++) {
-            if (!showsGroupedNumbers(columns[c])) continue;
-            for (final form in groupedSearchForms(row[c])) {
-              if (form.contains(_searchQuery)) return true;
+      // Aramanın kapsadığı hücrelerden biri sözü içeriyor mu? Arama bir
+      // sütuna sınırlıysa yalnızca o sütunun hücresine bakılır.
+      var matches = false;
+      for (var c = 0; c < row.length && !matches; c++) {
+        if (!_search.covers(c)) continue;
+        matches = row[c].toLowerCase().contains(term);
+      }
+      if (!matches && tryGrouped) {
+        for (var c = 0; c < row.length && c < columns.length; c++) {
+          if (matches) break;
+          if (!_search.covers(c) || !showsGroupedNumbers(columns[c])) continue;
+          for (final form in groupedSearchForms(row[c])) {
+            if (form.contains(term)) {
+              matches = true;
+              break;
             }
           }
-          return false;
-        }();
+        }
       }
 
       if (matches) {
@@ -484,7 +532,7 @@ class TableProvider extends ChangeNotifier {
     if (_isCommittingForm) return false;
     _isCommittingForm = true;
     try {
-      if (!isPremium && _tables.length >= PlanLimits.freeTables) return false;
+      if (!isPremium && !canCreateFreeTable) return false;
       final newTable = TableModel(
         tableName: tableName.trim(),
         columns: columns.map((column) => column.copyWith()).toList(),

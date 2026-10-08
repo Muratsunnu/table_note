@@ -93,7 +93,7 @@ class ColumnSumsWidget extends StatelessWidget {
                             Text(
                               AppLocalizations.of(
                                 context,
-                              ).searchOf(provider.searchQuery),
+                              ).searchOf(provider.searchLabel),
                               style: TextStyle(
                                 color: darkColor.withValues(alpha: 0.7),
                                 fontSize: 11,

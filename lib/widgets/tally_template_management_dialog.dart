@@ -441,7 +441,7 @@ class _CreateFromTallyTemplateDialogState
     final tallyProvider = context.read<TallyProvider>();
     final ok = await tallyProvider.createTable(
       table,
-      isPremium: context.read<SubscriptionProvider>().isPremium,
+      isPremium: context.read<SubscriptionProvider>().hasUnlimitedPlan,
     );
     if (!mounted) return;
     if (ok) {

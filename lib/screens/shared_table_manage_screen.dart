@@ -11,6 +11,7 @@ import '../providers/tally_provider.dart';
 import '../services/cloud_repository.dart';
 import '../services/shared_sync_service.dart';
 import '../widgets/join_password_dialog.dart';
+import '../widgets/table_activity_list.dart';
 
 /// Tabloyu paylasan kisinin yonetim ekrani: kod uretme, istege bagli sifre,
 /// kimlerin katildigi ve degisiklik gecmisi.
@@ -297,8 +298,7 @@ class _SharedTableManageScreenState extends State<SharedTableManageScreen> {
                 style: TextStyle(color: colors.onSurfaceVariant),
               )
             else
-              for (final entry in _activity)
-                _ActivityRow(entry: entry, selfActorId: selfActorId),
+              TableActivityList(entries: _activity, selfActorId: selfActorId),
           ],
           if (_busy) ...[
             const SizedBox(height: 24),
@@ -364,81 +364,4 @@ class _CodeCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.entry, required this.selfActorId});
-
-  final TableActivityEntry entry;
-
-  /// Gunlugu okuyan kisinin kimligi. Bu gunlugu yalnizca tablo sahibi
-  /// gordugu icin kendi satirlarini adiyla degil "Sen" diye gostermek hem
-  /// daha anlasilir hem de profilde ad olup olmamasindan bagimsiz.
-  final String? selfActorId;
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context);
-    final colors = Theme.of(context).colorScheme;
-    final detail = switch (entry.action) {
-      'joined' => loc.activityJoined,
-      'row_added' => loc.activityRowAdded,
-      'row_deleted' => loc.activityRowDeleted,
-      'row_updated' =>
-        '${entry.columnName}: '
-            '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
-      'columns_changed' => loc.activityColumnsChanged,
-      'edit_requested' => loc.activityEditRequested,
-      'left' => loc.activityLeft,
-      'role_changed' =>
-        '${_orDash(entry.columnName)}: '
-            '${loc.roleLabel(entry.oldValue)} → '
-            '${loc.roleLabel(entry.newValue)}',
-      'item_added' => loc.activityItemAdded,
-      'item_deleted' => loc.activityItemDeleted,
-      // Ad degisikligi ve gun isareti ayni bicimde okunur: eski → yeni.
-      'item_renamed' =>
-        '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
-      'mark_changed' =>
-        '${entry.columnName}: '
-            '${_orDash(entry.oldValue)} → ${_orDash(entry.newValue)}',
-      _ => entry.action,
-    };
-    final isSelf = entry.actorId != null && entry.actorId == selfActorId;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 92,
-            child: Text(
-              _SharedTableManageScreenState._date(entry.createdAt),
-              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isSelf
-                      ? loc.activityActorSelf
-                      // Hesabını silen kişinin adı kayıttan çıkarılır.
-                      : entry.actorName.trim().isEmpty
-                      ? loc.activityActorDeleted
-                      : entry.actorName,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text(detail, style: const TextStyle(fontSize: 13)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _orDash(String? value) =>
-      value == null || value.trim().isEmpty ? '—' : value;
 }

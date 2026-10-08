@@ -1573,7 +1573,8 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
     // Tablo oluştur
     final provider = Provider.of<TableProvider>(context, listen: false);
-    final isPremium = context.read<SubscriptionProvider>().isPremium;
+    // Premium ya da sınırlardan önceki sürümden gelen kullanıcı.
+    final isPremium = context.read<SubscriptionProvider>().hasUnlimitedPlan;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _isSaving = true);
     try {

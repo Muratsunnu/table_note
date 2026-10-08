@@ -28,6 +28,7 @@ class StorageService {
   static const String _pendingTallyChangesKey = 'pending_tally_changes_v1';
   static const String _sharedTallyRolesKey = 'shared_tally_roles_v1';
   static const String _sharedVersionsKey = 'shared_known_versions_v1';
+  static const String _legacyPlanKey = 'plan_legacy_unlimited_v1';
   static const String _legacyBackupSuffix = '_legacy_v1_backup';
 
   /// Kayitli olabilecek roller. Tanimadigimiz bir deger okunursa atilir;
@@ -55,6 +56,45 @@ class StorageService {
     } catch (e) {
       debugPrint('Ortak tablo rolleri okunamadi: $e');
       return {};
+    }
+  }
+
+  /// Bu cihaz, ucretsiz sinirlar gelmeden onceki surumu kullanmis mi?
+  ///
+  /// Karar bir kez verilir ve saklanir: sinirlarin geldigi surum ilk
+  /// acildiginda cihazda onceden kalma tablo, cetele ya da sablon varsa
+  /// kullanici eskidir ve sinirsiz kalir. Hicbir sey yoksa yeni kurulumdur.
+  ///
+  /// Uygulama acilirken, saglayicilar veriyi okuyup yazmaya baslamadan once
+  /// cagrilmalidir; yoksa yeni kullanicinin ilk tablosu "onceden kalma veri"
+  /// sayilabilirdi.
+  static Future<bool> resolveLegacyUnlimited() async {
+    final prefs = await SharedPreferences.getInstance();
+    final decided = prefs.getBool(_legacyPlanKey);
+    if (decided != null) return decided;
+    final legacy = [
+      _tablesKey,
+      _tallyTablesKey,
+      _templatesKey,
+      _tallyTemplatesKey,
+    ].any((key) => _hasStoredItems(prefs.getString(key)));
+    await prefs.setBool(_legacyPlanKey, legacy);
+    return legacy;
+  }
+
+  static bool _hasStoredItems(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return false;
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is List) return decoded.isNotEmpty;
+      if (decoded is Map) {
+        return decoded.values.any((value) => value is List && value.isNotEmpty);
+      }
+      return false;
+    } catch (_) {
+      // Okunamayan bir kayit da kayittir; supheli durumda kullanicinin
+      // elinden bir sey alinmaz.
+      return true;
     }
   }
 
