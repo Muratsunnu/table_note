@@ -70,6 +70,67 @@ class _FakeAuth extends AuthProvider {
     return true;
   }
 
+  /// E-postayla gelen kod; testler doğrusunu ve yanlışını yazar.
+  static const validCode = '123456';
+  final checkedCodes = <String>[];
+  final sentTo = <String>[];
+  bool recoveringInPlace = false;
+  String? savedPassword;
+
+  bool _check(String code) {
+    checkedCodes.add(code);
+    final valid = code == validCode;
+    failure = valid ? null : 'code_invalid';
+    return valid;
+  }
+
+  @override
+  Future<bool> verifySignupCode(String email, String code) async {
+    signedIn = _check(code);
+    notifyListeners();
+    return signedIn;
+  }
+
+  @override
+  Future<bool> verifyRecoveryCode(String email, String code) async {
+    recovering = recoveringInPlace = _check(code);
+    notifyListeners();
+    return recovering;
+  }
+
+  @override
+  bool get recoveryNeedsScreen => recovering && !recoveringInPlace;
+
+  @override
+  Future<bool> requestPasswordReset(String email) async {
+    sentTo.add(email);
+    note = 'recovery_sent';
+    notifyListeners();
+    return true;
+  }
+
+  @override
+  Future<bool> resendConfirmation(String email) async {
+    sentTo.add(email);
+    note = 'confirmation_sent';
+    notifyListeners();
+    return true;
+  }
+
+  @override
+  Future<bool> updatePassword(
+    String password, {
+    String? currentPassword,
+    String? nonce,
+  }) async {
+    savedPassword = password;
+    recovering = recoveringInPlace = false;
+    signedIn = true;
+    note = 'password_updated';
+    notifyListeners();
+    return true;
+  }
+
   void recover() {
     recovering = true;
     notifyListeners();
@@ -224,53 +285,162 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  Future<void> register(WidgetTester tester, AppLocalizations en) async {
+    await tester.tap(find.byKey(const ValueKey('mode-register')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('name')), 'Test User');
+    await tester.enterText(
+      find.byKey(const ValueKey('email')),
+      'test@example.com',
+    );
+    await tester.enterText(find.byKey(const ValueKey('password')), 'secret1');
+    await tester.enterText(
+      find.byKey(const ValueKey('confirmPassword')),
+      'secret1',
+    );
+    final submit = find.widgetWithText(FilledButton, en.authText('register'));
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+  }
+
   testWidgets(
-    'after signup the user continues without the email link opening the app',
+    'after signup the emailed code verifies the address and signs in',
     (tester) async {
-      // Bağlantı uygulamayı yalnızca bu cihazda açabilir. E-postasını
-      // bilgisayarında açan kişi için tek yol buradaki düğmedir; şifresini
-      // yeniden yazması da gerekmemeli.
+      // Kod, e-posta hangi cihazda okunursa okunsun çalışır; bağlantı yalnızca
+      // uygulamanın kurulu olduğu telefonda açılabiliyordu.
       final auth = _FakeAuth();
       addTearDown(auth.dispose);
       final en = AppLocalizations(const Locale('en'));
       await tester.pumpWidget(_app(auth));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('mode-register')));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const ValueKey('name')), 'Test User');
-      await tester.enterText(
-        find.byKey(const ValueKey('email')),
-        'test@example.com',
-      );
-      await tester.enterText(find.byKey(const ValueKey('password')), 'secret1');
-      await tester.enterText(
-        find.byKey(const ValueKey('confirmPassword')),
-        'secret1',
-      );
-      await tester.tap(
-        find.widgetWithText(FilledButton, en.authText('register')),
-      );
-      await tester.pumpAndSettle();
+      await register(tester, en);
 
-      final proceed = find.widgetWithText(
+      final code = find.byKey(const ValueKey('email-code'));
+      final verify = find.widgetWithText(
         FilledButton,
-        en.authText('verifiedContinue'),
+        en.authText('verifyCode'),
       );
-      // Henüz doğrulanmadı: ekran yerinde kalır ve nedenini söyler.
-      await tester.tap(proceed);
+      expect(code, findsOneWidget);
+      // Altı rakam yazılmadan düğme kapalıdır.
+      await tester.enterText(code, '12345');
+      await tester.pump();
+      expect(tester.widget<FilledButton>(verify).onPressed, isNull);
+      expect(auth.checkedCodes, isEmpty);
+
+      // Yanlış kod: nedenini söyler, hücreler boşalır, ekran yerinde kalır.
+      await tester.enterText(code, '654321');
       await tester.pumpAndSettle();
-      expect(auth.signIns, ['secret1']);
-      expect(find.text(en.authText('unconfirmed')), findsOneWidget);
+      expect(auth.checkedCodes, ['654321']);
+      expect(find.text(en.authText('codeInvalid')), findsOneWidget);
+      expect(tester.widget<TextField>(code).controller!.text, isEmpty);
       expect(find.text(en.authText('verifyTitle')), findsOneWidget);
 
-      auth.confirmed = true;
-      await tester.tap(proceed);
+      // Doğru kod altıncı rakamla kendiliğinden gönderilir.
+      await tester.enterText(code, _FakeAuth.validCode);
       await tester.pumpAndSettle();
-      expect(auth.signIns, ['secret1', 'secret1']);
+      expect(auth.checkedCodes, ['654321', _FakeAuth.validCode]);
       expect(find.byKey(const ValueKey('action-signOut')), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('the code can be pasted with the rest of the email', (
+    tester,
+  ) async {
+    final auth = _FakeAuth();
+    addTearDown(auth.dispose);
+    final en = AppLocalizations(const Locale('en'));
+    await tester.pumpWidget(_app(auth));
+    await tester.pumpAndSettle();
+    await register(tester, en);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('email-code')),
+      'Table Note code: ${_FakeAuth.validCode}',
+    );
+    await tester.pumpAndSettle();
+    expect(auth.checkedCodes, [_FakeAuth.validCode]);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('an unverified address can ask for a new code from sign-in', (
+    tester,
+  ) async {
+    final auth = _FakeAuth();
+    addTearDown(auth.dispose);
+    final en = AppLocalizations(const Locale('en'));
+    await tester.pumpWidget(_app(auth));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('email')),
+      'test@example.com',
+    );
+    await tester.enterText(find.byKey(const ValueKey('password')), 'secret1');
+    await tester.tap(find.widgetWithText(FilledButton, en.authText('login')));
+    await tester.pumpAndSettle();
+    expect(find.text(en.authText('unconfirmed')), findsOneWidget);
+
+    await tester.tap(find.text(en.authText('enterCode')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('email-code')), findsOneWidget);
+    // Eski kod hâlâ geçerli olabilir; yenisi yalnızca istenince gönderilir.
+    expect(auth.sentTo, isEmpty);
+    await tester.tap(find.text(en.authText('resend')));
+    await tester.pumpAndSettle();
+    expect(auth.sentTo, ['test@example.com']);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('forgotten password is reset with an emailed code', (
+    tester,
+  ) async {
+    final auth = _FakeAuth();
+    addTearDown(auth.dispose);
+    final en = AppLocalizations(const Locale('en'));
+    final key = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(_app(auth, navigatorKey: key));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.authText('forgot')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('email')),
+      'test@example.com',
+    );
+    await tester.tap(
+      find.widgetWithText(FilledButton, en.authText('sendReset')),
+    );
+    await tester.pumpAndSettle();
+    expect(auth.sentTo, ['test@example.com']);
+    // Adresin kayıtlı olup olmadığı söylenmez.
+    expect(find.text(en.authText('recovery_sent')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('email-code')),
+      _FakeAuth.validCode,
+    );
+    await tester.pumpAndSettle();
+    // Yeni şifre aynı ekranda sorulur; üstüne ikinci bir hesap ekranı açılmaz.
+    expect(find.byType(AccountScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('newPassword')), findsOneWidget);
+    expect(find.byKey(const ValueKey('currentPassword')), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('newPassword')),
+      'secret2',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('confirmPassword')),
+      'secret2',
+    );
+    await tester.tap(
+      find.widgetWithText(FilledButton, en.authText('savePassword')),
+    );
+    await tester.pumpAndSettle();
+    expect(auth.savedPassword, 'secret2');
+    expect(find.byKey(const ValueKey('action-signOut')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('guest session gets the sign-in form, not a profile', (
     tester,

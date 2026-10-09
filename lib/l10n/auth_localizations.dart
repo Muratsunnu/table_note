@@ -48,6 +48,7 @@ extension AuthLocalizations on AppLocalizations {
     'apple_failed' => 'appleFailed',
     'oauth_launch_failed' => 'googleFailed',
     'delete_failed' => 'deleteFailed',
+    'code_invalid' => 'codeInvalid',
     _ => 'failed',
   });
 }
@@ -67,8 +68,8 @@ const _authTr = {
   'forgot': 'Şifremi unuttum',
   'resetTitle': 'Şifreni sıfırla',
   'resetHelp':
-      'Hesabının e-posta adresini yaz. Şifre sıfırlama bağlantısını bu adrese göndereceğiz.',
-  'sendReset': 'Sıfırlama bağlantısı gönder',
+      'Hesabının e-posta adresini yaz. Bu adrese 6 haneli bir sıfırlama kodu göndereceğiz.',
+  'sendReset': 'Sıfırlama kodu gönder',
   'backToLogin': 'Girişe dön',
   'or': 'veya',
   'google': 'Google ile devam et',
@@ -96,10 +97,12 @@ const _authTr = {
   'deleteFailed': 'Hesap silinemedi. Bağlantını kontrol edip yeniden dene.',
   'account_deleted': 'Hesabın silindi. Tabloların bu cihazda duruyor.',
   'verifyTitle': 'E-postanı doğrula',
-  'verifyHelp':
-      'E-postandaki bağlantıya dokun, sonra buraya dönüp devam et. Bağlantı başka bir cihazda hata verse de doğrulama tamamlanır.',
-  'verifiedContinue': 'Doğruladım, devam et',
-  'resend': 'Doğrulama e-postasını yeniden gönder',
+  'verifyHelp': 'E-postana gelen 6 haneli kodu yaz.',
+  'verifyCode': 'Kodu doğrula',
+  'enterCode': 'Doğrulama kodunu gir',
+  'codeInvalid':
+      'Kod hatalı ya da süresi dolmuş. Yeniden yaz ya da yeni bir kod iste.',
+  'resend': 'Kodu yeniden gönder',
   'changePassword': 'Şifreyi değiştir',
   'savePassword': 'Yeni şifreyi kaydet',
   'recoveryHelp': 'Hesabın için yeni bir şifre belirle.',
@@ -125,7 +128,7 @@ const _authTr = {
   'unavailable':
       'Bu giriş hizmeti şu anda kullanılamıyor. Daha sonra yeniden dene.',
   'invalidLink':
-      'Bağlantı geçersiz veya süresi dolmuş. Yeni bir bağlantı iste ve isteği gönderdiğin cihazda aç.',
+      'Giriş tamamlanamadı: bağlantı geçersiz ya da süresi dolmuş. Yeniden dene.',
   'sessionExpired': 'Oturumun sona erdi. Yeniden giriş yap.',
   'network': 'Bağlantı kurulamadı. İnternetini kontrol edip yeniden dene.',
   'appleUnavailable': 'Apple ile giriş bu cihazda kullanılamıyor.',
@@ -133,9 +136,9 @@ const _authTr = {
   'googleFailed': 'Google giriş ekranı açılamadı. Yeniden dene.',
   'failed': 'İşlem tamamlanamadı. Bağlantını kontrol edip yeniden dene.',
   'confirmation_sent':
-      'Adresin kayıt için uygunsa doğrulama e-postası gönderildi. Gelen kutunu ve gereksiz posta klasörünü kontrol et.',
+      'Adresin kayıt için uygunsa 6 haneli bir doğrulama kodu gönderdik. Gelen kutunu ve gereksiz posta klasörünü kontrol et.',
   'recovery_sent':
-      'Bu adresle bir hesap varsa şifre sıfırlama bağlantısı gönderildi. Bağlantıyı bu cihazda aç.',
+      'Bu adresle bir hesap varsa 6 haneli bir sıfırlama kodu gönderdik. Gelen kutunu ve gereksiz posta klasörünü kontrol et.',
   'reauthentication_sent': 'Doğrulama kodu e-posta adresine gönderildi.',
   'password_updated': 'Şifren güncellendi.',
   'oauth_continue':
@@ -159,8 +162,8 @@ const _authEn = {
   'forgot': 'Forgot password?',
   'resetTitle': 'Reset your password',
   'resetHelp':
-      'Enter your account email. We will send a password reset link to this address.',
-  'sendReset': 'Send reset link',
+      'Enter your account email. We will send a 6-digit reset code to this address.',
+  'sendReset': 'Send reset code',
   'backToLogin': 'Back to sign in',
   'or': 'or',
   'google': 'Continue with Google',
@@ -190,10 +193,12 @@ const _authEn = {
   'account_deleted':
       'Your account was deleted. Your tables are still on this device.',
   'verifyTitle': 'Verify your email',
-  'verifyHelp':
-      'Tap the link in your email, then come back here and continue. Even if the link shows an error on another device, your email is still verified.',
-  'verifiedContinue': 'I have verified, continue',
-  'resend': 'Resend verification email',
+  'verifyHelp': 'Enter the 6-digit code from your email.',
+  'verifyCode': 'Verify code',
+  'enterCode': 'Enter verification code',
+  'codeInvalid':
+      'The code is wrong or has expired. Re-enter it or request a new one.',
+  'resend': 'Resend code',
   'changePassword': 'Change password',
   'savePassword': 'Save new password',
   'recoveryHelp': 'Choose a new password for your account.',
@@ -218,7 +223,7 @@ const _authEn = {
   'unavailable':
       'This sign-in service is currently unavailable. Please try again later.',
   'invalidLink':
-      'This link is invalid or expired. Request a new link and open it on the device that requested it.',
+      'Sign-in could not be completed: the link is invalid or expired. Please try again.',
   'sessionExpired': 'Your session has expired. Please sign in again.',
   'network': 'Could not connect. Check your internet connection and try again.',
   'appleUnavailable': 'Sign in with Apple is unavailable on this device.',
@@ -227,9 +232,9 @@ const _authEn = {
   'failed':
       'Could not complete the action. Check your connection and try again.',
   'confirmation_sent':
-      'If the address is eligible for registration, a verification email has been sent. Check your inbox and spam folder.',
+      'If the address is eligible for registration, we sent a 6-digit verification code. Check your inbox and spam folder.',
   'recovery_sent':
-      'If an account exists for this address, a reset link has been sent. Open it on this device.',
+      'If an account exists for this address, we sent a 6-digit reset code. Check your inbox and spam folder.',
   'reauthentication_sent': 'A verification code has been sent to your email.',
   'password_updated': 'Your password has been updated.',
   'oauth_continue':

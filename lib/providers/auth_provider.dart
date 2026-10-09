@@ -22,6 +22,8 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _disposed = false;
   bool _isRecovering = false;
+  // Şifre sıfırlama hesap ekranında kodla başladıysa ekran zaten açıktır.
+  bool _recoveryInPlace = false;
   bool _needsReauthentication = false;
   bool _callbackFailed = false;
   String? _errorMessage;
@@ -48,6 +50,7 @@ class AuthProvider extends ChangeNotifier {
           _notice = null;
         } else if (state.event == AuthChangeEvent.signedOut) {
           _isRecovering = false;
+          _recoveryInPlace = false;
           _needsReauthentication = false;
         } else if (state.event == AuthChangeEvent.signedIn) {
           _errorMessage = null;
@@ -76,6 +79,11 @@ class AuthProvider extends ChangeNotifier {
   bool get isSignedIn => _user != null;
   bool get isLoading => _isLoading;
   bool get isRecovering => _isRecovering;
+
+  /// Şifre sıfırlama için hesap ekranının açılması gerekiyor mu? Eski bir
+  /// e-postadaki bağlantıyla başlayan sıfırlamada evet; ekranda kod yazılarak
+  /// başlayanda ekran zaten açıktır, ikincisi açılmaz.
+  bool get recoveryNeedsScreen => isRecovering && !_recoveryInPlace;
   bool get callbackFailed => _callbackFailed;
   bool get needsReauthentication => _needsReauthentication;
   bool get supportsApple =>
@@ -164,6 +172,40 @@ class AuthProvider extends ChangeNotifier {
         }
       });
 
+  /// Kayıt e-postasındaki 6 haneli kodla adresi doğrular ve oturumu açar.
+  /// Kod, e-posta hangi cihazda okunursa okunsun çalışır.
+  Future<bool> verifySignupCode(String email, String code) =>
+      _verifyCode(email, code, OtpType.signup);
+
+  /// Şifre sıfırlama e-postasındaki kodla oturumu açar; ardından yeni şifre
+  /// sorulur ([isRecovering]).
+  Future<bool> verifyRecoveryCode(String email, String code) =>
+      _verifyCode(email, code, OtpType.recovery);
+
+  Future<bool> _verifyCode(String email, String code, OtpType type) =>
+      _run(() async {
+        final recovery = type == OtpType.recovery;
+        // Oturum olayı çağrı dönmeden gelir; bayrak ondan önce kurulur.
+        if (recovery) _recoveryInPlace = true;
+        var verified = false;
+        try {
+          await _client!.auth.verifyOTP(
+            email: email.trim(),
+            token: code.trim(),
+            type: type,
+          );
+          verified = true;
+        } on AuthException catch (error) {
+          // Sunucu yanlış kodla süresi dolmuş kodu ayırmaz.
+          if (error.code == 'otp_expired') {
+            throw const AuthException('Invalid code', code: 'code_invalid');
+          }
+          rethrow;
+        } finally {
+          if (recovery && !verified) _recoveryInPlace = false;
+        }
+      });
+
   Future<bool> resendConfirmation(String email) => _run(() async {
     _checkEmailCooldown();
     await _client!.auth.resend(
@@ -207,6 +249,7 @@ class AuthProvider extends ChangeNotifier {
       ),
     );
     _isRecovering = false;
+    _recoveryInPlace = false;
     _needsReauthentication = false;
     _notice = 'password_updated';
   });
@@ -286,6 +329,7 @@ class AuthProvider extends ChangeNotifier {
     }
     _user = null;
     _isRecovering = false;
+    _recoveryInPlace = false;
     _needsReauthentication = false;
     _notice = 'account_deleted';
     _onSharedAccessLost?.call(ownedToo: true);
@@ -295,6 +339,7 @@ class AuthProvider extends ChangeNotifier {
     await _client!.auth.signOut(scope: SignOutScope.local);
     _user = null;
     _isRecovering = false;
+    _recoveryInPlace = false;
     _needsReauthentication = false;
   });
 

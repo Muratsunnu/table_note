@@ -15,9 +15,10 @@ import '../providers/tally_provider.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/auth_validation.dart';
+import '../widgets/join_code_cells.dart';
 import '../widgets/ledger.dart';
 
-enum _AccountForm { login, register, forgot, verify, password }
+enum _AccountForm { login, register, forgot, verify, recover, password }
 
 /// Giriş, kayıt, şifre işlemleri ve hesap yönetimi.
 ///
@@ -39,6 +40,8 @@ class _AccountScreenState extends State<AccountScreen> {
   final _confirmation = TextEditingController();
   final _currentPassword = TextEditingController();
   final _nonce = TextEditingController();
+  // E-postayla gelen 6 haneli kod: kayıt doğrulaması ve şifre sıfırlama.
+  final _code = TextEditingController();
   final _visiblePasswords = <String>{};
   _AccountForm _mode = _AccountForm.login;
   Timer? _cooldownTimer;
@@ -80,6 +83,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _confirmation,
       _currentPassword,
       _nonce,
+      _code,
     ]) {
       controller.dispose();
     }
@@ -103,15 +107,15 @@ class _AccountScreenState extends State<AccountScreen> {
     });
   }
 
-  /// Doğrulama ekranına geçerken yazılmış şifre bellekte kalır: kişi
-  /// e-postasını doğrulayıp döndüğünde şifresini yeniden yazmadan devam
-  /// edebilsin. Başka her geçişte şifre alanları boşaltılır.
   void _enterMode(_AccountForm mode) {
-    final password = _password.text;
     _clearPasswords();
-    if (mode == _AccountForm.verify) _password.text = password;
+    _code.clear();
     _mode = mode;
   }
+
+  /// Kodun yazıldığı adımlar: kayıt doğrulaması ve şifre sıfırlama.
+  static bool _entersCode(_AccountForm mode) =>
+      mode == _AccountForm.verify || mode == _AccountForm.recover;
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -129,48 +133,40 @@ class _AccountScreenState extends State<AccountScreen> {
         _password.text,
       ),
       _AccountForm.forgot => await auth.requestPasswordReset(_email.text),
-      // Doğrulama ekranının kendi düğmeleri var; form oradan gönderilmez.
-      _AccountForm.verify => false,
+      _AccountForm.verify => await auth.verifySignupCode(
+        _email.text,
+        _code.text,
+      ),
+      _AccountForm.recover => await auth.verifyRecoveryCode(
+        _email.text,
+        _code.text,
+      ),
       _AccountForm.password => await auth.updatePassword(
         _password.text,
         currentPassword: _currentPassword.text,
         nonce: _nonce.text,
       ),
     };
-    if (!mounted || !succeeded) return;
+    if (!mounted) return;
+    if (!succeeded) {
+      // Yanlış kod yeniden yazılacak; hücreler boşalır.
+      if (auth.errorMessage == 'code_invalid') setState(_code.clear);
+      return;
+    }
     if (mode == _AccountForm.login ||
         mode == _AccountForm.register ||
         mode == _AccountForm.password) {
       TextInput.finishAutofillContext();
-      setState(() {
-        _formKey = GlobalKey<FormState>();
-        _enterMode(
-          mode == _AccountForm.register && !auth.hasAccount
-              ? _AccountForm.verify
-              : _AccountForm.login,
-        );
-      });
     }
-  }
-
-  /// "Doğruladım, devam et": bağlantı hangi cihazda açılmış olursa olsun
-  /// çalışan yol. Doğrulama bağlantısı uygulamayı ancak bu cihazda açabilir;
-  /// e-postasını bilgisayarında açan kişi için sayfa hata verir ama adres
-  /// yine de doğrulanmıştır, geriye yalnızca giriş yapmak kalır.
-  Future<void> _continueAfterVerification() async {
-    if (_password.text.isEmpty) {
-      _changeMode(_AccountForm.login);
-      return;
-    }
-    FocusScope.of(context).unfocus();
-    final auth = context.read<AuthProvider>();
-    if (!await auth.signInWithEmail(_email.text, _password.text) || !mounted) {
-      return;
-    }
-    TextInput.finishAutofillContext();
     setState(() {
       _formKey = GlobalKey<FormState>();
-      _enterMode(_AccountForm.login);
+      _enterMode(switch (mode) {
+        // Kayıttan sonra oturum yoksa adres kodla doğrulanır.
+        _AccountForm.register when !auth.hasAccount => _AccountForm.verify,
+        _AccountForm.forgot => _AccountForm.recover,
+        // Sıfırlama kodu doğrulanınca yeni şifre formu kendiliğinden gelir.
+        _ => _AccountForm.login,
+      });
     });
   }
 
@@ -308,7 +304,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 _field(
                   'email',
                   _email,
-                  enabled: enabled && mode != _AccountForm.verify,
+                  enabled: enabled && !_entersCode(mode),
                   keyboard: TextInputType.emailAddress,
                   hints: const [AutofillHints.email],
                   hint: loc.authText('emailHint'),
@@ -396,9 +392,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
     final showsCooldown =
         _lastCooldown > 0 &&
-        (mode == _AccountForm.forgot ||
-            mode == _AccountForm.verify ||
-            reauthenticating);
+        (mode == _AccountForm.forgot || _entersCode(mode) || reauthenticating);
     final tall = FilledButton.styleFrom(minimumSize: const Size.fromHeight(52));
 
     final below = <Widget>[
@@ -427,29 +421,47 @@ class _AccountScreenState extends State<AccountScreen> {
               child: Text(loc.authText('forgot')),
             ),
           )
+        else if (_entersCode(mode))
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: JoinCodeInput(
+              fieldKey: const ValueKey('email-code'),
+              controller: _code,
+              semanticLabel: loc.authText('code'),
+              enabled: enabled,
+              hasError: auth.errorMessage == 'code_invalid',
+              autofillHints: const [AutofillHints.oneTimeCode],
+              // Düğme altıncı rakamla açılır.
+              onChanged: (_) => setState(() {}),
+              onCompleted: (_) => _submit(),
+            ),
+          )
         else
           const SizedBox(height: 16),
         FilledButton(
           style: tall,
-          onPressed: (mode == _AccountForm.forgot ? emailEnabled : enabled)
-              ? mode == _AccountForm.verify
-                    ? _continueAfterVerification
-                    : _submit
+          onPressed:
+              (mode == _AccountForm.forgot ? emailEnabled : enabled) &&
+                  (!_entersCode(mode) ||
+                      _code.text.length == JoinCodeCells.length)
+              ? _submit
               : null,
           child: Text(
             loc.authText(switch (mode) {
               _AccountForm.login => 'login',
               _AccountForm.register => 'register',
               _AccountForm.forgot => 'sendReset',
-              _AccountForm.verify => 'verifiedContinue',
+              _AccountForm.verify || _AccountForm.recover => 'verifyCode',
               _AccountForm.password => 'savePassword',
             }),
           ),
         ),
-        if (mode == _AccountForm.verify)
+        if (_entersCode(mode))
           TextButton(
             onPressed: emailEnabled
-                ? () => auth.resendConfirmation(_email.text)
+                ? () => mode == _AccountForm.verify
+                      ? auth.resendConfirmation(_email.text)
+                      : auth.requestPasswordReset(_email.text)
                 : null,
             child: Text(loc.authText('resend')),
           ),
@@ -468,7 +480,7 @@ class _AccountScreenState extends State<AccountScreen> {
             auth.errorMessage == 'email_not_confirmed')
           TextButton(
             onPressed: enabled ? () => _changeMode(_AccountForm.verify) : null,
-            child: Text(loc.authText('resend')),
+            child: Text(loc.authText('enterCode')),
           ),
         if (entry) ...[
           const SizedBox(height: 20),
@@ -713,6 +725,7 @@ class _AccountScreenState extends State<AccountScreen> {
       ),
       _AccountForm.forgot => ('resetTitle', loc.authText('resetHelp')),
       _AccountForm.verify => ('verifyTitle', loc.authText('verifyHelp')),
+      _AccountForm.recover => ('resetTitle', loc.authText('verifyHelp')),
       _AccountForm.password => (
         'changePassword',
         auth.isRecovering ? loc.authText('recoveryHelp') : auth.email,

@@ -124,9 +124,17 @@ class JoinCodeInput extends StatefulWidget {
     this.hasError = false,
     this.onChanged,
     this.onCompleted,
+    this.fieldKey = const ValueKey('join-code'),
+    this.autofillHints,
   });
 
   final TextEditingController controller;
+
+  /// Görünmez yazı alanının anahtarı; aynı hücreler e-posta kodunda da kullanılır.
+  final Key fieldKey;
+
+  /// E-postayla gelen kodu klavyenin önerebilmesi için.
+  final Iterable<String>? autofillHints;
   final String semanticLabel;
   final bool enabled;
   final bool hasError;
@@ -195,7 +203,8 @@ class _JoinCodeInputState extends State<JoinCodeInput> {
                 selectionHandleColor: Colors.transparent,
               ),
               child: TextField(
-                key: const ValueKey('join-code'),
+                key: widget.fieldKey,
+                autofillHints: widget.autofillHints,
                 controller: widget.controller,
                 focusNode: _focusNode,
                 enabled: widget.enabled,

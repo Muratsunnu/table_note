@@ -25,12 +25,14 @@ class _AuthCallbackRouterState extends State<AuthCallbackRouter> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final auth = context.watch<AuthProvider>();
-    if (_routeOpen || (!auth.isRecovering && !auth.callbackFailed)) return;
+    if (_routeOpen || (!auth.recoveryNeedsScreen && !auth.callbackFailed))
+      return;
     _routeOpen = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final navigator = widget.navigatorKey.currentState;
-      if (navigator == null || (!auth.isRecovering && !auth.callbackFailed)) {
+      if (navigator == null ||
+          (!auth.recoveryNeedsScreen && !auth.callbackFailed)) {
         _routeOpen = false;
         return;
       }

@@ -22,6 +22,23 @@ flutter run --dart-define-from-file=dart_defines.json
 Bağlantı bilgileri verilmezse Table Note çevrimdışı modda açılmaya devam eder.
 `service_role` anahtarı hiçbir zaman mobil uygulamaya eklenmemelidir.
 
+## E-posta kodları
+
+Kayıt doğrulaması ve şifre sıfırlama bağlantıyla değil, e-postayla gelen 6
+haneli kodla yapılır; kod, e-posta hangi cihazda okunursa okunsun çalışır.
+Uygulama bağlantı beklemediği için şablonların kodu göstermesi şarttır:
+
+1. Authentication > Emails > Templates bölümünde **Confirm signup** şablonuna
+   `email_templates/confirm_signup.html`, **Reset password** şablonuna
+   `email_templates/reset_password.html` içeriğini yapıştırın.
+2. Konu satırları: `Table Note doğrulama kodun` ve
+   `Table Note şifre sıfırlama kodun`.
+3. Authentication > Sign In / Providers > Email bölümünde **Confirm email**
+   açık, **Email OTP length** 6 olmalıdır.
+
+Yerleşik e-posta göndericisi saatte 2 e-postayla sınırlıdır; yayından önce
+Authentication > Emails > SMTP Settings bölümünden özel SMTP bağlanmalıdır.
+
 ## Google Play aboneliği
 
 Play Console'da ürün kimliği `table_note_premium_yearly` olan yıllık abonelik ve
