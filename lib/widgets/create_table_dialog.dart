@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'form_field_reveal.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'add_column_card.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
@@ -60,11 +60,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   final List<String?> _constantValueErrors = [];
   final List<String?> _formulaErrors = [];
   final ScrollController _manualScrollController = ScrollController();
-
-  static const double _pullToAddThreshold = 72;
-  static const double _maxPullDistance = 96;
-  double _pullToAddDistance = 0;
-  bool _pullThresholdReached = false;
 
   late TabController _tabController;
 
@@ -361,141 +356,76 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
   Widget _buildManualCreateTab() {
     final colorScheme = Theme.of(context).colorScheme;
-    final revealHeight = _pullToAddDistance.clamp(0.0, _maxPullDistance);
-    final revealProgress = (revealHeight / _pullToAddThreshold).clamp(0.0, 1.0);
-    final revealDuration = revealHeight == 0
-        ? const Duration(milliseconds: 160)
-        : Duration.zero;
 
     return Column(
       children: [
         Expanded(
-          child: ClipRect(
-            child: Stack(
+          child: FormFocusScrollView(
+            controller: _manualScrollController,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Positioned.fill(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: _handleManualScrollNotification,
-                    child: FormFocusScrollView(
-                      controller: _manualScrollController,
-                      physics: const ClampingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_restoredDraft) ...[
-                            _buildDraftNotice(),
-                            const SizedBox(height: 12),
-                          ],
-                          TextField(
-                            controller: _tableNameController,
-                            focusNode: _tableNameFocus,
-                            onChanged: (_) {
-                              if (_tableNameError != null) {
-                                setState(() => _tableNameError = null);
-                              }
-                            },
-                            decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context).tableName,
-                              hintText: AppLocalizations.of(
-                                context,
-                              ).tableNameHint,
-                              errorText: _tableNameError,
-                              prefixIcon: const Icon(Icons.table_chart_rounded),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primaryContainer,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Icon(
-                                  Icons.view_column_rounded,
-                                  size: 18,
-                                  color: colorScheme.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  AppLocalizations.of(context).columns,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              TextButton.icon(
-                                icon: const Icon(
-                                  Icons.help_outline_rounded,
-                                  size: 18,
-                                ),
-                                label: Text(AppLocalizations.of(context).help),
-                                onPressed: _showHelpDialog,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ..._buildColumnWidgets(),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
+                if (_restoredDraft) ...[
+                  _buildDraftNotice(),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: _tableNameController,
+                  focusNode: _tableNameFocus,
+                  onChanged: (_) {
+                    if (_tableNameError != null) {
+                      setState(() => _tableNameError = null);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).tableName,
+                    hintText: AppLocalizations.of(context).tableNameHint,
+                    errorText: _tableNameError,
+                    prefixIcon: const Icon(Icons.table_chart_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-                AnimatedPositioned(
-                  duration: revealDuration,
-                  curve: Curves.easeOutCubic,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: revealHeight,
-                  child: IgnorePointer(
-                    child: ColoredBox(
-                      color: colorScheme.primary,
-                      child: AnimatedOpacity(
-                        duration: revealDuration,
-                        opacity: revealProgress,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedSlide(
-                              duration: const Duration(milliseconds: 120),
-                              offset: _pullThresholdReached
-                                  ? const Offset(0, -0.12)
-                                  : Offset.zero,
-                              child: Icon(
-                                Icons.keyboard_arrow_up_rounded,
-                                color: colorScheme.onPrimary,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              AppLocalizations.of(context).addColumn,
-                              style: TextStyle(
-                                color: colorScheme.onPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        Icons.view_column_rounded,
+                        size: 18,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        AppLocalizations.of(context).columns,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-                  ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.help_outline_rounded, size: 18),
+                      label: Text(AppLocalizations.of(context).help),
+                      onPressed: _showHelpDialog,
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
+                ..._buildColumnWidgets(),
+                const SizedBox(height: 6),
+                // Listenin sonunda sıradaki sütunun yeri durur; dokununca eklenir.
+                AddColumnCard(onTap: _isSaving ? null : _addColumn),
               ],
             ),
           ),
@@ -560,53 +490,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         ),
       ),
     );
-  }
-
-  bool _handleManualScrollNotification(ScrollNotification notification) {
-    if (notification.depth != 0) return false;
-
-    if (notification is OverscrollNotification &&
-        notification.dragDetails != null &&
-        notification.metrics.extentAfter <= 0 &&
-        notification.overscroll > 0) {
-      final nextDistance = (_pullToAddDistance + notification.overscroll).clamp(
-        0.0,
-        _maxPullDistance,
-      );
-      final reached = nextDistance >= _pullToAddThreshold;
-
-      if (reached && !_pullThresholdReached) {
-        HapticFeedback.selectionClick();
-      }
-      setState(() {
-        _pullToAddDistance = nextDistance;
-        _pullThresholdReached = reached;
-      });
-    } else if (notification is ScrollUpdateNotification &&
-        _pullToAddDistance > 0 &&
-        (notification.scrollDelta ?? 0) < 0) {
-      setState(() {
-        _pullToAddDistance = (_pullToAddDistance + notification.scrollDelta!)
-            .clamp(0.0, _maxPullDistance);
-        _pullThresholdReached = _pullToAddDistance >= _pullToAddThreshold;
-      });
-    } else if (notification is ScrollEndNotification ||
-        notification is UserScrollNotification &&
-            notification.direction == ScrollDirection.idle) {
-      _finishPullToAdd();
-    }
-
-    return false;
-  }
-
-  void _finishPullToAdd() {
-    if (_pullToAddDistance == 0) return;
-    final shouldAdd = _pullThresholdReached;
-    setState(() {
-      _pullToAddDistance = 0;
-      _pullThresholdReached = false;
-    });
-    if (shouldAdd) _addColumn();
   }
 
   List<Widget> _buildColumnWidgets() {

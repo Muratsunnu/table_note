@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'added_field_focus.dart';
-import 'pull_to_add_column.dart';
+import 'add_column_card.dart';
+import 'form_field_reveal.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
 import '../providers/template_provider.dart';
@@ -118,8 +119,11 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
 
             // Content
             Expanded(
-              child: PullToAddColumn(
-                onAdd: _addColumn,
+              child: FormFocusScrollView(
+                primary: false,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -169,7 +173,9 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                     ),
                     const SizedBox(height: 12),
                     ..._buildColumnWidgets(),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 6),
+                    // Listenin sonunda sıradaki sütunun yeri durur; dokununca eklenir.
+                    AddColumnCard(onTap: _addColumn),
                   ],
                 ),
               ),

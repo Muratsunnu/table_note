@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'add_column_card.dart';
 import 'form_field_reveal.dart';
 import 'added_field_focus.dart';
 import 'package:provider/provider.dart';
@@ -167,6 +168,9 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
 
                     // Sütun listesi
                     ..._buildColumnList(),
+                    const SizedBox(height: 6),
+                    // Listenin sonunda sıradaki sütunun yeri durur; dokununca eklenir.
+                    AddColumnCard(onTap: _addNewColumn),
                   ],
                 ),
               ),
