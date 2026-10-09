@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
@@ -258,6 +259,36 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+          // Yalnızca geliştirme derlemesinde: ücretsiz kullanıcının gördüğünü
+          // (sınırlar, Premium ekranı) denemek için.
+          if (kDebugMode) ...[
+            const SizedBox(height: 16),
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SwitchListTile(
+                key: const ValueKey('debug-free-user'),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                title: const Text(
+                  'Ücretsiz kullanıcı gibi göster',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Geliştirici ayarı; mağaza sürümünde görünmez. Uygulama '
+                  'yeniden başlayınca kapanır.',
+                ),
+                value: subscription.debugFreeUser,
+                onChanged: subscription.setDebugFreeUser,
+              ),
+            ),
+          ],
         ],
       ),
     );

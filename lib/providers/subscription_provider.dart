@@ -10,9 +10,11 @@ import '../services/entitlement_service.dart';
 import 'auth_provider.dart';
 
 class SubscriptionProvider extends ChangeNotifier {
-  // Geçici test erişimi. Release derlemelerinde kDebugMode false olduğu için
-  // mağazaya gönderilen uygulamada Premium hakkı vermez.
-  static const bool _temporaryDebugPremium = true;
+  // Geliştirme derlemesinde Premium açık sayılır ki özellikler mağaza
+  // kurulmadan denenebilsin. Ayarlardaki geliştirici anahtarı bunu kapatıp
+  // ücretsiz kullanıcının gördüğünü gösterir. Release derlemesinde kDebugMode
+  // false olduğu için ikisinin de etkisi yoktur.
+  bool _debugFreeUser = false;
 
   final BillingService _billing;
   final EntitlementService _entitlements;
@@ -50,7 +52,22 @@ class SubscriptionProvider extends ChangeNotifier {
     _initialize();
   }
 
-  bool get isPremium => _isPremium || (kDebugMode && _temporaryDebugPremium);
+  bool get isPremium => kDebugMode ? !_debugFreeUser : _isPremium;
+
+  /// Geliştirme derlemesinde uygulama ücretsiz kullanıcı gibi mi davranıyor.
+  bool get debugFreeUser => kDebugMode && _debugFreeUser;
+
+  /// Yalnızca geliştirme derlemesinde: sınırları, Premium'a yönlendirmeleri
+  /// ve satın alma ekranını görmek için ücretsiz kullanıcıya geçer.
+  void setDebugFreeUser(bool value) {
+    if (!kDebugMode || _debugFreeUser == value) return;
+    _debugFreeUser = value;
+    notifyListeners();
+  }
+
+  /// Satın alma ekranındaki paketler mağazadan değil, örnek mi. Yalnızca
+  /// geliştirme derlemesinde, mağaza ürünleri henüz yokken doğrudur.
+  bool get showsSamplePlans => debugFreeUser && _plans.isEmpty;
 
   /// Tablo, çetele ve şablon oluştururken sınır uygulanmıyor mu.
   bool get hasUnlimitedPlan => isPremium || legacyUnlimited;
@@ -61,14 +78,37 @@ class SubscriptionProvider extends ChangeNotifier {
 
   /// Mağazanın sunduğu paketler, fiyatlarıyla. Mağazaya ulaşılamadıysa
   /// boştur; uygulama kendi başına fiyat göstermez.
-  List<PlanOffer> get plans => _plans;
+  List<PlanOffer> get plans => showsSamplePlans ? _samplePlans : _plans;
 
   PlanOffer? plan(PlanPeriod period) {
-    for (final plan in _plans) {
+    for (final plan in plans) {
       if (plan.period == period) return plan;
     }
     return null;
   }
+
+  // Satın alma ekranı mağaza kurulmadan görülebilsin diye; yalnızca
+  // geliştirme derlemesinde kullanılır, satın alınamaz.
+  static final List<PlanOffer> _samplePlans = [
+    for (final (period, price, raw, trial) in [
+      (PlanPeriod.yearly, '₺199,99', 199.99, 7),
+      (PlanPeriod.monthly, '₺29,99', 29.99, null),
+    ])
+      PlanOffer(
+        period: period,
+        product: ProductDetails(
+          id: AppConfig.premiumProductIds[period]!,
+          title: '',
+          description: '',
+          price: price,
+          rawPrice: raw,
+          currencyCode: 'TRY',
+        ),
+        price: price,
+        rawPrice: raw,
+        trialDays: trial,
+      ),
+  ];
 
   String? get errorMessage => _errorMessage;
   DateTime? get validUntil => _validUntil;
@@ -133,7 +173,7 @@ class SubscriptionProvider extends ChangeNotifier {
   }
 
   Future<bool> startPurchase(PlanOffer plan) async {
-    if (_isLoading || !_auth.hasAccount) return false;
+    if (_isLoading || !_auth.hasAccount || showsSamplePlans) return false;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();

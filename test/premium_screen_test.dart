@@ -20,6 +20,8 @@ class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
   @override
   bool get requiresSignIn => false;
   @override
+  bool get showsSamplePlans => false;
+  @override
   String? get errorMessage => null;
   @override
   List<PlanOffer> get plans => offers;
@@ -100,10 +102,15 @@ void main() {
     expect(find.text(_en.trialBadge(14)), findsOneWidget);
     expect(find.text(_en.savingBadge(48)), findsOneWidget);
     expect(find.text(_en.startTrial(14)), findsOneWidget);
+    // Ne zaman, ne kadar ücretleneceği düğmeden önce açıkça yazar.
+    expect(find.text(_en.trialTodayText), findsOneWidget);
+    expect(find.text(_en.trialChargeLabel(14)), findsOneWidget);
     expect(
-      find.text(_en.trialTerms(14, '₺249,99', _en.perYear)),
+      find.text(_en.trialChargeText('₺249,99', _en.perYear)),
       findsOneWidget,
     );
+    expect(find.text(_en.trialCancelText('Google Play')), findsOneWidget);
+    expect(find.text(_en.premiumKeepsData), findsOneWidget);
   });
 
   testWidgets('the monthly plan promises no trial it does not have', (
@@ -119,7 +126,12 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('plan-monthly')));
     await tester.pumpAndSettle();
     expect(find.text(_en.subscribeNow), findsOneWidget);
-    expect(find.text(_en.renewalTerms('₺29,99', _en.perMonth)), findsOneWidget);
+    expect(
+      find.text(_en.renewalTerms('₺29,99', _en.perMonth, 'Google Play')),
+      findsOneWidget,
+    );
+    // Denemesi olmayan pakette "bugün ödeme alınmaz" yazmaz.
+    expect(find.text(_en.trialTodayText), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('plan-buy')));
     await tester.pumpAndSettle();

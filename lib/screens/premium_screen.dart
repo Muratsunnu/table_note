@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -39,7 +40,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF172554), Color(0xFF2563EB)],
@@ -53,19 +54,19 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 const Icon(
                   Icons.workspace_premium_rounded,
                   color: Color(0xFFFBBF24),
-                  size: 58,
+                  size: 44,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
                   isPremium ? loc.premiumActive : loc.unlockPremium,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   isPremium
                       ? loc.premiumActiveDescription
@@ -76,41 +77,38 @@ class _PremiumScreenState extends State<PremiumScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          ...features.map(
-            (feature) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: AppTheme.cardDecorationFor(context),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(9),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(10),
+          const SizedBox(height: 16),
+          // Tek kart, sıkı satırlar: fiyat ve düğme aşağıda kaybolmasın.
+          LedgerCard(
+            children: [
+              for (final feature in features)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(feature.$1, size: 20, color: AppTheme.primaryBlue),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          feature.$2,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
-                      child: Icon(feature.$1, color: AppTheme.primaryBlue),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        feature.$2,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      const Icon(
+                        Icons.check_rounded,
+                        size: 20,
+                        color: AppTheme.success,
                       ),
-                    ),
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppTheme.success,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ),
+            ],
           ),
           if (!isPremium) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             ..._purchase(context, subscription),
             TextButton(
               onPressed: subscription.isLoading || subscription.requiresSignIn
@@ -184,8 +182,24 @@ class _PremiumScreenState extends State<PremiumScreen> {
           );
     String unit(PlanOffer plan) =>
         plan.period == PlanPeriod.yearly ? loc.perYear : loc.perMonth;
+    final store = defaultTargetPlatform == TargetPlatform.iOS
+        ? 'App Store'
+        : 'Google Play';
+    final trialDays = selected.trialDays;
+    final small = TextStyle(
+      fontSize: 12.5,
+      height: 1.4,
+      color: colors.onSurfaceVariant,
+    );
 
     return [
+      if (subscription.showsSamplePlans) ...[
+        const LedgerNote(
+          'Geliştirici önizlemesi: fiyatlar örnek, mağazadan gelmiyor; '
+          'satın alma düğmesi bir şey yapmaz.',
+        ),
+        const SizedBox(height: 10),
+      ],
       LedgerCard(
         children: [
           for (final plan in plans)
@@ -208,6 +222,32 @@ class _PremiumScreenState extends State<PremiumScreen> {
         ],
       ),
       const SizedBox(height: 14),
+      // Ne zaman, ne kadar ücretleneceği düğmeden önce satır satır yazar.
+      if (trialDays != null) ...[
+        LedgerCard(
+          key: const ValueKey('plan-terms'),
+          children: [
+            _TermRow(label: loc.trialTodayLabel, text: loc.trialTodayText),
+            _TermRow(
+              label: loc.trialChargeLabel(trialDays),
+              text: loc.trialChargeText(selected.price, unit(selected)),
+            ),
+            _TermRow(
+              label: loc.trialCancelLabel,
+              text: loc.trialCancelText(store),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+      ],
+      if (subscription.requiresSignIn) ...[
+        Text(
+          loc.signInToSubscribeHint,
+          textAlign: TextAlign.center,
+          style: small,
+        ),
+        const SizedBox(height: 8),
+      ],
       FilledButton(
         key: const ValueKey('plan-buy'),
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
@@ -228,30 +268,65 @@ class _PremiumScreenState extends State<PremiumScreen> {
               ? loc.billingPreparing
               : subscription.requiresSignIn
               ? loc.signInToSubscribe
-              : selected.trialDays != null
-              ? loc.startTrial(selected.trialDays!)
+              : trialDays != null
+              ? loc.startTrial(trialDays)
               : loc.subscribeNow,
         ),
       ),
       const SizedBox(height: 10),
-      // Ne zaman, ne kadar ücretleneceği düğmenin hemen altında yazar.
-      Text(
-        selected.trialDays != null
-            ? loc.trialTerms(
-                selected.trialDays!,
-                selected.price,
-                unit(selected),
-              )
-            : loc.renewalTerms(selected.price, unit(selected)),
-        key: const ValueKey('plan-terms'),
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 12.5,
-          height: 1.4,
-          color: colors.onSurfaceVariant,
+      if (trialDays == null) ...[
+        Text(
+          loc.renewalTerms(selected.price, unit(selected), store),
+          key: const ValueKey('plan-terms'),
+          textAlign: TextAlign.center,
+          style: small,
         ),
-      ),
+        const SizedBox(height: 6),
+      ],
+      Text(loc.premiumKeepsData, textAlign: TextAlign.center, style: small),
     ];
+  }
+}
+
+/// Deneme koşullarının bir satırı: solda ne zaman, sağda ne olacağı.
+class _TermRow extends StatelessWidget {
+  const _TermRow({required this.label, required this.text});
+
+  final String label;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 112,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: colors.onSurface,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.35,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

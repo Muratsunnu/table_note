@@ -80,13 +80,23 @@ class AppLocalizations {
       _t('savingBadge').replaceAll('{percent}', '$percent');
   String startTrial(int days) => _t('startTrial').replaceAll('{days}', '$days');
   String get subscribeNow => _t('subscribeNow');
-  String trialTerms(int days, String price, String unit) => _t('trialTerms')
-      .replaceAll('{days}', '$days')
-      .replaceAll('{price}', price)
-      .replaceAll('{unit}', unit);
-  String renewalTerms(String price, String unit) => _t(
-    'renewalTerms',
+  String get trialTodayLabel => _t('trialTodayLabel');
+  String get trialTodayText => _t('trialTodayText');
+  String trialChargeLabel(int days) =>
+      _t('trialChargeLabel').replaceAll('{days}', '$days');
+  String trialChargeText(String price, String unit) => _t(
+    'trialChargeText',
   ).replaceAll('{price}', price).replaceAll('{unit}', unit);
+  String get trialCancelLabel => _t('trialCancelLabel');
+  String trialCancelText(String store) =>
+      _t('trialCancelText').replaceAll('{store}', store);
+  String renewalTerms(String price, String unit, String store) =>
+      _t('renewalTerms')
+          .replaceAll('{price}', price)
+          .replaceAll('{unit}', unit)
+          .replaceAll('{store}', store);
+  String get premiumKeepsData => _t('premiumKeepsData');
+  String get signInToSubscribeHint => _t('signInToSubscribeHint');
   String get priceUnavailable => _t('priceUnavailable');
   String get retry => _t('retry');
   String get billingPreparing => _t('billingPreparing');
@@ -658,15 +668,24 @@ class AppLocalizations {
     'savingBadge': '%{percent} tasarruf',
     'startTrial': '{days} Gün Ücretsiz Dene',
     'subscribeNow': 'Abone ol',
-    'trialTerms':
-        'İlk {days} gün ücretsiz, sonra {price}/{unit}. Kendiliğinden yenilenir; mağaza aboneliklerinden istediğin zaman iptal edebilirsin.',
+    'trialTodayLabel': 'Bugün',
+    'trialTodayText': 'Premium açılır, ödeme alınmaz.',
+    'trialChargeLabel': '{days} gün sonra',
+    'trialChargeText': '{price} çekilir; her {unit} kendiliğinden yenilenir.',
+    'trialCancelLabel': 'İstediğin zaman',
+    'trialCancelText':
+        '{store} aboneliklerinden iptal edebilirsin. Deneme bitmeden en az 24 saat önce iptal edersen ücret alınmaz.',
+    'premiumKeepsData':
+        'Premium biterse cihazındaki tabloların ve çetelelerin silinmez.',
+    'signInToSubscribeHint':
+        'Premium hesabına bağlanır. Satın almadan önce giriş yapman ya da hesap açman gerekiyor.',
     'renewalTerms':
-        '{price}/{unit}. Kendiliğinden yenilenir; mağaza aboneliklerinden istediğin zaman iptal edebilirsin.',
+        'Bugün {price} ödersin; her {unit} kendiliğinden yenilenir. {store} aboneliklerinden istediğin zaman iptal edebilirsin.',
     'priceUnavailable': 'Fiyat şu anda mağazadan alınamıyor.',
     'retry': 'Yeniden dene',
     'billingPreparing': 'Abonelik bağlantısı hazırlanıyor',
     'restorePurchases': 'Satın Almaları Geri Yükle',
-    'signInToSubscribe': 'Üyelik için giriş yap',
+    'signInToSubscribe': 'Giriş yap ve devam et',
     'purchaseCouldNotBeVerified':
         'Satın alma doğrulanamadı. İnternet bağlantını kontrol edip tekrar dene.',
     'account': 'Hesap',
@@ -1221,15 +1240,25 @@ class AppLocalizations {
     'savingBadge': 'Save {percent}%',
     'startTrial': 'Try {days} Days Free',
     'subscribeNow': 'Subscribe',
-    'trialTerms':
-        'Free for {days} days, then {price}/{unit}. Renews automatically; cancel anytime in your store subscriptions.',
+    'trialTodayLabel': 'Today',
+    'trialTodayText': 'Premium unlocks. No payment is taken.',
+    'trialChargeLabel': 'After {days} days',
+    'trialChargeText':
+        'You are charged {price}. It renews automatically every {unit}.',
+    'trialCancelLabel': 'Anytime',
+    'trialCancelText':
+        'Cancel in your {store} subscriptions. If you cancel at least 24 hours before the trial ends, you are not charged.',
+    'premiumKeepsData':
+        'If Premium ends, the tables and tallies on your device are not deleted.',
+    'signInToSubscribeHint':
+        'Premium is tied to your account. Sign in or create an account before purchasing.',
     'renewalTerms':
-        '{price}/{unit}. Renews automatically; cancel anytime in your store subscriptions.',
+        'You pay {price} today. It renews automatically every {unit}; cancel anytime in your {store} subscriptions.',
     'priceUnavailable': 'The price is not available from the store right now.',
     'retry': 'Try again',
     'billingPreparing': 'Subscription connection is being prepared',
     'restorePurchases': 'Restore Purchases',
-    'signInToSubscribe': 'Sign in to subscribe',
+    'signInToSubscribe': 'Sign in to continue',
     'purchaseCouldNotBeVerified':
         'The purchase could not be verified. Check your connection and try again.',
     'account': 'Account',
