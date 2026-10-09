@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 
-/// Tanitim ekranindaki ornek tablo ve cetele.
+/// Tanitim ekranindaki ornek tablo, cetele ve sesle kayit.
 ///
 /// Ekran goruntusu degil, cizim. Sebepleri: karanlik mod kendiliginden
 /// dogru calisir, sutun adlari uygulamanin diliyle gelir, her ekran
@@ -240,6 +240,108 @@ class OnboardingTallyPreview extends StatelessWidget {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sesle kayit ornegi: ustte soylenen cumle, altta doldurdugu alanlar.
+/// Ornek, ilk sayfadaki tablonun bir satiridir; sayi sozle soylenir, alana
+/// rakam olarak duser.
+class OnboardingVoicePreview extends StatelessWidget {
+  const OnboardingVoicePreview({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final palette = AppTheme.widgetPalette(Theme.of(context));
+    final tr = loc.locale.languageCode != 'en';
+
+    final spoken = tr
+        ? '“nereden Konya, kilo on sekiz bin beş yüz”'
+        : '“from Konya, weight eighteen thousand five hundred”';
+    final fields = tr
+        ? [
+            ['nereden', 'Konya'],
+            ['kilo', '18.500'],
+          ]
+        : [
+            ['from', 'Konya'],
+            ['weight', '18,500'],
+          ];
+
+    return Container(
+      decoration: _frame(context, palette),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Color(palette['accent']!),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.mic_rounded,
+                    size: 21,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    spoken,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: Color(palette['text']!),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          for (final field in fields) ...[
+            Container(height: 1, color: Color(palette['line']!)),
+            SizedBox(
+              height: _rowHeight,
+              child: Row(
+                children: [
+                  Container(
+                    width: 92,
+                    color: Color(palette['header']!),
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: 12),
+                    child: _cell(
+                      field[0],
+                      color: Color(palette['onHeader']!),
+                      align: TextAlign.left,
+                      weight: FontWeight.w700,
+                      size: 11,
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _cell(
+                        field[1],
+                        color: Color(palette['text']!),
+                        align: TextAlign.left,
+                        weight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

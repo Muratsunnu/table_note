@@ -14,6 +14,9 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  // Tablo, çetele, sesle kayıt, Premium.
+  static const _lastPage = 3;
+
   final PageController _pageController = PageController();
   int _currentPage = 0;
   bool _isCompleting = false;
@@ -31,7 +34,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next() {
-    if (_currentPage == 2) {
+    if (_currentPage == _lastPage) {
       _finish();
       return;
     }
@@ -60,6 +63,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         description: loc.onboardingOfflineDescription,
       ),
       _OnboardingPage(
+        icon: Icons.mic_rounded,
+        preview: const OnboardingVoicePreview(),
+        color: AppTheme.primaryBlue,
+        title: loc.onboardingVoiceTitle,
+        description: loc.onboardingVoiceDescription,
+        // Sesle kayıt Premium'a özel; sonradan sürpriz olmasın.
+        badge: loc.premium,
+      ),
+      _OnboardingPage(
         icon: Icons.workspace_premium_rounded,
         color: const Color(0xFFF59E0B),
         title: loc.onboardingPremiumTitle,
@@ -77,10 +89,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Align(
                 alignment: Alignment.centerRight,
                 child: AnimatedOpacity(
-                  opacity: _currentPage == 2 ? 0 : 1,
+                  opacity: _currentPage == _lastPage ? 0 : 1,
                   duration: const Duration(milliseconds: 180),
                   child: IgnorePointer(
-                    ignoring: _currentPage == 2,
+                    ignoring: _currentPage == _lastPage,
                     child: TextButton(
                       onPressed: _isCompleting ? null : _finish,
                       child: Text(loc.skip),
@@ -126,12 +138,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Icon(
-                          _currentPage == 2
+                          _currentPage == _lastPage
                               ? Icons.check_rounded
                               : Icons.arrow_forward_rounded,
                         ),
                   label: Text(
-                    _currentPage == 2 ? loc.startUsing : loc.continueLabel,
+                    _currentPage == _lastPage
+                        ? loc.startUsing
+                        : loc.continueLabel,
                   ),
                 ),
               ),
@@ -153,12 +167,16 @@ class _OnboardingPage extends StatelessWidget {
   /// cetele, uygulamanin ne yaptigini bir cumleden daha hizli anlatiyor.
   final Widget? preview;
 
+  /// Başlığın üstündeki küçük etiket: özellik Premium'a özelse bunu söyler.
+  final String? badge;
+
   const _OnboardingPage({
     required this.icon,
     required this.color,
     required this.title,
     required this.description,
     this.preview,
+    this.badge,
   });
 
   @override
@@ -188,6 +206,44 @@ class _OnboardingPage extends StatelessWidget {
                     child: Icon(icon, size: 72, color: color),
                   ),
                 const SizedBox(height: 36),
+                if (badge != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.tintedSurface(context, AppTheme.warning),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.workspace_premium_rounded,
+                          size: 15,
+                          color: AppTheme.readableAccent(
+                            context,
+                            AppTheme.warning,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          badge!,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.readableAccent(
+                              context,
+                              AppTheme.warning,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Text(
                   title,
                   textAlign: TextAlign.center,

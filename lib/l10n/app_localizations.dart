@@ -58,6 +58,8 @@ class AppLocalizations {
       _t('onboardingOrganizeDescription');
   String get onboardingOfflineTitle => _t('onboardingOfflineTitle');
   String get onboardingOfflineDescription => _t('onboardingOfflineDescription');
+  String get onboardingVoiceTitle => _t('onboardingVoiceTitle');
+  String get onboardingVoiceDescription => _t('onboardingVoiceDescription');
   String get onboardingPremiumTitle => _t('onboardingPremiumTitle');
   String get onboardingPremiumDescription => _t('onboardingPremiumDescription');
   String get premium => _t('premium');
@@ -645,6 +647,9 @@ class AppLocalizations {
     'onboardingOfflineTitle': 'Çeteleni Gün Gün Tut',
     'onboardingOfflineDescription':
         'Kim geldi kim gelmedi, internetsiz bile tek dokunuşla işaretle.',
+    'onboardingVoiceTitle': 'Konuşarak Kayıt Ekle',
+    'onboardingVoiceDescription':
+        'Sütunun adını ve değerini söyle, alanlar kendiliğinden dolsun.',
     'onboardingPremiumTitle': 'Sınırları Ortadan Kaldır',
     'onboardingPremiumDescription':
         'Sesle kayıt gir, tabloları ortak kullan ve verilerini buluta yedekle.',
@@ -1217,6 +1222,9 @@ class AppLocalizations {
     'onboardingOfflineTitle': 'Track Day by Day',
     'onboardingOfflineDescription':
         'Mark who showed up with one tap, even with no connection.',
+    'onboardingVoiceTitle': 'Add Records by Voice',
+    'onboardingVoiceDescription':
+        'Say the column and its value, and the fields fill themselves.',
     'onboardingPremiumTitle': 'Unlock Premium Features',
     'onboardingPremiumDescription':
         'Add records by voice, share tables and backup to the cloud.',
