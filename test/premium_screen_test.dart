@@ -4,8 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/l10n/app_localizations.dart';
+import 'package:table_note/l10n/auth_localizations.dart';
 import 'package:table_note/models/plan_offer.dart';
+import 'package:table_note/providers/auth_provider.dart';
 import 'package:table_note/providers/subscription_provider.dart';
+import 'package:table_note/screens/account_screen.dart';
 import 'package:table_note/screens/premium_screen.dart';
 
 class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
@@ -13,12 +16,25 @@ class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
   final bought = <PlanPeriod>[];
   int reloads = 0;
 
+  bool premium = false;
+  bool needsSignIn = false;
+  // Girilen hesabın aboneliği zaten varsa girişten sonra Premium çıkar.
+  bool premiumAccount = false;
+  int refreshes = 0;
+
   @override
-  bool get isPremium => false;
+  bool get isPremium => premium;
   @override
   bool get isLoading => false;
   @override
-  bool get requiresSignIn => false;
+  bool get requiresSignIn => needsSignIn;
+  @override
+  Future<void> refreshEntitlement({bool notify = true}) async {
+    refreshes++;
+    premium = premiumAccount;
+    notifyListeners();
+  }
+
   @override
   bool get showsSamplePlans => false;
   @override
@@ -39,6 +55,23 @@ class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Giriş ekranını gerçekten geçebilmek için: her giriş başarılıdır.
+class _FakeAuth extends AuthProvider {
+  bool signedIn = false;
+  @override
+  bool get isAvailable => true;
+  @override
+  bool get isSignedIn => signedIn;
+  @override
+  bool get isAnonymous => false;
+  @override
+  Future<bool> signInWithEmail(String email, String password) async {
+    signedIn = true;
+    notifyListeners();
+    return true;
+  }
 }
 
 PlanOffer _offer(PlanPeriod period, String price, double raw, {int? trial}) =>
@@ -62,14 +95,20 @@ final _en = AppLocalizations(const Locale('en'));
 void main() {
   late _FakeSubscription subscription;
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(WidgetTester tester, {_FakeAuth? auth}) async {
     tester.view.physicalSize = const Size(400, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     addTearDown(subscription.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<SubscriptionProvider>.value(
-        value: subscription,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SubscriptionProvider>.value(
+            value: subscription,
+          ),
+          if (auth != null)
+            ChangeNotifierProvider<AuthProvider>.value(value: auth),
+        ],
         child: MaterialApp(
           locale: const Locale('en'),
           supportedLocales: const [Locale('tr'), Locale('en')],
@@ -136,6 +175,65 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('plan-buy')));
     await tester.pumpAndSettle();
     expect(subscription.bought, [PlanPeriod.monthly]);
+  });
+
+  // Hesabı olmayan kişi: giriş, ardından kaldığı yerden satın alma.
+  Future<_FakeAuth> buyWithoutAccount(WidgetTester tester) async {
+    final auth = _FakeAuth();
+    addTearDown(auth.dispose);
+    // Gerçekte bu bağı ProxyProvider kurar.
+    auth.addListener(() {
+      subscription
+        ..needsSignIn = !auth.signedIn
+        ..notifyListeners();
+    });
+    await open(tester, auth: auth);
+
+    expect(find.text(_en.signInToSubscribeHint), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('plan-buy')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountScreen), findsOneWidget);
+    // Henüz hiçbir şey satın alınmadı.
+    expect(subscription.bought, isEmpty);
+
+    await tester.enterText(find.byKey(const ValueKey('email')), 'a@b.co');
+    await tester.enterText(find.byKey(const ValueKey('password')), 'secret1');
+    await tester.tap(find.widgetWithText(FilledButton, _en.authText('login')));
+    await tester.pumpAndSettle();
+    return auth;
+  }
+
+  testWidgets('after signing in, the purchase continues by itself', (
+    tester,
+  ) async {
+    subscription = _FakeSubscription()
+      ..needsSignIn = true
+      ..offers = [
+        _offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7),
+        _offer(PlanPeriod.monthly, '₺29,99', 29.99),
+      ];
+
+    await buyWithoutAccount(tester);
+
+    // Hesap ekranı kapandı; kişi düğmeye bir kez daha basmadan mağazaya gitti.
+    expect(find.byType(AccountScreen), findsNothing);
+    expect(subscription.refreshes, 1);
+    expect(subscription.bought, [PlanPeriod.yearly]);
+  });
+
+  testWidgets('an account that already has Premium is not charged again', (
+    tester,
+  ) async {
+    subscription = _FakeSubscription()
+      ..needsSignIn = true
+      ..premiumAccount = true
+      ..offers = [_offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7)];
+
+    await buyWithoutAccount(tester);
+
+    expect(find.byType(AccountScreen), findsNothing);
+    expect(subscription.bought, isEmpty);
+    expect(find.text(_en.premiumActive), findsOneWidget);
   });
 
   testWidgets('without the store no price is invented', (tester) async {

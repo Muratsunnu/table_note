@@ -26,7 +26,12 @@ enum _AccountForm { login, register, forgot, verify, recover, password }
 /// aralarda ince çizgiler. Uygulamanın işi tablo; hesabın girildiği yer de
 /// öyle görünür.
 class AccountScreen extends StatefulWidget {
-  const AccountScreen({super.key});
+  const AccountScreen({super.key, this.closeOnSignIn = false});
+
+  /// Bir iş için (satın alma, paylaşım, yedekleme) açıldıysa: giriş
+  /// tamamlanınca ekran kendiliğinden kapanır ve `true` döndürür; kişi yarım
+  /// bıraktığı işe döner. Ayarlar'dan açıldığında kapanmaz.
+  final bool closeOnSignIn;
 
   @override
   State<AccountScreen> createState() => _AccountScreenState();
@@ -46,16 +51,40 @@ class _AccountScreenState extends State<AccountScreen> {
   _AccountForm _mode = _AccountForm.login;
   Timer? _cooldownTimer;
   bool _wasRecovering = false;
+  // Ekran açıldığında hesap var mıydı; yoktuysa giriş "tamamlandı" sayılır.
+  bool? _hadAccount;
+  bool _closing = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final recovering = context.watch<AuthProvider>().isRecovering;
+    final auth = context.watch<AuthProvider>();
+    final recovering = auth.isRecovering;
     if (recovering && !_wasRecovering) {
       _clearPasswords();
       _formKey = GlobalKey<FormState>();
     }
     _wasRecovering = recovering;
+
+    _hadAccount ??= auth.hasAccount;
+    // Şifre sıfırlamada yeni şifre kaydedilene, süren işlem bitene kadar
+    // beklenir; ekran yarım bir adımda kapanmaz.
+    if (widget.closeOnSignIn &&
+        !_hadAccount! &&
+        !_closing &&
+        auth.hasAccount &&
+        !recovering &&
+        !auth.isLoading) {
+      _closing = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (ModalRoute.of(context)?.isCurrent ?? false) {
+          Navigator.of(context).pop(true);
+        } else {
+          _closing = false;
+        }
+      });
+    }
   }
 
   @override

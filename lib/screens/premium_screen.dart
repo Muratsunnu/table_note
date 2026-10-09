@@ -20,6 +20,35 @@ class _PremiumScreenState extends State<PremiumScreen> {
   /// Seçili paket. Yıllık öndedir: hem ucuzu hem de denemesi olanı.
   PlanPeriod _selected = PlanPeriod.yearly;
 
+  // Girişten sonra hesabın aboneliğine bakılırken düğme bekler.
+  bool _continuing = false;
+
+  /// Hesabı olmayan kişi önce giriş yapar; giriş bitince kaldığı yerden,
+  /// mağazanın satın alma penceresinden devam eder. Geri dönüp düğmeye bir
+  /// kez daha basması gerekmez.
+  Future<void> _buy(SubscriptionProvider subscription) async {
+    if (subscription.requiresSignIn) {
+      final signedIn = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AccountScreen(closeOnSignIn: true),
+        ),
+      );
+      if (signedIn != true || !mounted) return;
+      // Girilen hesabın aboneliği zaten olabilir; öyleyse yeniden satın
+      // aldırılmaz.
+      setState(() => _continuing = true);
+      try {
+        await subscription.refreshEntitlement();
+      } finally {
+        if (mounted) setState(() => _continuing = false);
+      }
+      if (!mounted || subscription.isPremium) return;
+    }
+    final plan = subscription.plan(_selected) ?? subscription.plans.firstOrNull;
+    if (plan != null) await subscription.startPurchase(plan);
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
@@ -251,20 +280,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
       FilledButton(
         key: const ValueKey('plan-buy'),
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-        onPressed: subscription.isLoading
+        onPressed: subscription.isLoading || _continuing
             ? null
-            : () async {
-                if (subscription.requiresSignIn) {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AccountScreen()),
-                  );
-                  return;
-                }
-                await subscription.startPurchase(selected);
-              },
+            : () => _buy(subscription),
         child: Text(
-          subscription.isLoading
+          subscription.isLoading || _continuing
               ? loc.billingPreparing
               : subscription.requiresSignIn
               ? loc.signInToSubscribe

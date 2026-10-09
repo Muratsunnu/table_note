@@ -367,7 +367,9 @@ class _ShareTableSheetState extends State<ShareTableSheet> {
         // devam eder.
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const AccountScreen()),
+          MaterialPageRoute(
+            builder: (_) => const AccountScreen(closeOnSignIn: true),
+          ),
         ),
       );
     } else if (!owner) {

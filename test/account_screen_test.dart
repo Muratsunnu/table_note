@@ -442,6 +442,142 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  // Hesap ekranını bir iş için açan düğme; dönen sonucu saklar.
+  Widget opener(void Function(bool?) onResult, {bool closeOnSignIn = true}) =>
+      Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () async => onResult(
+                await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AccountScreen(closeOnSignIn: closeOnSignIn),
+                  ),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+
+  Future<void> signIn(WidgetTester tester, AppLocalizations en) async {
+    await tester.enterText(
+      find.byKey(const ValueKey('email')),
+      'test@example.com',
+    );
+    await tester.enterText(find.byKey(const ValueKey('password')), 'secret1');
+    await tester.tap(find.widgetWithText(FilledButton, en.authText('login')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('opened for a task, it closes itself once signed in', (
+    tester,
+  ) async {
+    // Satın alma ya da paylaşım için gelen kişi girişten sonra profil
+    // sayfasında bırakılmaz; yarım kalan işine döner.
+    final auth = _FakeAuth()..confirmed = true;
+    addTearDown(auth.dispose);
+    final en = AppLocalizations(const Locale('en'));
+    final results = <bool?>[];
+    await tester.pumpWidget(_app(auth, home: opener(results.add)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await signIn(tester, en);
+
+    expect(find.byType(AccountScreen), findsNothing);
+    expect(results, [true]);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a failed sign-in keeps it open', (tester) async {
+    final auth = _FakeAuth();
+    addTearDown(auth.dispose);
+    final en = AppLocalizations(const Locale('en'));
+    final results = <bool?>[];
+    await tester.pumpWidget(_app(auth, home: opener(results.add)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await signIn(tester, en);
+
+    expect(find.byType(AccountScreen), findsOneWidget);
+    expect(results, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('opened from settings, it stays on the profile', (tester) async {
+    final auth = _FakeAuth()..confirmed = true;
+    addTearDown(auth.dispose);
+    final en = AppLocalizations(const Locale('en'));
+    final results = <bool?>[];
+    await tester.pumpWidget(
+      _app(auth, home: opener(results.add, closeOnSignIn: false)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await signIn(tester, en);
+
+    expect(find.byKey(const ValueKey('action-signOut')), findsOneWidget);
+    expect(results, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('during a password reset it waits for the new password', (
+    tester,
+  ) async {
+    final auth = _FakeAuth();
+    addTearDown(auth.dispose);
+    final en = AppLocalizations(const Locale('en'));
+    final results = <bool?>[];
+    await tester.pumpWidget(_app(auth, home: opener(results.add)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.authText('forgot')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('email')),
+      'test@example.com',
+    );
+    await tester.tap(
+      find.widgetWithText(FilledButton, en.authText('sendReset')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('email-code')),
+      _FakeAuth.validCode,
+    );
+    await tester.pumpAndSettle();
+
+    // Kod doğrulandı, oturum açıldı; ama yeni şifre henüz kaydedilmedi.
+    expect(find.byKey(const ValueKey('newPassword')), findsOneWidget);
+    expect(results, isEmpty);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('newPassword')),
+      'secret2',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('confirmPassword')),
+      'secret2',
+    );
+    await tester.tap(
+      find.widgetWithText(FilledButton, en.authText('savePassword')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AccountScreen), findsNothing);
+    expect(results, [true]);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('guest session gets the sign-in form, not a profile', (
     tester,
   ) async {
