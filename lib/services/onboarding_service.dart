@@ -12,7 +12,6 @@ class OnboardingService {
     'last_opened_table_index',
     'last_opened_tally_index',
     'last_active_tab',
-    'app_locale',
   };
 
   static Future<bool> shouldShow() async {

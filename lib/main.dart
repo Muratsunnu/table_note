@@ -28,10 +28,13 @@ Future<void> main() async {
   final legacyUnlimited = await StorageService.resolveLegacyUnlimited();
   // Açılış ekranı kapanınca ilk kare doğrudan gerçek ekran olsun.
   final showOnboarding = await OnboardingService.shouldShow();
+  // Yeni kullanıcı telefonunun diliyle, eski kullanıcı alıştığı dille açar.
+  final localeProvider = await LocaleProvider.load(newUser: showOnboarding);
 
   runApp(
     TableNoteRoot(
       themeProvider: themeProvider,
+      localeProvider: localeProvider,
       legacyUnlimited: legacyUnlimited,
       showOnboarding: showOnboarding,
     ),
@@ -40,6 +43,9 @@ Future<void> main() async {
 
 class TableNoteRoot extends StatelessWidget {
   final ThemeProvider themeProvider;
+
+  /// Açılışta önceden belirlenmiş dil; verilmezse kayıtlı dil sonradan okunur.
+  final LocaleProvider? localeProvider;
 
   /// Ücretsiz sınırlar gelmeden önceki sürümden gelen kullanıcı.
   final bool legacyUnlimited;
@@ -50,6 +56,7 @@ class TableNoteRoot extends StatelessWidget {
   const TableNoteRoot({
     super.key,
     required this.themeProvider,
+    this.localeProvider,
     this.legacyUnlimited = false,
     this.showOnboarding,
   });
@@ -62,7 +69,10 @@ class TableNoteRoot extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => TemplateProvider()),
         ChangeNotifierProvider(create: (context) => TallyProvider()),
         ChangeNotifierProvider(create: (context) => TallyTemplateProvider()),
-        ChangeNotifierProvider(create: (context) => LocaleProvider()),
+        if (localeProvider != null)
+          ChangeNotifierProvider.value(value: localeProvider!)
+        else
+          ChangeNotifierProvider(create: (context) => LocaleProvider()),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(
           lazy: false,
