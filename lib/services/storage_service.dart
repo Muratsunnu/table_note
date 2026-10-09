@@ -30,6 +30,7 @@ class StorageService {
   static const String _sharedVersionsKey = 'shared_known_versions_v1';
   static const String _legacyPlanKey = 'plan_legacy_unlimited_v1';
   static const String _legacyBackupSuffix = '_legacy_v1_backup';
+  static const String _unreadableBackupSuffix = '_unreadable_backup';
 
   /// Kayitli olabilecek roller. Tanimadigimiz bir deger okunursa atilir;
   /// 'viewer' buraya eklenmeseydi goruntuleyen kisinin tablosu uygulama
@@ -266,6 +267,20 @@ class StorageService {
     }
   }
 
+  /// Okunamayan kaydın ham hâlini ayrı bir anahtarda saklar. Liste boş ya da
+  /// eksik açıldığında yapılan ilk kayıt asıl anahtarın üstüne yazar; bu
+  /// kopya olmadan o veri geri getirilemezdi. İlk kopya korunur.
+  static Future<void> _preserveUnreadablePayload(
+    SharedPreferences prefs,
+    String key,
+    String raw,
+  ) async {
+    final backupKey = '$key$_unreadableBackupSuffix';
+    if (!prefs.containsKey(backupKey)) {
+      await prefs.setString(backupKey, raw);
+    }
+  }
+
   static _DecodedCollection<T> _decodeCollection<T>(
     String raw,
     T Function(Map<String, dynamic>) decoder,
@@ -294,13 +309,35 @@ class StorageService {
       throw const FormatException('Geçersiz kayıt biçimi');
     }
 
+    // Tek bir bozuk öğe ötekilerin de kaybolmasına yol açmasın.
+    final items = <T>[];
+    var skipped = 0;
+    for (final item in data) {
+      try {
+        items.add(decoder(Map<String, dynamic>.from(item as Map)));
+      } catch (error) {
+        skipped++;
+        debugPrint('Okunamayan kayıt atlandı: $error');
+      }
+    }
     return _DecodedCollection(
-      data
-          .map((item) => decoder(Map<String, dynamic>.from(item as Map)))
-          .toList(),
+      items,
       isLegacy: isLegacy,
       isOutdated: isOutdated,
+      skipped: skipped,
     );
+  }
+
+  /// Bir liste hiç ya da eksik okunduğunda ham hâlini korur; kendi hatası
+  /// yüklemeyi durdurmaz.
+  static Future<void> _keepUnreadable(String key, String? raw) async {
+    if (raw == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _preserveUnreadablePayload(prefs, key, raw);
+    } catch (error) {
+      debugPrint('Okunamayan kayıt saklanamadı: $error');
+    }
   }
 
   static Future<bool> _saveCollection<T>(
@@ -319,13 +356,15 @@ class StorageService {
 
   // Tabloları yükle
   static Future<List<TableModel>> loadTables() async {
+    String? tablesJson;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final tablesJson = prefs.getString(_tablesKey);
+      tablesJson = prefs.getString(_tablesKey);
 
       if (tablesJson == null) return [];
 
       final decoded = _decodeCollection(tablesJson, TableModel.fromJson);
+      if (decoded.skipped > 0) await _keepUnreadable(_tablesKey, tablesJson);
       if (decoded.isLegacy || decoded.isOutdated) {
         // Row identities were just minted for this payload; write them back
         // now, or they would be different again on the next launch.
@@ -335,6 +374,7 @@ class StorageService {
       return decoded.items;
     } catch (e) {
       debugPrint('Tablolar yüklenirken hata oluştu: $e');
+      await _keepUnreadable(_tablesKey, tablesJson);
       return [];
     }
   }
@@ -355,13 +395,17 @@ class StorageService {
 
   // Template'ları yükle
   static Future<List<TemplateModel>> loadTemplates() async {
+    String? templatesJson;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final templatesJson = prefs.getString(_templatesKey);
+      templatesJson = prefs.getString(_templatesKey);
 
       if (templatesJson == null) return [];
 
       final decoded = _decodeCollection(templatesJson, TemplateModel.fromJson);
+      if (decoded.skipped > 0) {
+        await _keepUnreadable(_templatesKey, templatesJson);
+      }
       if (decoded.isLegacy) {
         await _preserveLegacyPayload(prefs, _templatesKey, templatesJson);
         await saveTemplates(decoded.items);
@@ -369,6 +413,7 @@ class StorageService {
       return decoded.items;
     } catch (e) {
       debugPrint('Template\'ler yüklenirken hata oluştu: $e');
+      await _keepUnreadable(_templatesKey, templatesJson);
       return [];
     }
   }
@@ -512,12 +557,14 @@ class StorageService {
   // ============== ÇETELE TABLOLARI ==============
 
   static Future<List<TallyTableModel>> loadTallyTables() async {
+    String? data;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final data = prefs.getString(_tallyTablesKey);
+      data = prefs.getString(_tallyTablesKey);
       if (data == null) return [];
 
       final decoded = _decodeCollection(data, TallyTableModel.fromJson);
+      if (decoded.skipped > 0) await _keepUnreadable(_tallyTablesKey, data);
       if (decoded.isLegacy) {
         await _preserveLegacyPayload(prefs, _tallyTablesKey, data);
         await saveTallyTables(decoded.items);
@@ -525,6 +572,7 @@ class StorageService {
       return decoded.items;
     } catch (e) {
       debugPrint('Çetele tabloları yüklenirken hata: $e');
+      await _keepUnreadable(_tallyTablesKey, data);
       return [];
     }
   }
@@ -575,12 +623,16 @@ class StorageService {
   // ============== ÇETELE ŞABLONLARI ==============
 
   static Future<List<TallyTemplateModel>> loadTallyTemplates() async {
+    String? data;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final data = prefs.getString(_tallyTemplatesKey);
+      data = prefs.getString(_tallyTemplatesKey);
       if (data == null) return [];
 
       final decoded = _decodeCollection(data, TallyTemplateModel.fromJson);
+      if (decoded.skipped > 0) {
+        await _keepUnreadable(_tallyTemplatesKey, data);
+      }
       if (decoded.isLegacy) {
         await _preserveLegacyPayload(prefs, _tallyTemplatesKey, data);
         await saveTallyTemplates(decoded.items);
@@ -588,6 +640,7 @@ class StorageService {
       return decoded.items;
     } catch (e) {
       debugPrint('Çetele şablonları yüklenirken hata: $e');
+      await _keepUnreadable(_tallyTemplatesKey, data);
       return [];
     }
   }
@@ -636,9 +689,13 @@ class _DecodedCollection<T> {
   /// filled in for it has to be written back before it is used again.
   final bool isOutdated;
 
+  /// Çözülemediği için atlanan öğe sayısı.
+  final int skipped;
+
   const _DecodedCollection(
     this.items, {
     required this.isLegacy,
     this.isOutdated = false,
+    this.skipped = 0,
   });
 }

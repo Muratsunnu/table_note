@@ -949,9 +949,10 @@ class _TallyScreenState extends State<TallyScreen> {
             child: Text(loc.cancel),
           ),
           FilledButton(
-            onPressed: () async {
-              await provider.deleteTable(provider.currentIndex);
-              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              provider.deleteTable(provider.currentIndex);
             },
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
             child: Text(loc.delete),
@@ -1114,9 +1115,10 @@ class _TallyScreenState extends State<TallyScreen> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            onPressed: () async {
-              await provider.removeItem(itemIndex);
-              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              provider.removeItem(itemIndex);
             },
             child: Text(loc.delete),
           ),

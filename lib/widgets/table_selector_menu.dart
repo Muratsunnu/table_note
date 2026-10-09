@@ -119,9 +119,10 @@ class TableSelectorMenu extends StatelessWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            onPressed: () async {
-              await provider.deleteTable(tableIndex);
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
               Navigator.pop(context);
+              provider.deleteTable(tableIndex);
             },
             child: Text(
               AppLocalizations.of(context).delete,

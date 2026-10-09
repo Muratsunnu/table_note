@@ -302,7 +302,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                       Icons.more_vert_rounded,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    tooltip: 'İşlemler',
+                    tooltip: AppLocalizations.of(context).moreActions,
                     onSelected: (value) {
                       switch (value) {
                         case 'create':
@@ -666,9 +666,10 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            onPressed: () async {
-              await provider.deleteTemplate(index);
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
               Navigator.pop(context);
+              provider.deleteTemplate(index);
             },
             child: Text(
               AppLocalizations.of(context).delete,

@@ -671,10 +671,11 @@ class TableDrawer extends StatelessWidget {
             child: Text(AppLocalizations.of(context).cancel),
           ),
           FilledButton(
-            onPressed: () async {
-              await provider.deleteTable(index);
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
               Navigator.pop(context);
               Navigator.pop(context);
+              provider.deleteTable(index);
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.error,
@@ -720,10 +721,11 @@ class TableDrawer extends StatelessWidget {
             child: Text(loc.cancel),
           ),
           FilledButton(
-            onPressed: () async {
-              await provider.deleteTable(index);
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
               Navigator.pop(context);
               Navigator.pop(context);
+              provider.deleteTable(index);
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.error,

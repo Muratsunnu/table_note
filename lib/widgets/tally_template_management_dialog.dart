@@ -121,9 +121,10 @@ class TallyTemplateManagementDialog extends StatelessWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-            onPressed: () async {
-              await provider.deleteTemplate(index);
-              if (ctx.mounted) Navigator.pop(ctx);
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
+              Navigator.pop(ctx);
+              provider.deleteTemplate(index);
             },
             child: Text(
               loc.delete,
