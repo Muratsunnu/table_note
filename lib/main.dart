@@ -1,3 +1,4 @@
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -17,6 +18,7 @@ import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
 import 'widgets/auth_callback_router.dart';
+import 'widgets/launch_intro.dart';
 import 'services/home_widget_service.dart';
 import 'services/shared_sync_service.dart';
 
@@ -37,8 +39,20 @@ Future<void> main() async {
       localeProvider: localeProvider,
       legacyUnlimited: legacyUnlimited,
       showOnboarding: showOnboarding,
+      // Ana ekran widget'ından gelen kişi hemen kayıt eklemek ister;
+      // açılış animasyonu onu bekletmez.
+      playIntro: !await _launchedFromWidget(),
     ),
   );
+}
+
+Future<bool> _launchedFromWidget() async {
+  try {
+    final link = await AppLinks().getInitialLink();
+    return link?.host == 'widget';
+  } catch (_) {
+    return false;
+  }
 }
 
 class TableNoteRoot extends StatelessWidget {
@@ -53,12 +67,16 @@ class TableNoteRoot extends StatelessWidget {
   /// Açılışta önceden çözülmüşse başlangıç ekranı beklemeden gösterilir.
   final bool? showOnboarding;
 
+  /// Açılış animasyonu oynatılsın mı. Yalnızca gerçek açılışta açıktır.
+  final bool playIntro;
+
   const TableNoteRoot({
     super.key,
     required this.themeProvider,
     this.localeProvider,
     this.legacyUnlimited = false,
     this.showOnboarding,
+    this.playIntro = false,
   });
 
   @override
@@ -114,15 +132,16 @@ class TableNoteRoot extends StatelessWidget {
           },
         ),
       ],
-      child: TableNoteApp(showOnboarding: showOnboarding),
+      child: TableNoteApp(showOnboarding: showOnboarding, playIntro: playIntro),
     );
   }
 }
 
 class TableNoteApp extends StatefulWidget {
   final bool? showOnboarding;
+  final bool playIntro;
 
-  const TableNoteApp({super.key, this.showOnboarding});
+  const TableNoteApp({super.key, this.showOnboarding, this.playIntro = false});
 
   @override
   State<TableNoteApp> createState() => _TableNoteAppState();
@@ -157,27 +176,30 @@ class _TableNoteAppState extends State<TableNoteApp> {
           builder: (context, child) {
             final theme = Theme.of(context);
             final isDark = theme.brightness == Brightness.dark;
-            return ColoredBox(
-              color: theme.colorScheme.surface,
-              child: AnnotatedRegion<SystemUiOverlayStyle>(
-                value: SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: isDark
-                      ? Brightness.light
-                      : Brightness.dark,
-                  statusBarBrightness: isDark
-                      ? Brightness.dark
-                      : Brightness.light,
-                  systemNavigationBarColor: theme.colorScheme.surface,
-                  systemNavigationBarDividerColor: Colors.transparent,
-                  systemNavigationBarIconBrightness: isDark
-                      ? Brightness.light
-                      : Brightness.dark,
-                  systemNavigationBarContrastEnforced: false,
-                ),
-                child: AuthCallbackRouter(
-                  navigatorKey: _navigatorKey,
-                  child: child ?? const SizedBox.expand(),
+            return LaunchIntro(
+              enabled: widget.playIntro,
+              child: ColoredBox(
+                color: theme.colorScheme.surface,
+                child: AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: SystemUiOverlayStyle(
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: isDark
+                        ? Brightness.light
+                        : Brightness.dark,
+                    statusBarBrightness: isDark
+                        ? Brightness.dark
+                        : Brightness.light,
+                    systemNavigationBarColor: theme.colorScheme.surface,
+                    systemNavigationBarDividerColor: Colors.transparent,
+                    systemNavigationBarIconBrightness: isDark
+                        ? Brightness.light
+                        : Brightness.dark,
+                    systemNavigationBarContrastEnforced: false,
+                  ),
+                  child: AuthCallbackRouter(
+                    navigatorKey: _navigatorKey,
+                    child: child ?? const SizedBox.expand(),
+                  ),
                 ),
               ),
             );
