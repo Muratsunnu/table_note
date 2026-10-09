@@ -138,6 +138,23 @@ class AppLocalizations {
   String get connectAccount => _t('connectAccount');
   String get connectAccountMessage => _t('connectAccountMessage');
   String get backupNow => _t('backupNow');
+  String get backupLater => _t('backupLater');
+  String get whatIsBackup => _t('whatIsBackup');
+  String get backupHelpWhat => _t('backupHelpWhat');
+  String get backupHelpRestore => _t('backupHelpRestore');
+  String get backupHelpManual => _t('backupHelpManual');
+  String get backupHelpShared => _t('backupHelpShared');
+  String get backupReminderNever => _t('backupReminderNever');
+  String backupReminderDays(int days) =>
+      _t('backupReminderDays').replaceAll('{days}', '$days');
+
+  /// "Son yedekleme: 3 gün önce". [days] null ise hiç yedek alınmamıştır.
+  String lastBackupLabel(int? days) => switch (days) {
+    null => _t('lastBackupNever'),
+    0 => _t('lastBackupToday'),
+    1 => _t('lastBackupYesterday'),
+    _ => _t('lastBackupDaysAgo').replaceAll('{days}', '$days'),
+  };
   String get addShareCodeTooltip => _t('addShareCodeTooltip');
   String get noCloudBackup => _t('noCloudBackup');
   String get myBackup => _t('myBackup');
@@ -727,6 +744,24 @@ class AppLocalizations {
     'connectAccountMessage':
         'Yedeklerini güvenle saklamak için giriş yapmalısın.',
     'backupNow': 'Şimdi Yedekle',
+    'backupLater': 'Sonra',
+    'whatIsBackup': 'Yedekleme nedir?',
+    'backupHelpWhat':
+        'Yedekleme, tablolarının ve çetelelerinin bir kopyasını hesabında, internette saklar.',
+    'backupHelpRestore':
+        'Telefonun kaybolur, bozulur ya da değişirse aynı hesapla giriş yapıp hepsini geri yüklersin.',
+    'backupHelpManual':
+        'Yedekleme kendiliğinden olmaz. “Şimdi Yedekle”ye bastığın andaki hâli saklanır; sonradan yaptığın değişiklikler için yeniden yedekle.',
+    'backupHelpShared':
+        'Başkalarıyla paylaştığın tablolar zaten sürekli eşitlenir; onları ayrıca yedeklemen gerekmez.',
+    'backupReminderNever':
+        'Tabloların henüz yedeklenmedi. Şimdi yedeklemek ister misin?',
+    'backupReminderDays':
+        '{days} gündür yedekleme yapmadın. Şimdi yedeklemek ister misin?',
+    'lastBackupNever': 'Henüz yedekleme yapılmadı',
+    'lastBackupToday': 'Son yedekleme: bugün',
+    'lastBackupYesterday': 'Son yedekleme: dün',
+    'lastBackupDaysAgo': 'Son yedekleme: {days} gün önce',
     'addShareCodeTooltip': 'Paylaşım kodu ekle',
     'noCloudBackup': 'Henüz bulut yedeği yok.',
     'myBackup': 'Benim yedeğim',
@@ -1302,6 +1337,23 @@ class AppLocalizations {
     'connectAccount': 'Connect your account',
     'connectAccountMessage': 'Sign in to keep your backups secure.',
     'backupNow': 'Back Up Now',
+    'backupLater': 'Later',
+    'whatIsBackup': 'What is a backup?',
+    'backupHelpWhat':
+        'A backup keeps a copy of your tables and tallies online, in your account.',
+    'backupHelpRestore':
+        'If your phone is lost, broken or replaced, sign in with the same account and restore everything.',
+    'backupHelpManual':
+        'Backups are not automatic. Tapping “Back Up Now” saves things as they are at that moment; back up again after later changes.',
+    'backupHelpShared':
+        'Tables you share with others are synced all the time; you do not need to back them up separately.',
+    'backupReminderNever': 'Your tables are not backed up yet. Back up now?',
+    'backupReminderDays':
+        'You have not backed up for {days} days. Back up now?',
+    'lastBackupNever': 'No backup yet',
+    'lastBackupToday': 'Last backup: today',
+    'lastBackupYesterday': 'Last backup: yesterday',
+    'lastBackupDaysAgo': 'Last backup: {days} days ago',
     'addShareCodeTooltip': 'Add share code',
     'noCloudBackup': 'No cloud backups yet.',
     'myBackup': 'My backup',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/backup_reminder.dart';
 import '../widgets/compact_layout.dart';
 import '../widgets/edit_access.dart';
 import '../widgets/leave_shared_table.dart';
@@ -186,6 +187,7 @@ class _TallyScreenState extends State<TallyScreen> {
       summary: loc.nRecords(table.items.length),
       detail: dateFormat,
       compact: compact,
+      footer: const BackupStatusLine(),
       // Ortak olmayan cetelede hicbir sey cizmez.
       titleTrailing: const SharedSyncIndicator(isTally: true),
       actions: [

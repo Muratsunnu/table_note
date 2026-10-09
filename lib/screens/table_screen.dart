@@ -5,6 +5,7 @@ import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/shared_sync_service.dart';
+import '../widgets/backup_reminder.dart';
 import '../widgets/compact_layout.dart';
 import '../widgets/edit_access.dart';
 import '../widgets/leave_shared_table.dart';
@@ -160,7 +161,17 @@ class _TableScreenState extends State<TableScreen> {
                 ),
               ],
             )
-          : SafeArea(top: false, bottom: false, child: body),
+          : SafeArea(
+              top: false,
+              bottom: false,
+              // Yedekleme hatırlatması iki sekmenin de üstüne iner.
+              child: Column(
+                children: [
+                  const BackupReminderCard(),
+                  Expanded(child: body),
+                ],
+              ),
+            ),
       bottomNavigationBar: compact
           ? null
           : NavigationBar(
@@ -520,6 +531,7 @@ class _TableScreenState extends State<TableScreen> {
       title: table.tableName,
       summary: loc.nRecords(table.rows.length),
       compact: compact,
+      footer: const BackupStatusLine(),
       // Ortak olmayan tabloda hicbir sey cizmez.
       titleTrailing: const SharedSyncIndicator(),
       actions: [

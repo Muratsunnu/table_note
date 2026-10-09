@@ -29,6 +29,8 @@ class StorageService {
   static const String _sharedTallyRolesKey = 'shared_tally_roles_v1';
   static const String _sharedVersionsKey = 'shared_known_versions_v1';
   static const String _legacyPlanKey = 'plan_legacy_unlimited_v1';
+  static const String _lastBackupKey = 'backup_last_at_v1';
+  static const String _backupSnoozeKey = 'backup_reminder_snoozed_on_v1';
   static const String _legacyBackupSuffix = '_legacy_v1_backup';
   static const String _unreadableBackupSuffix = '_unreadable_backup';
 
@@ -102,6 +104,49 @@ class StorageService {
   /// Ortak tablolarin bu cihazda duran halinin sunucudaki hangi surume
   /// karsilik geldigi. Uygulama her acildiginda tablonun tamamini yeniden
   /// indirmemek icin saklanir: surum ayniysa indirilecek bir sey yoktur.
+  /// Hesap başına son elle yedeklemenin zamanı. Hatırlatmalar buna bakar.
+  static Future<Map<String, DateTime>> loadLastBackups() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_lastBackupKey);
+    if (raw == null) return {};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final entry in decoded.entries)
+          if (DateTime.tryParse(entry.value.toString()) case final at?)
+            entry.key.toString(): at,
+      };
+    } catch (e) {
+      debugPrint('Son yedekleme zamani okunamadi: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> saveLastBackups(Map<String, DateTime> values) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.setString(
+      _lastBackupKey,
+      json.encode({
+        for (final entry in values.entries)
+          entry.key: entry.value.toUtc().toIso8601String(),
+      }),
+    );
+  }
+
+  /// Yedekleme hatırlatmasına "sonra" dendiği gün (yyyy-aa-gg).
+  static Future<String?> loadBackupSnoozeDay() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_backupSnoozeKey);
+  }
+
+  static Future<bool> saveBackupSnoozeDay(String? day) async {
+    final prefs = await SharedPreferences.getInstance();
+    return day == null
+        ? prefs.remove(_backupSnoozeKey)
+        : prefs.setString(_backupSnoozeKey, day);
+  }
+
   static Future<Map<String, Map<String, dynamic>>> loadSharedVersions() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_sharedVersionsKey);

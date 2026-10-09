@@ -9,6 +9,7 @@ import 'providers/locale_provider.dart';
 import 'providers/tally_provider.dart';
 import 'providers/tally_template_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/backup_reminder_provider.dart';
 import 'providers/subscription_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/app_launch_gate.dart';
@@ -92,6 +93,7 @@ class TableNoteRoot extends StatelessWidget {
         else
           ChangeNotifierProvider(create: (context) => LocaleProvider()),
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider(create: (context) => BackupReminderProvider()),
         ChangeNotifierProvider(
           lazy: false,
           create: (context) => HomeWidgetService(

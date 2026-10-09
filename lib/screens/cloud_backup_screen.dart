@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import '../models/tabel_model.dart';
 import '../models/tally_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/backup_reminder_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../services/cloud_repository.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/backup_help.dart';
 import 'account_screen.dart';
 import 'premium_screen.dart';
 import 'shared_table_manage_screen.dart';
@@ -37,7 +39,28 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
         !context.read<SubscriptionProvider>().isPremium) {
       return;
     }
-    await _run(() async => _entries = await _repository.list());
+    await _run(() async {
+      _entries = await _repository.list();
+      await _syncLastBackup();
+    });
+  }
+
+  /// Hatırlatmalar bu cihazda tutulan son yedek zamanına bakar. Yedek başka
+  /// bir cihazdan alınmış ya da uygulama yeniden kurulmuşsa buluttaki en yeni
+  /// yedek esas alınır. Paylaşılan tablolar sürekli eşitlendiği için sayılmaz.
+  Future<void> _syncLastBackup() async {
+    if (!mounted) return;
+    final userId = context.read<AuthProvider>().user?.id;
+    final reminder = context.read<BackupReminderProvider?>();
+    if (userId == null || reminder == null) return;
+    DateTime? newest;
+    for (final entry in _entries) {
+      if (entry.ownerId != userId || entry.collaborationEnabled) continue;
+      if (newest == null || entry.updatedAt.isAfter(newest)) {
+        newest = entry.updatedAt;
+      }
+    }
+    if (newest != null) await reminder.syncFromCloud(userId, newest);
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -65,6 +88,12 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
         context.read<TallyProvider>().tables,
       );
       _entries = await _repository.list();
+      if (mounted) {
+        final userId = context.read<AuthProvider>().user?.id;
+        if (userId != null) {
+          await context.read<BackupReminderProvider?>()?.markBackedUp(userId);
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -162,7 +191,9 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
               onPressed: () async {
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const AccountScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const AccountScreen(closeOnSignIn: true),
+                  ),
                 );
                 if (mounted) _refresh();
               },
@@ -170,7 +201,7 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Row(
                     children: [
                       Expanded(
@@ -180,6 +211,31 @@ class _CloudBackupScreenState extends State<CloudBackupScreen> {
                           label: Text(loc.backupNow),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                // Son yedeğin ne zaman alındığı ve yedeklemenin ne olduğu.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          loc.lastBackupLabel(
+                            context
+                                .watch<BackupReminderProvider?>()
+                                ?.daysSinceBackup(auth.user?.id),
+                          ),
+                          key: const ValueKey('last-backup'),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                      const BackupHelpLink(),
                     ],
                   ),
                 ),
@@ -262,6 +318,8 @@ class _AccessCard extends StatelessWidget {
           const SizedBox(height: 20),
           if (button != null)
             FilledButton(onPressed: onPressed, child: Text(button!)),
+          const SizedBox(height: 8),
+          const BackupHelpLink(),
         ],
       ),
     ),

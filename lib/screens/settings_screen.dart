@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/locale_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/backup_reminder_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
@@ -286,6 +287,29 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 value: subscription.debugFreeUser,
                 onChanged: subscription.setDebugFreeUser,
+              ),
+            ),
+            // Yedekleme hatırlatmalarını beklemeden görmek için: son yedeği
+            // geriye alır. Giriş yapılmışsa çalışır.
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  for (final (label, days) in const [
+                    ('Son yedek: 4 gün önce', 4),
+                    ('Son yedek: 8 gün önce', 8),
+                    ('Yedek kaydını sil', null),
+                  ])
+                    OutlinedButton(
+                      onPressed: auth.user == null
+                          ? null
+                          : () => context
+                                .read<BackupReminderProvider>()
+                                .debugSetDaysSinceBackup(auth.user!.id, days),
+                      child: Text(label),
+                    ),
+                ],
               ),
             ),
           ],

@@ -9,6 +9,7 @@ class TableSectionHeader extends StatelessWidget {
     required this.actions,
     this.detail,
     this.titleTrailing,
+    this.footer,
     this.compact = false,
   });
 
@@ -20,6 +21,10 @@ class TableSectionHeader extends StatelessWidget {
   /// Basligin hemen yanina giren kucuk gosterge. Kendi satirini isteyen bir
   /// serit yerine buraya konuldugu icin tabloyu asagi itmez.
   final Widget? titleTrailing;
+
+  /// Özet satırlarının altına giren küçük not (örneğin yedekleme durumu).
+  /// Dar yükseklikte gösterilmez.
+  final Widget? footer;
 
   /// Yüksekliği dar ekranda her şey tek satıra iner.
   final bool compact;
@@ -117,6 +122,7 @@ class TableSectionHeader extends StatelessWidget {
                       color: colors.onSurfaceVariant,
                     ),
                   ),
+                ?footer,
               ],
             ),
           ),
