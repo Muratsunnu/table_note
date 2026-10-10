@@ -10,6 +10,7 @@ import 'package:table_note/providers/auth_provider.dart';
 import 'package:table_note/providers/subscription_provider.dart';
 import 'package:table_note/screens/account_screen.dart';
 import 'package:table_note/screens/premium_screen.dart';
+import 'package:table_note/screens/premium_welcome_screen.dart';
 
 class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
   List<PlanOffer> offers = const [];
@@ -21,6 +22,32 @@ class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
   // Girilen hesabın aboneliği zaten varsa girişten sonra Premium çıkar.
   bool premiumAccount = false;
   int refreshes = 0;
+  bool verifying = false;
+  bool pending = false;
+  bool completed = false;
+  DateTime? until;
+
+  @override
+  bool get isVerifying => verifying;
+  @override
+  bool get hasPendingPurchase => pending;
+  @override
+  DateTime? get validUntil => until;
+  @override
+  bool takePurchaseCompleted() {
+    final value = completed;
+    completed = false;
+    return value;
+  }
+
+  /// Mağaza ödemeyi aldı ve sunucu doğruladı.
+  void finishPurchase() {
+    verifying = false;
+    premium = true;
+    completed = true;
+    until = DateTime(2026, 10, 17);
+    notifyListeners();
+  }
 
   @override
   bool get isPremium => premium;
@@ -95,7 +122,12 @@ final _en = AppLocalizations(const Locale('en'));
 void main() {
   late _FakeSubscription subscription;
 
-  Future<void> open(WidgetTester tester, {_FakeAuth? auth}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    _FakeAuth? auth,
+    // Doğrulama sürerken düğmedeki halka hiç durmaz; ekran "yerleşmez".
+    bool settle = true,
+  }) async {
     tester.view.physicalSize = const Size(400, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -122,7 +154,12 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
+      await tester.pump();
+    }
   }
 
   testWidgets('prices, trial and saving all come from the store', (
@@ -234,6 +271,75 @@ void main() {
     expect(find.byType(AccountScreen), findsNothing);
     expect(subscription.bought, isEmpty);
     expect(find.text(_en.premiumActive), findsOneWidget);
+  });
+
+  testWidgets('while the purchase is verified the button waits', (
+    tester,
+  ) async {
+    // Mağaza penceresi kapandı, sunucu henüz doğrulamadı: düğme eski hâliyle
+    // durursa kişi yeniden basar.
+    subscription = _FakeSubscription()
+      ..verifying = true
+      ..offers = [_offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7)];
+    await open(tester, settle: false);
+
+    expect(find.text(_en.verifyingPurchase), findsOneWidget);
+    expect(find.text(_en.startTrial(7)), findsNothing);
+    final button = tester.widget<FilledButton>(
+      find.byKey(const ValueKey('plan-buy')),
+    );
+    expect(button.onPressed, isNull);
+  });
+
+  testWidgets('a payment awaiting approval is explained', (tester) async {
+    subscription = _FakeSubscription()
+      ..pending = true
+      ..offers = [_offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7)];
+    await open(tester);
+
+    expect(find.text(_en.purchasePending), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const ValueKey('plan-buy')))
+          .onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets('a completed purchase opens the welcome screen once', (
+    tester,
+  ) async {
+    subscription = _FakeSubscription()
+      ..verifying = true
+      ..offers = [_offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7)];
+    await open(tester, settle: false);
+
+    subscription.finishPurchase();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PremiumWelcomeScreen), findsOneWidget);
+    // Premium ekranının yerini alır; geri dönünce satın alma ekranı çıkmaz.
+    expect(find.byType(PremiumScreen), findsNothing);
+    expect(find.text(_en.premiumWelcomeTitle), findsOneWidget);
+    expect(find.byKey(const ValueKey('premium-valid-until')), findsOneWidget);
+    expect(find.textContaining('Oct 17, 2026'), findsOneWidget);
+  });
+
+  testWidgets('Premium that was already active shows no welcome', (
+    tester,
+  ) async {
+    // Açılışta hakkın okunması ya da geri yükleme kutlama açmaz.
+    subscription = _FakeSubscription()
+      ..premium = true
+      ..until = DateTime(2026, 10, 30);
+    await open(tester);
+
+    expect(find.byType(PremiumWelcomeScreen), findsNothing);
+    expect(find.text(_en.premiumActive), findsOneWidget);
+    // Ne zamana kadar geçerli olduğu ve nereden yönetileceği yazar.
+    expect(find.textContaining('Oct 30, 2026'), findsOneWidget);
+    expect(find.text(_en.manageSubscription), findsOneWidget);
+    expect(find.byKey(const ValueKey('plan-buy')), findsNothing);
   });
 
   testWidgets('without the store no price is invented', (tester) async {

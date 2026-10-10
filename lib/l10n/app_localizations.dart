@@ -102,6 +102,23 @@ class AppLocalizations {
   String get priceUnavailable => _t('priceUnavailable');
   String get retry => _t('retry');
   String get billingPreparing => _t('billingPreparing');
+  String get verifyingPurchase => _t('verifyingPurchase');
+  String get purchasePending => _t('purchasePending');
+  String get premiumWelcomeTitle => _t('premiumWelcomeTitle');
+  String get premiumWelcomeBody => _t('premiumWelcomeBody');
+  String get premiumWelcomeNext => _t('premiumWelcomeNext');
+  String get welcomeBackup => _t('welcomeBackup');
+  String get welcomeBackupHint => _t('welcomeBackupHint');
+  String get welcomeShare => _t('welcomeShare');
+  String get welcomeShareHint => _t('welcomeShareHint');
+  String get welcomeVoice => _t('welcomeVoice');
+  String get welcomeVoiceHint => _t('welcomeVoiceHint');
+  String get welcomeClose => _t('welcomeClose');
+  String get manageSubscription => _t('manageSubscription');
+  String premiumValidUntil(String date) =>
+      _t('premiumValidUntil').replaceAll('{date}', date);
+  String manageSubscriptionFailed(String store) =>
+      _t('manageSubscriptionFailed').replaceAll('{store}', store);
   String get restorePurchases => _t('restorePurchases');
   String get signInToSubscribe => _t('signInToSubscribe');
   String get purchaseCouldNotBeVerified => _t('purchaseCouldNotBeVerified');
@@ -706,6 +723,24 @@ class AppLocalizations {
     'priceUnavailable': 'Fiyat şu anda mağazadan alınamıyor.',
     'retry': 'Yeniden dene',
     'billingPreparing': 'Abonelik bağlantısı hazırlanıyor',
+    'verifyingPurchase': 'Satın alma doğrulanıyor…',
+    'purchasePending':
+        'Ödemen mağazada onay bekliyor. Onaylanınca Premium kendiliğinden açılır.',
+    'premiumWelcomeTitle': 'Premium açıldı',
+    'premiumWelcomeBody': 'Teşekkürler! Bütün özellikler artık senin.',
+    'premiumWelcomeNext': 'Şimdi ne yapabilirsin',
+    'welcomeBackup': 'İlk yedeğini al',
+    'welcomeBackupHint': 'Tablolarının bir kopyası hesabında dursun.',
+    'welcomeShare': 'Bir tabloyu paylaş',
+    'welcomeShareHint': 'Kod ver, başkaları da aynı tabloya baksın.',
+    'welcomeVoice': 'Sesle kayıt dene',
+    'welcomeVoiceHint': 'Sütunu ve değeri söyle, alanlar dolsun.',
+    'welcomeClose': 'Uygulamaya dön',
+    'manageSubscription': 'Aboneliği yönet',
+    'premiumValidUntil':
+        'Premium {date} tarihine kadar geçerli. Mağaza aboneliğin sürdükçe kendiliğinden yenilenir.',
+    'manageSubscriptionFailed':
+        '{store} açılamadı. Aboneliğini {store} uygulamasındaki Abonelikler bölümünden yönetebilirsin.',
     'restorePurchases': 'Satın Almaları Geri Yükle',
     'signInToSubscribe': 'Giriş yap ve devam et',
     'purchaseCouldNotBeVerified':
@@ -1300,6 +1335,24 @@ class AppLocalizations {
     'priceUnavailable': 'The price is not available from the store right now.',
     'retry': 'Try again',
     'billingPreparing': 'Subscription connection is being prepared',
+    'verifyingPurchase': 'Verifying your purchase…',
+    'purchasePending':
+        'Your payment is awaiting approval in the store. Premium unlocks automatically once it is approved.',
+    'premiumWelcomeTitle': 'Premium is on',
+    'premiumWelcomeBody': 'Thank you! Every feature is now yours.',
+    'premiumWelcomeNext': 'What you can do now',
+    'welcomeBackup': 'Take your first backup',
+    'welcomeBackupHint': 'Keep a copy of your tables in your account.',
+    'welcomeShare': 'Share a table',
+    'welcomeShareHint': 'Give a code so others can see the same table.',
+    'welcomeVoice': 'Try adding by voice',
+    'welcomeVoiceHint': 'Say the column and its value to fill the fields.',
+    'welcomeClose': 'Back to the app',
+    'manageSubscription': 'Manage subscription',
+    'premiumValidUntil':
+        'Premium is valid until {date}. It renews automatically while your store subscription is active.',
+    'manageSubscriptionFailed':
+        'Could not open {store}. You can manage your subscription in the Subscriptions section of the {store} app.',
     'restorePurchases': 'Restore Purchases',
     'signInToSubscribe': 'Sign in to continue',
     'purchaseCouldNotBeVerified':

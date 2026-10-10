@@ -7,7 +7,9 @@ import '../models/plan_offer.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ledger.dart';
+import '../utils/store_links.dart';
 import 'account_screen.dart';
+import 'premium_welcome_screen.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -22,6 +24,47 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   // Girişten sonra hesabın aboneliğine bakılırken düğme bekler.
   bool _continuing = false;
+
+  SubscriptionProvider? _subscription;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final subscription = context.read<SubscriptionProvider>();
+    if (!identical(subscription, _subscription)) {
+      _subscription?.removeListener(_onSubscriptionChanged);
+      _subscription = subscription..addListener(_onSubscriptionChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.removeListener(_onSubscriptionChanged);
+    super.dispose();
+  }
+
+  /// Satın alma doğrulandığı an bu ekran yerini karşılama ekranına bırakır.
+  void _onSubscriptionChanged() {
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    if (!_subscription!.takePurchaseCompleted()) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const PremiumWelcomeScreen()),
+    );
+  }
+
+  Future<void> _manageSubscription() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final loc = AppLocalizations.of(context);
+    if (await openSubscriptionSettings()) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(loc.manageSubscriptionFailed(subscriptionStoreName)),
+        ),
+      );
+  }
 
   /// Hesabı olmayan kişi önce giriş yapar; giriş bitince kaldığı yerden,
   /// mağazanın satın alma penceresinden devam eder. Geri dönüp düğmeye bir
@@ -106,6 +149,64 @@ class _PremiumScreenState extends State<PremiumScreen> {
               ],
             ),
           ),
+          // Premium'u olan kişi: ne zamana kadar geçerli ve nereden yönetilir.
+          if (isPremium) ...[
+            const SizedBox(height: 16),
+            LedgerCard(
+              children: [
+                if (subscription.validUntil case final validUntil?)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      loc.premiumValidUntil(
+                        MaterialLocalizations.of(
+                          context,
+                        ).formatShortDate(validUntil.toLocal()),
+                      ),
+                      key: const ValueKey('premium-valid-until'),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.4,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                InkWell(
+                  key: const ValueKey('manage-subscription'),
+                  onTap: _manageSubscription,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.open_in_new_rounded,
+                          size: 20,
+                          color: AppTheme.primaryBlue,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            loc.manageSubscription,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           // Tek kart, sıkı satırlar: fiyat ve düğme aşağıda kaybolmasın.
           LedgerCard(
@@ -277,21 +378,44 @@ class _PremiumScreenState extends State<PremiumScreen> {
         ),
         const SizedBox(height: 8),
       ],
+      // Onayı geciken ödeme: kişi beklediğini bilsin, yeniden denemesin.
+      if (subscription.hasPendingPurchase) ...[
+        LedgerNote(loc.purchasePending),
+        const SizedBox(height: 10),
+      ],
       FilledButton(
         key: const ValueKey('plan-buy'),
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-        onPressed: subscription.isLoading || _continuing
+        // Mağaza ödemeyi aldıktan sonra sunucu doğrulayana kadar düğme bekler;
+        // yoksa "bir şey olmadı" sanılıp yeniden basılır.
+        onPressed:
+            subscription.isLoading ||
+                _continuing ||
+                subscription.isVerifying ||
+                subscription.hasPendingPurchase
             ? null
             : () => _buy(subscription),
-        child: Text(
-          subscription.isLoading || _continuing
-              ? loc.billingPreparing
-              : subscription.requiresSignIn
-              ? loc.signInToSubscribe
-              : trialDays != null
-              ? loc.startTrial(trialDays)
-              : loc.subscribeNow,
-        ),
+        child: subscription.isVerifying
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(child: Text(loc.verifyingPurchase)),
+                ],
+              )
+            : Text(
+                subscription.isLoading || _continuing
+                    ? loc.billingPreparing
+                    : subscription.requiresSignIn
+                    ? loc.signInToSubscribe
+                    : trialDays != null
+                    ? loc.startTrial(trialDays)
+                    : loc.subscribeNow,
+              ),
       ),
       const SizedBox(height: 10),
       if (trialDays == null) ...[

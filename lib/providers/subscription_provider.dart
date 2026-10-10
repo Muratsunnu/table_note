@@ -25,6 +25,9 @@ class SubscriptionProvider extends ChangeNotifier {
   List<PlanOffer> _plans = const [];
   bool _isPremium = false;
   bool _isLoading = true;
+  bool _isVerifying = false;
+  bool _purchasePending = false;
+  bool _purchaseCompleted = false;
   String? _errorMessage;
   DateTime? _validUntil;
 
@@ -72,6 +75,24 @@ class SubscriptionProvider extends ChangeNotifier {
   /// Tablo, çetele ve şablon oluştururken sınır uygulanmıyor mu.
   bool get hasUnlimitedPlan => isPremium || legacyUnlimited;
   bool get isLoading => _isLoading;
+
+  /// Mağaza ödemeyi aldı, sunucu doğruluyor. Bu bir iki saniyede satın alma
+  /// düğmesi bekler; yoksa kişi "bir şey olmadı" deyip yeniden basabilir.
+  bool get isVerifying => _isVerifying;
+
+  /// Ödeme mağazada onay bekliyor (onayı geciken ödeme yöntemleri). Onay
+  /// gelince Premium kendiliğinden açılır.
+  bool get hasPendingPurchase => _purchasePending;
+
+  /// Az önce tamamlanmış bir satın alma var mı. Yalnızca bir kez true döner;
+  /// teşekkür ekranını açan taraf bununla haberdar olur. Geri yükleme ve
+  /// açılıştaki hak kontrolü bunu tetiklemez.
+  bool takePurchaseCompleted() {
+    final completed = _purchaseCompleted;
+    _purchaseCompleted = false;
+    return completed;
+  }
+
   // Misafir oturumu hesap degildir: abonelik ona baglanirsa uygulama
   // silinince kaybolan bir kimlikte kalir.
   bool get requiresSignIn => !_auth.hasAccount;
@@ -206,12 +227,20 @@ class SubscriptionProvider extends ChangeNotifier {
       if (!AppConfig.premiumProductIds.containsValue(purchase.productID)) {
         continue;
       }
-      if (purchase.status == PurchaseStatus.error) {
+      if (purchase.status == PurchaseStatus.pending) {
+        _purchasePending = true;
+        notifyListeners();
+      } else if (purchase.status == PurchaseStatus.error) {
+        _purchasePending = false;
         _errorMessage = purchase.error?.message;
       } else if (purchase.status == PurchaseStatus.canceled) {
+        _purchasePending = false;
         _errorMessage = null;
       } else if (purchase.status == PurchaseStatus.purchased ||
           purchase.status == PurchaseStatus.restored) {
+        _purchasePending = false;
+        _isVerifying = true;
+        notifyListeners();
         try {
           final userId = _authUserId;
           final entitlement = await _entitlements.verifyPurchase(
@@ -222,12 +251,18 @@ class SubscriptionProvider extends ChangeNotifier {
           if (_authUserId == userId) {
             _apply(entitlement);
             _errorMessage = null;
+            if (purchase.status == PurchaseStatus.purchased &&
+                entitlement.isPremium) {
+              _purchaseCompleted = true;
+            }
           }
           if (purchase.pendingCompletePurchase) {
             await _billing.complete(purchase);
           }
         } catch (error) {
           _errorMessage = error.toString();
+        } finally {
+          _isVerifying = false;
         }
       }
     }
