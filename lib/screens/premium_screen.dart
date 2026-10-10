@@ -246,9 +246,14 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   : subscription.restorePurchases,
               child: Text(loc.restorePurchases),
             ),
-            if (subscription.errorMessage != null)
+            if (subscription.problem case final problem?)
               Text(
-                loc.purchaseCouldNotBeVerified,
+                switch (problem) {
+                  PurchaseProblem.network => loc.purchaseNoConnection,
+                  PurchaseProblem.verification => loc.purchaseNotVerified,
+                  PurchaseProblem.other => loc.purchaseFailed,
+                },
+                key: const ValueKey('purchase-problem'),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),

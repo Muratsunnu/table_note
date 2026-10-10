@@ -64,8 +64,11 @@ class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
 
   @override
   bool get showsSamplePlans => false;
+  PurchaseProblem? failure;
   @override
-  String? get errorMessage => null;
+  String? get errorMessage => failure?.name;
+  @override
+  PurchaseProblem? get problem => failure;
   @override
   List<PlanOffer> get plans => offers;
   @override
@@ -304,6 +307,28 @@ void main() {
           .onPressed,
       isNull,
     );
+  });
+
+  testWidgets('a purchase the server could not verify is not blamed on the '
+      'internet', (tester) async {
+    subscription = _FakeSubscription()
+      ..failure = PurchaseProblem.verification
+      ..offers = [_offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7)];
+    await open(tester);
+
+    // Ödeme mağazada duruyor; kullanıcıya kaybolmadığı ve ne yapacağı söylenir.
+    expect(find.text(_en.purchaseNotVerified), findsOneWidget);
+    expect(find.text(_en.purchaseNoConnection), findsNothing);
+  });
+
+  testWidgets('a real connection problem says so', (tester) async {
+    subscription = _FakeSubscription()
+      ..failure = PurchaseProblem.network
+      ..offers = [_offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7)];
+    await open(tester);
+
+    expect(find.text(_en.purchaseNoConnection), findsOneWidget);
+    expect(find.text(_en.purchaseNotVerified), findsNothing);
   });
 
   testWidgets('a completed purchase opens the welcome screen once', (

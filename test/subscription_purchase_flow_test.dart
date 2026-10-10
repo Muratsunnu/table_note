@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -130,9 +131,38 @@ void main() {
 
       expect(subscription.isVerifying, isFalse);
       expect(subscription.errorMessage, isNotNull);
+      // Mağaza ödemeyi aldı; sorun internet değil, doğrulama.
+      expect(subscription.problem, PurchaseProblem.verification);
       expect(subscription.takePurchaseCompleted(), isFalse);
     },
   );
+
+  test('doğrulama sırasında internet kesilirse bu ayrıca söylenir', () async {
+    store.events.add([_purchase(PurchaseStatus.purchased)]);
+    await settle();
+
+    server.answer.completeError(const SocketException('Failed host lookup'));
+    await settle();
+
+    expect(subscription.problem, PurchaseProblem.network);
+  });
+
+  test('hata yokken sorun türü de yoktur', () async {
+    expect(subscription.problem, isNull);
+
+    store.events.add([_purchase(PurchaseStatus.purchased)]);
+    await settle();
+    server.answer.completeError(StateError('doğrulanamadı'));
+    await settle();
+    expect(subscription.problem, isNotNull);
+
+    // Sonraki deneme başarılı olunca eski hata kalkar.
+    server.answer = Completer<Entitlement>()..complete(premium);
+    store.events.add([_purchase(PurchaseStatus.restored)]);
+    await settle();
+    await settle();
+    expect(subscription.problem, isNull);
+  });
 
   test('onay bekleyen ödeme bildirilir, onaylanınca kalkar', () async {
     store.events.add([_purchase(PurchaseStatus.pending)]);

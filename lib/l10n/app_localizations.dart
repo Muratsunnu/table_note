@@ -121,7 +121,9 @@ class AppLocalizations {
       _t('manageSubscriptionFailed').replaceAll('{store}', store);
   String get restorePurchases => _t('restorePurchases');
   String get signInToSubscribe => _t('signInToSubscribe');
-  String get purchaseCouldNotBeVerified => _t('purchaseCouldNotBeVerified');
+  String get purchaseNotVerified => _t('purchaseNotVerified');
+  String get purchaseNoConnection => _t('purchaseNoConnection');
+  String get purchaseFailed => _t('purchaseFailed');
   String get account => _t('account');
   String get noAccountConnected => _t('noAccountConnected');
   String get accountDescription => _t('accountDescription');
@@ -755,8 +757,11 @@ class AppLocalizations {
         '{store} açılamadı. Aboneliğini {store} uygulamasındaki Abonelikler bölümünden yönetebilirsin.',
     'restorePurchases': 'Satın Almaları Geri Yükle',
     'signInToSubscribe': 'Giriş yap ve devam et',
-    'purchaseCouldNotBeVerified':
-        'Satın alma doğrulanamadı. İnternet bağlantını kontrol edip tekrar dene.',
+    'purchaseNotVerified':
+        'Satın alman mağazada duruyor ama şu an doğrulanamadı. Ödemen kaybolmaz: biraz sonra “Satın Almaları Geri Yükle”ye dokun.',
+    'purchaseNoConnection':
+        'İnternete ulaşılamadı. Bağlantını kontrol edip tekrar dene.',
+    'purchaseFailed': 'İşlem tamamlanamadı. Biraz sonra tekrar dene.',
     'account': 'Hesap',
     'noAccountConnected': 'Bağlı hesap yok',
     'accountDescription':
@@ -1378,8 +1383,12 @@ class AppLocalizations {
         'Could not open {store}. You can manage your subscription in the Subscriptions section of the {store} app.',
     'restorePurchases': 'Restore Purchases',
     'signInToSubscribe': 'Sign in to continue',
-    'purchaseCouldNotBeVerified':
-        'The purchase could not be verified. Check your connection and try again.',
+    'purchaseNotVerified':
+        'Your purchase is in the store but could not be verified right now. Your payment is not lost: tap “Restore Purchases” in a little while.',
+    'purchaseNoConnection':
+        'Could not reach the internet. Check your connection and try again.',
+    'purchaseFailed':
+        'This could not be completed. Please try again in a little while.',
     'account': 'Account',
     'noAccountConnected': 'No account connected',
     'accountDescription':

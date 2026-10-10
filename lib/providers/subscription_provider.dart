@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -8,6 +9,18 @@ import '../models/plan_offer.dart';
 import '../services/billing_service.dart';
 import '../services/entitlement_service.dart';
 import 'auth_provider.dart';
+
+/// Satın alma ekranında gösterilen hatanın türü.
+enum PurchaseProblem {
+  /// İnternete ulaşılamadı.
+  network,
+
+  /// Mağaza ödemeyi aldı ama sunucu doğrulayamadı; satın alma kaybolmaz.
+  verification,
+
+  /// Mağazadan ya da başka bir yerden gelen hata.
+  other,
+}
 
 class SubscriptionProvider extends ChangeNotifier {
   // Geliştirme derlemesinde Premium açık sayılır ki özellikler mağaza
@@ -29,6 +42,7 @@ class SubscriptionProvider extends ChangeNotifier {
   bool _purchasePending = false;
   bool _purchaseCompleted = false;
   String? _errorMessage;
+  PurchaseProblem _problem = PurchaseProblem.other;
   DateTime? _validUntil;
 
   /// Ücretsiz sınırlar gelmeden önceki sürümden gelen kullanıcı. Tablo,
@@ -47,7 +61,7 @@ class SubscriptionProvider extends ChangeNotifier {
     _purchaseSubscription = _billing.purchases.listen(
       _handlePurchases,
       onError: (Object error) {
-        _errorMessage = error.toString();
+        _fail(error);
         _isLoading = false;
         notifyListeners();
       },
@@ -132,6 +146,29 @@ class SubscriptionProvider extends ChangeNotifier {
   ];
 
   String? get errorMessage => _errorMessage;
+
+  /// Son hatanın türü; hata yoksa null. Ekran buna göre ne yapılacağını
+  /// söyler: her hatada "internetini kontrol et" demek yanıltır.
+  PurchaseProblem? get problem => _errorMessage == null ? null : _problem;
+
+  void _fail(Object? error, {bool verifying = false}) {
+    _errorMessage = error?.toString() ?? 'unknown';
+    _problem = _isNetworkError(error)
+        ? PurchaseProblem.network
+        : verifying
+        ? PurchaseProblem.verification
+        : PurchaseProblem.other;
+  }
+
+  static bool _isNetworkError(Object? error) {
+    if (error is SocketException || error is TimeoutException) return true;
+    final text = error.toString();
+    return text.contains('SocketException') ||
+        text.contains('ClientException') ||
+        text.contains('Failed host lookup') ||
+        text.contains('TimeoutException');
+  }
+
   DateTime? get validUntil => _validUntil;
 
   void updateAuth(AuthProvider auth) {
@@ -157,7 +194,7 @@ class SubscriptionProvider extends ChangeNotifier {
       _plans = await _billing.loadPlans();
       if (_auth.isSignedIn) await refreshEntitlement(notify: false);
     } catch (error) {
-      _errorMessage = error.toString();
+      _fail(error);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -173,7 +210,7 @@ class SubscriptionProvider extends ChangeNotifier {
       _errorMessage = null;
     } catch (error) {
       if (_disposed || _authUserId != userId) return;
-      _errorMessage = error.toString();
+      _fail(error);
     }
     if (notify) notifyListeners();
   }
@@ -186,7 +223,7 @@ class SubscriptionProvider extends ChangeNotifier {
     try {
       _plans = await _billing.loadPlans();
     } catch (error) {
-      _errorMessage = error.toString();
+      _fail(error);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -201,7 +238,7 @@ class SubscriptionProvider extends ChangeNotifier {
     try {
       return await _billing.purchase(plan.product);
     } catch (error) {
-      _errorMessage = error.toString();
+      _fail(error);
       return false;
     } finally {
       _isLoading = false;
@@ -216,7 +253,7 @@ class SubscriptionProvider extends ChangeNotifier {
     try {
       await _billing.restore();
     } catch (error) {
-      _errorMessage = error.toString();
+      _fail(error);
       _isLoading = false;
       notifyListeners();
     }
@@ -232,7 +269,7 @@ class SubscriptionProvider extends ChangeNotifier {
         notifyListeners();
       } else if (purchase.status == PurchaseStatus.error) {
         _purchasePending = false;
-        _errorMessage = purchase.error?.message;
+        _fail(purchase.error?.message);
       } else if (purchase.status == PurchaseStatus.canceled) {
         _purchasePending = false;
         _errorMessage = null;
@@ -260,7 +297,7 @@ class SubscriptionProvider extends ChangeNotifier {
             await _billing.complete(purchase);
           }
         } catch (error) {
-          _errorMessage = error.toString();
+          _fail(error, verifying: true);
         } finally {
           _isVerifying = false;
         }
