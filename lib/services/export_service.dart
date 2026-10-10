@@ -9,11 +9,15 @@ import 'package:share_plus/share_plus.dart';
 import '../models/tabel_model.dart';
 import '../models/tally_model.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/column_balance.dart';
 import '../utils/number_display.dart';
 
 class ExportService {
   /// CSV formatında export
-  static Future<String> exportToCsv(TableModel table) async {
+  static Future<String> exportToCsv(
+    TableModel table, {
+    AppLocalizations? loc,
+  }) async {
     final StringBuffer csv = StringBuffer();
 
     // Başlık satırı
@@ -28,6 +32,8 @@ class ExportService {
       csv.writeln(rowData);
     }
 
+    csv.write(balanceCsvLines(table, loc: loc));
+
     // Dosyayı kaydet
     final directory = await getApplicationDocumentsDirectory();
     final fileName = _sanitizeFileName(table.tableName);
@@ -35,6 +41,28 @@ class ExportService {
     await file.writeAsString(csv.toString(), encoding: const Utf8Codec());
 
     return file.path;
+  }
+
+  /// Başlangıç değeri olan sütunların özeti: toplam, başlangıç değeri ve
+  /// kalan. Satırlardan boş bir satırla ayrılır; başlangıç değeri yoksa boş
+  /// döner ve dosya eskisiyle aynı kalır. Sayılar ayraçsız yazılır ki tablo
+  /// programları sayı olarak okusun.
+  static String balanceCsvLines(TableModel table, {AppLocalizations? loc}) {
+    final balances = computeColumnBalances(table);
+    if (balances.isEmpty) return '';
+    String number(double value) => value == value.roundToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
+    final out = StringBuffer()..writeln();
+    for (final balance in balances) {
+      void line(String label, double value) => out.writeln(
+        '${_escapeCsvField('$label (${balance.name})')},${number(value)}',
+      );
+      line(loc?.totalLabel ?? 'Toplam', balance.total);
+      line(loc?.startingValue ?? 'Başlangıç değeri', balance.startingValue);
+      line(loc?.remaining ?? 'Kalan', balance.remaining);
+    }
+    return out.toString();
   }
 
   /// PDF formatında export
@@ -45,6 +73,8 @@ class ExportService {
   }) async {
     final language = loc.locale.languageCode;
     final pdf = pw.Document();
+    final sums = columnSums ?? const <String, double>{};
+    final balances = computeColumnBalances(table);
 
     // Türkçe karakter desteği için font yükle
     final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
@@ -168,8 +198,15 @@ class ExportService {
                 pw.SizedBox(height: 10),
 
                 // Toplamlar (sadece son sayfada)
-                if (isLastPage && columnSums != null && columnSums.isNotEmpty)
-                  _buildSumsSection(columnSums, ttf, ttfBold, loc, language),
+                if (isLastPage && (sums.isNotEmpty || balances.isNotEmpty))
+                  _buildSumsSection(
+                    sums,
+                    balances,
+                    ttf,
+                    ttfBold,
+                    loc,
+                    language,
+                  ),
 
                 pw.SizedBox(height: 10),
 
@@ -215,11 +252,40 @@ class ExportService {
   /// Toplamlar bölümünü oluştur
   static pw.Widget _buildSumsSection(
     Map<String, double> sums,
+    List<ColumnBalance> balances,
     pw.Font ttf,
     pw.Font ttfBold,
     AppLocalizations loc,
     String language,
   ) {
+    pw.Widget chip(String label, double value, {PdfColor? color}) {
+      return pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: pw.BoxDecoration(
+          color: PdfColors.white,
+          borderRadius: pw.BorderRadius.circular(4),
+        ),
+        child: pw.Row(
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text(
+              '$label: ',
+              style: pw.TextStyle(font: ttf, fontSize: 9, color: color),
+            ),
+            pw.Text(
+              formatGroupedNumber(value, language),
+              style: pw.TextStyle(
+                font: ttfBold,
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
@@ -243,35 +309,23 @@ class ExportService {
           pw.Wrap(
             spacing: 20,
             runSpacing: 4,
-            children: sums.entries.map((entry) {
-              return pw.Container(
-                padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
+            children: [
+              for (final entry in sums.entries) chip(entry.key, entry.value),
+              // Başlangıç değeri olan sütunlar: ne ile başlandı, ne kaldı.
+              for (final balance in balances) ...[
+                chip(
+                  '${balance.name} · ${loc.startingValue}',
+                  balance.startingValue,
                 ),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.white,
-                  borderRadius: pw.BorderRadius.circular(4),
+                chip(
+                  loc.remainingOf(balance.name),
+                  balance.remaining,
+                  color: balance.isExceeded
+                      ? PdfColors.red800
+                      : PdfColors.blue800,
                 ),
-                child: pw.Row(
-                  mainAxisSize: pw.MainAxisSize.min,
-                  children: [
-                    pw.Text(
-                      '${entry.key}: ',
-                      style: pw.TextStyle(font: ttf, fontSize: 9),
-                    ),
-                    pw.Text(
-                      formatGroupedNumber(entry.value, language),
-                      style: pw.TextStyle(
-                        font: ttfBold,
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+              ],
+            ],
           ),
         ],
       ),

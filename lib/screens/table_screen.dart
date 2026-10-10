@@ -515,7 +515,7 @@ class _TableScreenState extends State<TableScreen> {
           description: loc.csvDesc,
           icon: Icons.description_rounded,
           color: AppTheme.success,
-          create: () => ExportService.exportToCsv(table),
+          create: () => ExportService.exportToCsv(table, loc: loc),
         ),
       ],
     );

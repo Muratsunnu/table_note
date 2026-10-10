@@ -1,3 +1,4 @@
+import 'starting_value_field.dart';
 import 'package:flutter/material.dart';
 import 'add_column_card.dart';
 import 'form_field_reveal.dart';
@@ -388,6 +389,17 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                     ],
                   ),
                 ),
+                // Türü değişmese de başlangıç değeri sonradan verilebilir,
+                // artırılabilir ya da kaldırılabilir.
+                if (column.isSummed) ...[
+                  const SizedBox(height: 12),
+                  StartingValueField(
+                    key: ObjectKey(column),
+                    value: column.startingValue,
+                    onChanged: (value) =>
+                        setState(() => column.startingValue = value),
+                  ),
+                ],
               ],
             ],
           ),
@@ -576,7 +588,26 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
     );
   }
 
+  /// Tür ayarları ve, toplamı alınan sütunlarda, başlangıç değeri.
   Widget _buildColumnTypeSettings(int index, ColumnModel column) {
+    final settings = _buildTypeSpecificSettings(index, column);
+    if (!column.isSummed) return settings;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        settings,
+        const SizedBox(height: 12),
+        StartingValueField(
+          // Sütun silinip eklendiğinde alan doğru sütunla kalsın.
+          key: ObjectKey(column),
+          value: column.startingValue,
+          onChanged: (value) => setState(() => column.startingValue = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTypeSpecificSettings(int index, ColumnModel column) {
     switch (column.columnType) {
       case ColumnType.normal:
         return _buildNormalSettings(index, column);

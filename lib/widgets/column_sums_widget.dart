@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/column_balance.dart';
+import 'starting_value_field.dart';
 
 class ColumnSumsWidget extends StatelessWidget {
   const ColumnSumsWidget({super.key});
@@ -17,6 +19,8 @@ class ColumnSumsWidget extends StatelessWidget {
         final sums = provider.calculateFilteredColumnSums();
 
         if (sums.isEmpty) return const SizedBox();
+        // Başlangıç değeri verilmiş sütunların kalanı; toplamların yanında.
+        final balances = provider.columnBalances;
 
         final isFiltering = provider.isFiltering;
         final bgColor = AppTheme.tintedSurface(
@@ -64,6 +68,11 @@ class ColumnSumsWidget extends StatelessWidget {
                               accentColor,
                               darkColor,
                             ),
+                          ),
+                        for (final balance in balances)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _remainingChip(context, provider, balance),
                           ),
                       ],
                     ),
@@ -182,6 +191,8 @@ class ColumnSumsWidget extends StatelessWidget {
                   children: [
                     for (final entry in sums.entries)
                       _sumChip(context, entry, accentColor, darkColor),
+                    for (final balance in balances)
+                      _remainingChip(context, provider, balance),
                   ],
                 ),
               ),
@@ -208,11 +219,16 @@ class ColumnSumsWidget extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            entry.key,
-            style: TextStyle(
-              color: darkColor.withValues(alpha: 0.7),
-              fontSize: 13,
+          // Uzun sütun adı kutunun dışına taşmaz, kısalır.
+          Flexible(
+            child: Text(
+              entry.key,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: darkColor.withValues(alpha: 0.7),
+                fontSize: 13,
+              ),
             ),
           ),
           const SizedBox(width: 6),
@@ -228,6 +244,75 @@ class ColumnSumsWidget extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// "harcama · kalan 62.500". Aşıldıysa kırmızıya döner ve eksiye geçer:
+  /// "harcama · kalan -1.050". Sütunları değiştirebilen kişi dokunarak
+  /// başlangıç değerini günceller.
+  Widget _remainingChip(
+    BuildContext context,
+    TableProvider provider,
+    ColumnBalance balance,
+  ) {
+    final loc = AppLocalizations.of(context);
+    final ink = AppTheme.readableAccent(
+      context,
+      balance.isExceeded ? AppTheme.error : AppTheme.primaryBlue,
+    );
+    final editable = provider.canEditStructure;
+    final label = loc.remainingOf(balance.name);
+    return Material(
+      color: AppTheme.tintedSurface(
+        context,
+        balance.isExceeded ? AppTheme.error : AppTheme.primaryBlue,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: ink.withValues(alpha: 0.35)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: ValueKey('remaining-${balance.columnIndex}'),
+        onTap: editable
+            ? () => showStartingValueDialog(context, balance)
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  // Arama yaparken de tablonun tamamına bakar; bunu söyler.
+                  provider.isFiltering
+                      ? '$label (${loc.wholeTableNote})'
+                      : label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: ink, fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatNumber(
+                  balance.remaining,
+                  Localizations.localeOf(context).languageCode == 'tr',
+                ),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: ink,
+                  fontSize: 15,
+                ),
+              ),
+              if (editable) ...[
+                const SizedBox(width: 6),
+                Icon(Icons.edit_outlined, size: 14, color: ink),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

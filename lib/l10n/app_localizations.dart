@@ -246,6 +246,18 @@ class AppLocalizations {
   String get autoNumber => _t('autoNumber');
   String get numericColumn => _t('numericColumn');
   String get numericColumnDesc => _t('numericColumnDesc');
+  String get startingValue => _t('startingValue');
+  String get startingValueHint => _t('startingValueHint');
+  String get startingValueExample => _t('startingValueExample');
+  String get startingValueInvalid => _t('startingValueInvalid');
+  String get startingValueRemove => _t('startingValueRemove');
+  String get remaining => _t('remaining');
+  String get totalLabel => _t('totalLabel');
+  String get wholeTableNote => _t('wholeTableNote');
+  String startingValueOf(String column) =>
+      _t('startingValueOf').replaceAll('{column}', column);
+  String remainingOf(String column) =>
+      _t('remainingOf').replaceAll('{column}', column);
   String get manualInput => _t('manualInput');
   String get defaultValueComes => _t('defaultValueComes');
   String get autoCalculated => _t('autoCalculated');
@@ -859,6 +871,17 @@ class AppLocalizations {
     'autoNumber': 'Sıra No',
     'numericColumn': 'Sayısal Sütun',
     'numericColumnDesc': 'Bu sütundaki değerler toplanabilir',
+    'startingValue': 'Başlangıç değeri',
+    'startingValueHint':
+        'İsteğe bağlı. Sütunun toplamı bu değerden düşülür; kalan, toplamların yanında gösterilir. Sonradan değiştirebilirsin.',
+    'startingValueExample': 'Örn: 100.000',
+    'startingValueInvalid': 'Geçerli bir sayı yaz.',
+    'startingValueRemove': 'Kaldır',
+    'remaining': 'Kalan',
+    'totalLabel': 'Toplam',
+    'wholeTableNote': 'tüm tablo',
+    'startingValueOf': '{column}: başlangıç değeri',
+    'remainingOf': '{column} · kalan',
     'manualInput': 'Manuel veri girişi',
     'defaultValueComes': 'Varsayılan değer gelir',
     'autoCalculated': 'Otomatik hesaplanır',
@@ -1469,6 +1492,17 @@ class AppLocalizations {
     'autoNumber': 'Auto #',
     'numericColumn': 'Numeric Column',
     'numericColumnDesc': 'Values in this column can be summed',
+    'startingValue': 'Starting value',
+    'startingValueHint':
+        'Optional. The column total is subtracted from this value; the remainder is shown next to the totals. You can change it later.',
+    'startingValueExample': 'e.g. 100,000',
+    'startingValueInvalid': 'Enter a valid number.',
+    'startingValueRemove': 'Remove',
+    'remaining': 'Remaining',
+    'totalLabel': 'Total',
+    'wholeTableNote': 'whole table',
+    'startingValueOf': '{column}: starting value',
+    'remainingOf': '{column} · left',
     'manualInput': 'Manual data entry',
     'defaultValueComes': 'Default value is applied',
     'autoCalculated': 'Automatically calculated',

@@ -21,6 +21,11 @@ class ColumnModel {
   String? formula; // Formül (columnType=formula ise)
   // Örn: "{Kg}*{Birim Fiyat}" veya "{Fiyat}%18"
 
+  /// Sütun toplamının düşüleceği başlangıç değeri: sermaye, bütçe, stok ya da
+  /// bir hedef. Verilmişse toplamların yanında "kalan" da gösterilir. Para
+  /// olmak zorunda değildir; birimi yoktur.
+  double? startingValue;
+
   ColumnModel({
     required this.name,
     this.isNumeric = false,
@@ -28,6 +33,7 @@ class ColumnModel {
     this.columnType = ColumnType.normal,
     this.constantValue,
     this.formula,
+    this.startingValue,
   });
 
   // Sütun tipi kontrolü
@@ -41,6 +47,10 @@ class ColumnModel {
   // Formül sütunu her zaman sayısaldır
   bool get isEffectivelyNumeric => isNumeric || isFormula || isConstant;
 
+  /// Toplamı alınan sütunlar: sayısal ve formül sütunları. Sabit değer ve
+  /// sıra numarası toplanmaz. Başlangıç değeri yalnızca bunlarda anlamlıdır.
+  bool get isSummed => !isConstant && !isAutoNumber && (isNumeric || isFormula);
+
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -49,6 +59,7 @@ class ColumnModel {
       'columnType': columnType.index,
       'constantValue': constantValue,
       'formula': formula,
+      'startingValue': ?startingValue,
     };
   }
 
@@ -65,6 +76,7 @@ class ColumnModel {
       columnType: ColumnType.values[safeTypeIndex],
       constantValue: json['constantValue']?.toDouble(),
       formula: json['formula'],
+      startingValue: (json['startingValue'] as num?)?.toDouble(),
     );
   }
 
@@ -76,6 +88,8 @@ class ColumnModel {
     ColumnType? columnType,
     double? constantValue,
     String? formula,
+    double? startingValue,
+    bool clearStartingValue = false,
   }) {
     return ColumnModel(
       name: name ?? this.name,
@@ -84,6 +98,9 @@ class ColumnModel {
       columnType: columnType ?? this.columnType,
       constantValue: constantValue ?? this.constantValue,
       formula: formula ?? this.formula,
+      startingValue: clearStartingValue
+          ? null
+          : startingValue ?? this.startingValue,
     );
   }
 }

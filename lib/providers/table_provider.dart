@@ -1,3 +1,4 @@
+import '../utils/column_balance.dart';
 import '../utils/table_search.dart';
 import 'dart:async';
 
@@ -478,6 +479,44 @@ class TableProvider extends ChangeNotifier {
         _filteredRowIndices.add(rowIndex);
       }
     }
+  }
+
+  /// Başlangıç değeri verilmiş sütunların kalanları. Aramadan bağımsızdır.
+  List<ColumnBalance> get columnBalances {
+    final table = currentTable;
+    return table == null ? const [] : computeColumnBalances(table);
+  }
+
+  /// Açık tablonun yapısı (sütunları) bu cihazdan değiştirilebilir mi.
+  /// Kodla katılınan tabloda yapıyı yalnızca sahibi değiştirir.
+  bool get canEditStructure {
+    final table = currentTable;
+    return table != null &&
+        canEditCurrent &&
+        (!isSharedTable(table.id) || isSharedOwner(table.id));
+  }
+
+  /// Bir sütunun başlangıç değerini değiştirir ya da (null ile) kaldırır.
+  /// Sermaye arttığında, hedef değiştiğinde tablo yapısına girmeden
+  /// güncellenebilsin diye ayrı bir yoldur; satırlara dokunmaz.
+  Future<bool> setColumnStartingValue(int columnIndex, double? value) async {
+    final table = currentTable;
+    if (table == null ||
+        !canEditStructure ||
+        columnIndex < 0 ||
+        columnIndex >= table.columns.length ||
+        !table.columns[columnIndex].isSummed) {
+      return false;
+    }
+    return updateTableStructure(table.tableName, [
+      for (var index = 0; index < table.columns.length; index++)
+        index == columnIndex
+            ? table.columns[index].copyWith(
+                startingValue: value,
+                clearStartingValue: value == null,
+              )
+            : table.columns[index],
+    ], table.columns.length);
   }
 
   // Filtrelenmiş satırların sayısal sütun toplamlarını hesapla
