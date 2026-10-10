@@ -290,7 +290,9 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                   subtitle: Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      '${template.columns.length} sütun',
+                      AppLocalizations.of(
+                        context,
+                      ).nColumns(template.columns.length),
                       style: TextStyle(
                         fontSize: 13,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
