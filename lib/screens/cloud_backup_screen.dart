@@ -17,14 +17,18 @@ import 'premium_screen.dart';
 import 'shared_table_manage_screen.dart';
 
 class CloudBackupScreen extends StatefulWidget {
-  const CloudBackupScreen({super.key});
+  const CloudBackupScreen({super.key, this.repository});
+
+  @visibleForTesting
+  final CloudRepository? repository;
 
   @override
   State<CloudBackupScreen> createState() => _CloudBackupScreenState();
 }
 
 class _CloudBackupScreenState extends State<CloudBackupScreen> {
-  final _repository = CloudRepository();
+  late final CloudRepository _repository =
+      widget.repository ?? CloudRepository();
   bool _loading = false;
   List<CloudEntry> _entries = const [];
 
