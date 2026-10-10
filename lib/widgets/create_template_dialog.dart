@@ -1,9 +1,16 @@
+import 'starting_value_field.dart';
 import 'package:flutter/material.dart';
+import 'added_field_focus.dart';
+import 'add_column_card.dart';
+import 'form_field_reveal.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
 import '../providers/template_provider.dart';
+import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/column_naming.dart';
+import '../utils/app_feedback.dart';
 
 class CreateTemplateDialog extends StatefulWidget {
   const CreateTemplateDialog({Key? key}) : super(key: key);
@@ -13,7 +20,10 @@ class CreateTemplateDialog extends StatefulWidget {
 }
 
 class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
+  TextEditingController? _newFieldToFocus;
+
   final _templateNameController = TextEditingController();
+  String? _templateNameError;
   final List<ColumnModel> _columns = [];
 
   final List<TextEditingController> _nameControllers = [];
@@ -21,11 +31,14 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
   final List<TextEditingController> _constantValueControllers = [];
   final List<TextEditingController> _formulaControllers = [];
   final Map<int, bool> _showAutoFillInput = {};
+  final List<String?> _columnNameErrors = [];
+  final List<String?> _constantValueErrors = [];
+  final List<String?> _formulaErrors = [];
 
   @override
   void initState() {
     super.initState();
-    _addColumn();
+    _addColumn(focusNewField: false);
   }
 
   @override
@@ -40,20 +53,23 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
 
   void _initializeControllersForColumn(ColumnModel col) {
     _nameControllers.add(TextEditingController(text: col.name));
-    _autoFillControllers.add(TextEditingController(text: col.autoFillOptions.join(', ')));
-    _constantValueControllers.add(TextEditingController(
-      text: col.constantValue?.toString() ?? '',
-    ));
+    _autoFillControllers.add(
+      TextEditingController(text: col.autoFillOptions.join(', ')),
+    );
+    _constantValueControllers.add(
+      TextEditingController(text: col.constantValue?.toString() ?? ''),
+    );
     _formulaControllers.add(TextEditingController(text: col.formula ?? ''));
+    _columnNameErrors.add(null);
+    _constantValueErrors.add(null);
+    _formulaErrors.add(null);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
         child: Column(
           children: [
             // Header
@@ -65,10 +81,6 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
               ),
               child: Row(
                 children: [
@@ -78,7 +90,11 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.article_rounded, color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.article_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
@@ -92,7 +108,10 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white70,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -101,17 +120,28 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
 
             // Content
             Expanded(
-              child: SingleChildScrollView(
+              child: FormFocusScrollView(
+                primary: false,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextField(
                       controller: _templateNameController,
+                      onChanged: (_) {
+                        if (_templateNameError != null) {
+                          setState(() => _templateNameError = null);
+                        }
+                      },
                       decoration: InputDecoration(
                         labelText: AppLocalizations.of(context).templateName,
                         hintText: AppLocalizations.of(context).templateNameHint,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        errorText: _templateNameError,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         prefixIcon: const Icon(Icons.article_rounded),
                       ),
                     ),
@@ -121,26 +151,32 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: AppTheme.lightBlue,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Icon(Icons.view_column_rounded, size: 18, color: AppTheme.primaryBlue),
+                          child: const Icon(
+                            Icons.view_column_rounded,
+                            size: 18,
+                            color: AppTheme.primaryBlue,
+                          ),
                         ),
                         SizedBox(width: 10),
                         Text(
                           AppLocalizations.of(context).columns,
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     ..._buildColumnWidgets(),
-                    SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text(AppLocalizations.of(context).addColumn),
-                      onPressed: _addColumn,
-                    ),
+                    const SizedBox(height: 6),
+                    // Listenin sonunda sıradaki sütunun yeri durur; dokununca eklenir.
+                    AddColumnCard(onTap: _addColumn),
                   ],
                 ),
               ),
@@ -150,8 +186,10 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.background,
-                border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                color: Theme.of(context).scaffoldBackgroundColor,
+                border: Border(
+                  top: BorderSide(color: Theme.of(context).dividerColor),
+                ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(16),
                   bottomRight: Radius.circular(16),
@@ -160,16 +198,20 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(AppLocalizations.of(context).cancel),
+                    child: OutlinedButton.icon(
+                      onPressed: _addColumn,
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(AppLocalizations.of(context).addColumn),
                     ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.save),
-                      label: Text(AppLocalizations.of(context).templateCreate),
+                    child: FilledButton(
+                      child: Text(
+                        AppLocalizations.of(context).templateCreate,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       onPressed: _createTemplate,
                     ),
                   ),
@@ -198,21 +240,38 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _nameControllers[index],
-                      decoration: InputDecoration(
-                        labelText: AppLocalizations.of(context).columnN(index + 1),
-                        hintText: AppLocalizations.of(context).columnName,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: _getColumnTypeIcon(column.columnType),
+                    child: AddedFieldFocus(
+                      key: ValueKey(_nameControllers[index]),
+                      target: _nameControllers[index],
+                      pendingTarget: () => _newFieldToFocus,
+                      onFocused: (target) {
+                        if (identical(_newFieldToFocus, target)) {
+                          _newFieldToFocus = null;
+                        }
+                      },
+                      builder: (focusNode) => TextField(
+                        focusNode: focusNode,
+                        controller: _nameControllers[index],
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(
+                            context,
+                          ).columnN(index + 1),
+                          hintText: AppLocalizations.of(context).columnName,
+                          errorText: _columnNameErrors[index],
+                          border: const OutlineInputBorder(),
+                          prefixIcon: _getColumnTypeIcon(column.columnType),
+                        ),
+                        onChanged: (value) => setState(() {
+                          column.name = value;
+                          _columnNameErrors[index] = null;
+                        }),
                       ),
-                      onChanged: (value) => column.name = value,
                     ),
                   ),
                   if (_columns.length > 1) ...[
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(Icons.delete, color: AppTheme.error),
                       onPressed: () => _removeColumn(index),
                     ),
                   ],
@@ -254,17 +313,66 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _buildTypeChip(index, column, ColumnType.normal, AppLocalizations.of(context).normal, Icons.edit, Colors.blue),
-        _buildTypeChip(index, column, ColumnType.constant, AppLocalizations.of(context).constant, Icons.pin, Colors.orange),
-        _buildTypeChip(index, column, ColumnType.formula, AppLocalizations.of(context).formula, Icons.functions, Colors.purple),
-        _buildTypeChip(index, column, ColumnType.date, AppLocalizations.of(context).date, Icons.calendar_today, Colors.teal),
-        _buildTypeChip(index, column, ColumnType.time, AppLocalizations.of(context).time, Icons.access_time, Colors.indigo),
-        _buildTypeChip(index, column, ColumnType.autoNumber, AppLocalizations.of(context).autoNumber, Icons.format_list_numbered, Colors.brown),
+        _buildTypeChip(
+          index,
+          column,
+          ColumnType.normal,
+          AppLocalizations.of(context).normal,
+          Icons.edit,
+          Colors.blue,
+        ),
+        _buildTypeChip(
+          index,
+          column,
+          ColumnType.constant,
+          AppLocalizations.of(context).constant,
+          Icons.pin,
+          Colors.orange,
+        ),
+        _buildTypeChip(
+          index,
+          column,
+          ColumnType.formula,
+          AppLocalizations.of(context).formula,
+          Icons.functions,
+          Colors.purple,
+        ),
+        _buildTypeChip(
+          index,
+          column,
+          ColumnType.date,
+          AppLocalizations.of(context).date,
+          Icons.calendar_today,
+          Colors.teal,
+        ),
+        _buildTypeChip(
+          index,
+          column,
+          ColumnType.time,
+          AppLocalizations.of(context).time,
+          Icons.access_time,
+          Colors.indigo,
+        ),
+        _buildTypeChip(
+          index,
+          column,
+          ColumnType.autoNumber,
+          AppLocalizations.of(context).autoNumber,
+          Icons.format_list_numbered,
+          Colors.brown,
+        ),
       ],
     );
   }
 
-  Widget _buildTypeChip(int index, ColumnModel column, ColumnType type, String label, IconData icon, Color color) {
+  Widget _buildTypeChip(
+    int index,
+    ColumnModel column,
+    ColumnType type,
+    String label,
+    IconData icon,
+    Color color,
+  ) {
     final isSelected = column.columnType == type;
 
     return FilterChip(
@@ -280,12 +388,25 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       selectedColor: color,
       checkmarkColor: Colors.white,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black87,
+        color: isSelected
+            ? Colors.white
+            : Theme.of(context).colorScheme.onSurface,
       ),
       onSelected: (selected) {
         if (selected) {
           setState(() {
             column.columnType = type;
+            // Adi kendiliginden belli olan tiplerde ad da dolar;
+            // kullanicinin kendi yazdigi ad ezilmez.
+            final renamed = renamedForType(
+              _nameControllers[index].text,
+              type,
+              AppLocalizations.of(context),
+            );
+            if (renamed != null) {
+              _nameControllers[index].text = renamed;
+              column.name = renamed;
+            }
             if (type == ColumnType.normal) {
               column.constantValue = null;
               column.formula = null;
@@ -312,7 +433,26 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     );
   }
 
+  /// Tür ayarları ve, toplamı alınan sütunlarda, başlangıç değeri.
   Widget _buildColumnTypeSettings(int index, ColumnModel column) {
+    final settings = _buildTypeSpecificSettings(index, column);
+    if (!column.isSummed) return settings;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        settings,
+        const SizedBox(height: 12),
+        StartingValueField(
+          // Sütun silinip eklendiğinde alan doğru sütunla kalsın.
+          key: ObjectKey(column),
+          value: column.startingValue,
+          onChanged: (value) => setState(() => column.startingValue = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTypeSpecificSettings(int index, ColumnModel column) {
     switch (column.columnType) {
       case ColumnType.normal:
         return _buildNormalSettings(index, column);
@@ -334,18 +474,25 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.brown[50],
+        color: AppTheme.tintedSurface(context, Colors.brown),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.brown[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, size: 18, color: Colors.brown[700]),
+          Icon(
+            Icons.info_outline,
+            size: 18,
+            color: AppTheme.readableAccent(context, Colors.brown),
+          ),
           SizedBox(width: 8),
           Expanded(
             child: Text(
               AppLocalizations.of(context).autoNumberDescShort,
-              style: TextStyle(fontSize: 12, color: Colors.brown[800]),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.readableAccent(context, Colors.brown),
+              ),
             ),
           ),
         ],
@@ -358,18 +505,25 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.teal[50],
+        color: AppTheme.tintedSurface(context, Colors.teal),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.teal[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, size: 18, color: Colors.teal[700]),
+          Icon(
+            Icons.info_outline,
+            size: 18,
+            color: AppTheme.readableAccent(context, Colors.teal),
+          ),
           SizedBox(width: 8),
           Expanded(
             child: Text(
               AppLocalizations.of(context).dateAutoDescShort,
-              style: TextStyle(fontSize: 12, color: Colors.teal[800]),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.readableAccent(context, Colors.teal),
+              ),
             ),
           ),
         ],
@@ -382,18 +536,25 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.indigo[50],
+        color: AppTheme.tintedSurface(context, Colors.indigo),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.indigo[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, size: 18, color: Colors.indigo[700]),
+          Icon(
+            Icons.info_outline,
+            size: 18,
+            color: AppTheme.readableAccent(context, Colors.indigo),
+          ),
           SizedBox(width: 8),
           Expanded(
             child: Text(
               AppLocalizations.of(context).timeAutoDescShort,
-              style: TextStyle(fontSize: 12, color: Colors.indigo[800]),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.readableAccent(context, Colors.indigo),
+              ),
             ),
           ),
         ],
@@ -408,11 +569,13 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
         CheckboxListTile(
           title: Text(AppLocalizations.of(context).numericColumn),
           value: column.isNumeric,
-          onChanged: (value) => setState(() => column.isNumeric = value ?? false),
+          onChanged: (value) =>
+              setState(() => column.isNumeric = value ?? false),
           dense: true,
           contentPadding: EdgeInsets.zero,
         ),
-        if (column.autoFillOptions.isNotEmpty || _showAutoFillInput[index] == true) ...[
+        if (column.autoFillOptions.isNotEmpty ||
+            _showAutoFillInput[index] == true) ...[
           TextField(
             controller: _autoFillControllers[index],
             decoration: InputDecoration(
@@ -458,11 +621,15 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context).defaultValue,
             hintText: AppLocalizations.of(context).defaultValueHint,
+            errorText: _constantValueErrors[index],
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.pin, color: Colors.orange),
           ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          onChanged: (value) => column.constantValue = double.tryParse(value),
+          onChanged: (value) => setState(() {
+            column.constantValue = double.tryParse(value);
+            _constantValueErrors[index] = null;
+          }),
         ),
       ],
     );
@@ -485,10 +652,14 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context).formulaLabel,
             hintText: AppLocalizations.of(context).formulaHint,
+            errorText: _formulaErrors[index],
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.functions, color: Colors.purple),
           ),
-          onChanged: (value) => column.formula = value,
+          onChanged: (value) => setState(() {
+            column.formula = value;
+            _formulaErrors[index] = null;
+          }),
         ),
         if (availableColumns.isNotEmpty) ...[
           SizedBox(height: 8),
@@ -501,21 +672,27 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              ...availableColumns.map((col) => ActionChip(
-                label: Text(
-                  col.name, 
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textPrimary,
+              ...availableColumns.map(
+                (col) => ActionChip(
+                  label: Text(
+                    col.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  side: BorderSide(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                  ),
+                  onPressed: () {
+                    _formulaControllers[index].text += '{${col.name}}';
+                    column.formula = _formulaControllers[index].text;
+                  },
                 ),
-                backgroundColor: AppTheme.lightBlue,
-                side: BorderSide(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
-                onPressed: () {
-                  _formulaControllers[index].text += '{${col.name}}';
-                  column.formula = _formulaControllers[index].text;
-                },
-              )),
+              ),
             ],
           ),
           SizedBox(height: 8),
@@ -550,7 +727,7 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
           color: AppTheme.formula,
         ),
       ),
-      backgroundColor: AppTheme.formulaLight,
+      backgroundColor: AppTheme.tintedSurface(context, AppTheme.formula),
       side: BorderSide(color: AppTheme.formula.withValues(alpha: 0.3)),
       onPressed: () => _addOperator(index, column, op),
     );
@@ -561,11 +738,12 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     column.formula = _formulaControllers[index].text;
   }
 
-  void _addColumn() {
+  void _addColumn({bool focusNewField = true}) {
     setState(() {
       final newColumn = ColumnModel(name: '');
       _columns.add(newColumn);
       _initializeControllersForColumn(newColumn);
+      if (focusNewField) _newFieldToFocus = _nameControllers.last;
     });
   }
 
@@ -581,6 +759,9 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       _formulaControllers[index].dispose();
       _formulaControllers.removeAt(index);
       _showAutoFillInput.remove(index);
+      _columnNameErrors.removeAt(index);
+      _constantValueErrors.removeAt(index);
+      _formulaErrors.removeAt(index);
     });
   }
 
@@ -590,32 +771,74 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     // Controller'lardan verileri senkronize et
     for (int i = 0; i < _columns.length; i++) {
       _columns[i].name = _nameControllers[i].text.trim();
-      _columns[i].autoFillOptions = _autoFillControllers[i]
-          .text.split(',')
+      _columns[i].autoFillOptions = _autoFillControllers[i].text
+          .split(',')
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
-      _columns[i].constantValue = double.tryParse(_constantValueControllers[i].text);
+      _columns[i].constantValue = double.tryParse(
+        _constantValueControllers[i].text,
+      );
       _columns[i].formula = _formulaControllers[i].text.trim().isEmpty
           ? null
           : _formulaControllers[i].text.trim();
     }
 
-    final validColumns = _columns.where((col) => col.name.isNotEmpty).toList();
-
     if (templateName.isEmpty) {
-      _showError(AppLocalizations.of(context).templateNameEmpty);
+      setState(() {
+        _templateNameError = AppLocalizations.of(context).templateNameEmpty;
+      });
       return;
     }
 
-    if (validColumns.isEmpty) {
-      _showError(AppLocalizations.of(context).atLeastOneColumn);
+    setState(() {
+      for (var i = 0; i < _columns.length; i++) {
+        _columnNameErrors[i] = null;
+        _constantValueErrors[i] = null;
+        _formulaErrors[i] = null;
+      }
+    });
+
+    final unnamedIndex = _columns.indexWhere((col) => col.name.isEmpty);
+    if (unnamedIndex != -1) {
+      setState(() {
+        _columnNameErrors[unnamedIndex] = AppLocalizations.of(
+          context,
+        ).columnNameEmpty(unnamedIndex + 1);
+      });
       return;
     }
+
+    for (var i = 0; i < _columns.length; i++) {
+      final col = _columns[i];
+      if (col.isFormula && (col.formula == null || col.formula!.isEmpty)) {
+        setState(() {
+          _formulaErrors[i] = AppLocalizations.of(
+            context,
+          ).formulaRequired(col.name);
+        });
+        return;
+      }
+      if (col.isConstant && col.constantValue == null) {
+        setState(() {
+          _constantValueErrors[i] = AppLocalizations.of(
+            context,
+          ).defaultValueRequired(col.name);
+        });
+        return;
+      }
+    }
+
+    final validColumns = _columns;
 
     final provider = Provider.of<TemplateProvider>(context, listen: false);
-    final success = await provider.createTemplate(templateName, validColumns);
+    final success = await provider.createTemplate(
+      templateName,
+      validColumns,
+      isPremium: context.read<SubscriptionProvider>().hasUnlimitedPlan,
+    );
 
+    if (!mounted) return;
     if (success) {
       Navigator.pop(context);
     } else {
@@ -624,8 +847,6 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    AppFeedback.showError(context, message);
   }
 }

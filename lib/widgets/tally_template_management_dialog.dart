@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/tally_model.dart';
 import '../providers/tally_provider.dart';
+import '../providers/subscription_provider.dart';
 import '../providers/tally_template_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_feedback.dart';
 import 'tally_template_form_dialog.dart';
 
 class TallyTemplateManagementDialog extends StatelessWidget {
@@ -13,11 +15,9 @@ class TallyTemplateManagementDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.7,
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
         child: Column(
           children: [
             _Header(loc: loc),
@@ -28,16 +28,23 @@ class TallyTemplateManagementDialog extends StatelessWidget {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (!provider.hasTemplates) {
-                    return _buildEmpty(loc);
+                    return _buildEmpty(context, loc);
                   }
                   return ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: provider.templates.length,
                     itemBuilder: (_, i) => _TallyTemplateTile(
                       template: provider.templates[i],
-                      onUse: () => _createFromTemplate(context, provider.templates[i]),
+                      onUse: () =>
+                          _createFromTemplate(context, provider.templates[i]),
                       onEdit: () => _editTemplate(context, i),
-                      onDelete: () => _deleteTemplate(context, provider, i, provider.templates[i], loc),
+                      onDelete: () => _deleteTemplate(
+                        context,
+                        provider,
+                        i,
+                        provider.templates[i],
+                        loc,
+                      ),
                     ),
                   );
                 },
@@ -50,19 +57,35 @@ class TallyTemplateManagementDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildEmpty(AppLocalizations loc) {
+  Widget _buildEmpty(BuildContext context, AppLocalizations loc) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.article_outlined, size: 60, color: Colors.grey[400]),
+          Icon(
+            Icons.article_outlined,
+            size: 60,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 16),
-          Text(loc.tallyNoTemplates, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          Text(
+            loc.tallyNoTemplates,
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(loc.tallyNoTemplatesHint,
-                style: TextStyle(fontSize: 14, color: Colors.grey[500]), textAlign: TextAlign.center),
+            child: Text(
+              loc.tallyNoTemplatesHint,
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -70,24 +93,43 @@ class TallyTemplateManagementDialog extends StatelessWidget {
   }
 
   void _editTemplate(BuildContext context, int index) {
-    showDialog(context: context, builder: (_) => TallyTemplateFormDialog(templateIndex: index));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => TallyTemplateFormDialog(templateIndex: index),
+      ),
+    );
   }
 
-  void _deleteTemplate(BuildContext context, TallyTemplateProvider provider, int index, TallyTemplateModel tpl, AppLocalizations loc) {
+  void _deleteTemplate(
+    BuildContext context,
+    TallyTemplateProvider provider,
+    int index,
+    TallyTemplateModel tpl,
+    AppLocalizations loc,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(loc.tallyTemplateDelete),
         content: Text(loc.tallyTemplateDeleteConfirm(tpl.templateName)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(loc.cancel)),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              await provider.deleteTemplate(index);
-              if (ctx.mounted) Navigator.pop(ctx);
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(loc.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
+              Navigator.pop(ctx);
+              provider.deleteTemplate(index);
             },
-            child: Text(loc.delete, style: const TextStyle(color: Colors.white)),
+            child: Text(
+              loc.delete,
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -116,19 +158,35 @@ class _Header extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.article_rounded, color: Colors.white, size: 24),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.article_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(loc.tallyTemplates,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+            child: Text(
+              loc.tallyTemplates,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.close_rounded, color: Colors.white70),
@@ -147,8 +205,8 @@ class _Footer extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.background,
-        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(16),
           bottomRight: Radius.circular(16),
@@ -157,15 +215,23 @@ class _Footer extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: ElevatedButton.icon(
+            child: FilledButton.icon(
               icon: const Icon(Icons.add_rounded),
               label: Text(loc.tallyCreateNewTemplate),
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () {
-                showDialog(context: context, builder: (_) => const TallyTemplateFormDialog());
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    fullscreenDialog: true,
+                    builder: (_) => const TallyTemplateFormDialog(),
+                  ),
+                );
               },
             ),
           ),
@@ -181,14 +247,22 @@ class _CreateFromTallyTemplateDialog extends StatefulWidget {
   const _CreateFromTallyTemplateDialog({required this.template});
 
   @override
-  State<_CreateFromTallyTemplateDialog> createState() => _CreateFromTallyTemplateDialogState();
+  State<_CreateFromTallyTemplateDialog> createState() =>
+      _CreateFromTallyTemplateDialogState();
 }
 
-class _CreateFromTallyTemplateDialogState extends State<_CreateFromTallyTemplateDialog> {
+class _CreateFromTallyTemplateDialogState
+    extends State<_CreateFromTallyTemplateDialog> {
   late final TextEditingController _nameController;
   DateTime _startDate = DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime _endDate = DateTime(DateTime.now().year, DateTime.now().month + 1, 0);
+  DateTime _endDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month + 1,
+    0,
+  );
   bool _includeItems = true;
+  String? _nameError;
+  String? _dateError;
 
   @override
   void initState() {
@@ -214,22 +288,57 @@ class _CreateFromTallyTemplateDialogState extends State<_CreateFromTallyTemplate
           children: [
             TextField(
               controller: _nameController,
+              onChanged: (_) {
+                if (_nameError != null) setState(() => _nameError = null);
+              },
               decoration: InputDecoration(
                 labelText: loc.tallyTableName,
                 hintText: loc.tallyTableNameHint,
+                errorText: _nameError,
                 border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
-            Text(loc.tallyDateRange, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(
+              loc.tallyDateRange,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: _dateButton(loc.tallyStartDate, _startDate, (d) => setState(() => _startDate = d))),
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.arrow_forward, size: 16)),
-                Expanded(child: _dateButton(loc.tallyEndDate, _endDate, (d) => setState(() => _endDate = d))),
+                Expanded(
+                  child: _dateButton(
+                    loc.tallyStartDate,
+                    _startDate,
+                    (d) => setState(() {
+                      _startDate = d;
+                      _dateError = null;
+                    }),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Icon(Icons.arrow_forward, size: 16),
+                ),
+                Expanded(
+                  child: _dateButton(
+                    loc.tallyEndDate,
+                    _endDate,
+                    (d) => setState(() {
+                      _endDate = d;
+                      _dateError = null;
+                    }),
+                  ),
+                ),
               ],
             ),
+            if (_dateError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _dateError!,
+                style: const TextStyle(color: AppTheme.error, fontSize: 12),
+              ),
+            ],
             if (widget.template.itemNames.isNotEmpty) ...[
               const SizedBox(height: 8),
               CheckboxListTile(
@@ -237,7 +346,10 @@ class _CreateFromTallyTemplateDialogState extends State<_CreateFromTallyTemplate
                 value: _includeItems,
                 onChanged: (v) => setState(() => _includeItems = v ?? true),
                 title: Text(loc.tallyIncludeItems),
-                subtitle: Text(loc.tallyIncludeItemsHint, style: const TextStyle(fontSize: 12)),
+                subtitle: Text(
+                  loc.tallyIncludeItemsHint,
+                  style: const TextStyle(fontSize: 12),
+                ),
                 controlAffinity: ListTileControlAffinity.leading,
                 dense: true,
               ),
@@ -246,13 +358,20 @@ class _CreateFromTallyTemplateDialogState extends State<_CreateFromTallyTemplate
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(loc.cancel)),
-        ElevatedButton(onPressed: _create, child: Text(loc.create)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(loc.cancel),
+        ),
+        FilledButton(onPressed: _create, child: Text(loc.create)),
       ],
     );
   }
 
-  Widget _dateButton(String label, DateTime date, ValueChanged<DateTime> onPicked) {
+  Widget _dateButton(
+    String label,
+    DateTime date,
+    ValueChanged<DateTime> onPicked,
+  ) {
     return OutlinedButton(
       onPressed: () async {
         final picked = await showDatePicker(
@@ -264,12 +383,23 @@ class _CreateFromTallyTemplateDialogState extends State<_CreateFromTallyTemplate
         );
         if (picked != null) onPicked(picked);
       },
-      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10)),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+      ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text('${date.day}/${date.month}/${date.year}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(
+            '${date.day}/${date.month}/${date.year}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -279,17 +409,23 @@ class _CreateFromTallyTemplateDialogState extends State<_CreateFromTallyTemplate
     final loc = AppLocalizations.of(context);
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tallyNameRequired), backgroundColor: Colors.red));
+      setState(() => _nameError = loc.tallyNameRequired);
       return;
     }
     if (_startDate.isAfter(_endDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tallyDateError), backgroundColor: Colors.red));
+      setState(() => _dateError = loc.tallyDateError);
       return;
     }
 
     final tpl = widget.template;
     final clonedStatuses = tpl.statuses
-        .map((s) => TallyStatus(code: s.code, label: s.label, colorValue: s.colorValue))
+        .map(
+          (s) => TallyStatus(
+            code: s.code,
+            label: s.label,
+            colorValue: s.colorValue,
+          ),
+        )
         .toList();
     final items = _includeItems
         ? tpl.itemNames.map((n) => TallyItemModel(name: n)).toList()
@@ -304,13 +440,16 @@ class _CreateFromTallyTemplateDialogState extends State<_CreateFromTallyTemplate
     );
 
     final tallyProvider = context.read<TallyProvider>();
-    final ok = await tallyProvider.createTable(table);
+    final ok = await tallyProvider.createTable(
+      table,
+      isPremium: context.read<SubscriptionProvider>().hasUnlimitedPlan,
+    );
     if (!mounted) return;
     if (ok) {
       Navigator.pop(context); // kendisi
       Navigator.pop(context); // yönetim dialog'u
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tallyCreateFailed), backgroundColor: Colors.red));
+      AppFeedback.showError(context, loc.tallyCreateFailed);
     }
   }
 }
@@ -346,18 +485,36 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
       child: Column(
         children: [
           ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
             leading: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppTheme.lightBlue, borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.article_rounded, color: AppTheme.primaryBlue),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.article_rounded,
+                color: AppTheme.primaryBlue,
+              ),
             ),
-            title: Text(tpl.templateName, style: const TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(
+              tpl.templateName,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                loc.tallyTemplateStatusItemCount(tpl.statuses.length, tpl.itemNames.length),
-                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                loc.tallyTemplateStatusItemCount(
+                  tpl.statuses.length,
+                  tpl.itemNames.length,
+                ),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
             trailing: Row(
@@ -366,10 +523,16 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
                 AnimatedRotation(
                   turns: _expanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.expand_more_rounded, color: AppTheme.textSecondary),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   onSelected: (v) {
                     switch (v) {
                       case 'edit':
@@ -384,7 +547,10 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
                     PopupMenuItem(
                       value: 'edit',
                       child: ListTile(
-                        leading: const Icon(Icons.edit_outlined, color: AppTheme.primaryBlue),
+                        leading: const Icon(
+                          Icons.edit_outlined,
+                          color: AppTheme.primaryBlue,
+                        ),
                         title: Text(loc.edit),
                         contentPadding: EdgeInsets.zero,
                         dense: true,
@@ -393,7 +559,10 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
                     PopupMenuItem(
                       value: 'delete',
                       child: ListTile(
-                        leading: const Icon(Icons.delete_outline, color: AppTheme.error),
+                        leading: const Icon(
+                          Icons.delete_outline,
+                          color: AppTheme.error,
+                        ),
                         title: Text(loc.delete),
                         contentPadding: EdgeInsets.zero,
                         dense: true,
@@ -407,7 +576,9 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
           ),
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 200),
-            crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             firstChild: const SizedBox(width: double.infinity),
             secondChild: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -415,8 +586,14 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (tpl.statuses.isNotEmpty) ...[
-                    Text(loc.tallyStatuses,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textPrimary)),
+                    Text(
+                      loc.tallyStatuses,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
@@ -424,19 +601,37 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
                       children: tpl.statuses.map((s) {
                         final color = Color(s.colorValue);
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: color.withValues(alpha: 0.4)),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.4),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
                               const SizedBox(width: 6),
-                              Text('${s.code} - ${s.label}',
-                                  style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                              Text(
+                                '${s.code} - ${s.label}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: color,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -445,29 +640,52 @@ class _TallyTemplateTileState extends State<_TallyTemplateTile> {
                     const SizedBox(height: 12),
                   ],
                   if (tpl.itemNames.isNotEmpty) ...[
-                    Text(loc.tallyItemsLabel,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textPrimary)),
+                    Text(
+                      loc.tallyItemsLabel,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
                       children: tpl.itemNames
-                          .map((n) => Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.background,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.divider),
+                          .map(
+                            (n) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainer,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Theme.of(context).dividerColor,
                                 ),
-                                child: Text(n, style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
-                              ))
+                              ),
+                              child: Text(
+                                n,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          )
                           .toList(),
                     ),
                     const SizedBox(height: 12),
                   ],
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: FilledButton.icon(
                       icon: const Icon(Icons.add_circle_outline),
                       label: Text(loc.tallyCreateFromTemplate),
                       onPressed: widget.onUse,

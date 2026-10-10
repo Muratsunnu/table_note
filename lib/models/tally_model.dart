@@ -1,3 +1,5 @@
+import '../utils/id_generator.dart';
+
 /// Çetele tablosu durum tanımı
 class TallyStatus {
   String code;
@@ -32,25 +34,27 @@ class TallyStatus {
 
 /// Çetele tablosundaki bir öğe (satır)
 class TallyItemModel {
+  final String id;
   String name;
   Map<String, String> entries; // key: "2024-01-15", value: durum kodu
 
-  TallyItemModel({
-    required this.name,
-    Map<String, String>? entries,
-  }) : entries = entries ?? {};
+  TallyItemModel({String? id, required this.name, Map<String, String>? entries})
+    : id = id?.isNotEmpty == true ? id! : IdGenerator.uuidV4(),
+      entries = entries ?? {};
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'entries': entries,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'entries': entries};
 
   factory TallyItemModel.fromJson(Map<String, dynamic> json) => TallyItemModel(
+    id: json['id']?.toString(),
     name: json['name'] ?? '',
     entries: Map<String, String>.from(json['entries'] ?? {}),
   );
 
-  Map<String, int> getSummary(DateTime startDate, DateTime endDate, List<TallyStatus> statuses) {
+  Map<String, int> getSummary(
+    DateTime startDate,
+    DateTime endDate,
+    List<TallyStatus> statuses,
+  ) {
     final summary = <String, int>{};
     for (final status in statuses) {
       summary[status.code] = 0;
@@ -70,19 +74,30 @@ class TallyItemModel {
 
 /// Çetele tablosu ana modeli
 class TallyTableModel {
+  final String id;
   String tableName;
   DateTime startDate;
   DateTime endDate;
   List<TallyStatus> statuses;
   List<TallyItemModel> items;
+  final DateTime createdAt;
+  DateTime updatedAt;
 
   TallyTableModel({
+    String? id,
     required this.tableName,
     required this.startDate,
     required this.endDate,
     required this.statuses,
     List<TallyItemModel>? items,
-  }) : items = items ?? [];
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) : id = id?.isNotEmpty == true ? id! : IdGenerator.uuidV4(),
+       items = items ?? [],
+       createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? createdAt ?? DateTime.now();
+
+  void touch() => updatedAt = DateTime.now();
 
   int get dayCount => endDate.difference(startDate).inDays + 1;
 
@@ -110,45 +125,84 @@ class TallyTableModel {
   }
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'tableName': tableName,
     'startDate': startDate.toIso8601String(),
     'endDate': endDate.toIso8601String(),
     'statuses': statuses.map((s) => s.toJson()).toList(),
     'items': items.map((i) => i.toJson()).toList(),
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
   };
 
-  factory TallyTableModel.fromJson(Map<String, dynamic> json) => TallyTableModel(
-    tableName: json['tableName'] ?? '',
-    startDate: DateTime.parse(json['startDate']),
-    endDate: DateTime.parse(json['endDate']),
-    statuses: (json['statuses'] as List).map((s) => TallyStatus.fromJson(s)).toList(),
-    items: (json['items'] as List?)?.map((i) => TallyItemModel.fromJson(i)).toList(),
-  );
+  factory TallyTableModel.fromJson(Map<String, dynamic> json) {
+    final createdAt =
+        DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        DateTime.now();
+    return TallyTableModel(
+      id: json['id']?.toString(),
+      tableName: json['tableName'] ?? '',
+      startDate: DateTime.parse(json['startDate']),
+      endDate: DateTime.parse(json['endDate']),
+      statuses: (json['statuses'] as List)
+          .map((s) => TallyStatus.fromJson(Map<String, dynamic>.from(s)))
+          .toList(),
+      items: (json['items'] as List?)
+          ?.map((i) => TallyItemModel.fromJson(Map<String, dynamic>.from(i)))
+          .toList(),
+      createdAt: createdAt,
+      updatedAt:
+          DateTime.tryParse(json['updatedAt']?.toString() ?? '') ?? createdAt,
+    );
+  }
 }
 
 /// Çetele şablonu — durumlar ve öğe adları (giriş verisi yok)
 class TallyTemplateModel {
+  final String id;
   String templateName;
   List<TallyStatus> statuses;
   List<String> itemNames;
+  final DateTime createdAt;
+  DateTime updatedAt;
 
   TallyTemplateModel({
+    String? id,
     required this.templateName,
     required this.statuses,
     List<String>? itemNames,
-  }) : itemNames = itemNames ?? [];
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) : id = id?.isNotEmpty == true ? id! : IdGenerator.uuidV4(),
+       itemNames = itemNames ?? [],
+       createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? createdAt ?? DateTime.now();
+
+  void touch() => updatedAt = DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'templateName': templateName,
-        'statuses': statuses.map((s) => s.toJson()).toList(),
-        'itemNames': itemNames,
-      };
+    'id': id,
+    'templateName': templateName,
+    'statuses': statuses.map((s) => s.toJson()).toList(),
+    'itemNames': itemNames,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
-  factory TallyTemplateModel.fromJson(Map<String, dynamic> json) => TallyTemplateModel(
-        templateName: json['templateName'] ?? '',
-        statuses: (json['statuses'] as List? ?? [])
-            .map((s) => TallyStatus.fromJson(s))
-            .toList(),
-        itemNames: List<String>.from(json['itemNames'] ?? const []),
-      );
+  factory TallyTemplateModel.fromJson(Map<String, dynamic> json) {
+    final createdAt =
+        DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        DateTime.now();
+    return TallyTemplateModel(
+      id: json['id']?.toString(),
+      templateName: json['templateName'] ?? '',
+      statuses: (json['statuses'] as List? ?? [])
+          .map((s) => TallyStatus.fromJson(Map<String, dynamic>.from(s)))
+          .toList(),
+      itemNames: List<String>.from(json['itemNames'] ?? const []),
+      createdAt: createdAt,
+      updatedAt:
+          DateTime.tryParse(json['updatedAt']?.toString() ?? '') ?? createdAt,
+    );
+  }
 }

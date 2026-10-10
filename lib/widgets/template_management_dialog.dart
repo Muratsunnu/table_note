@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
 import '../providers/template_provider.dart';
 import '../providers/table_provider.dart';
+import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import 'create_template_dialog.dart';
 import 'edit_template_dialog.dart';
@@ -12,7 +13,8 @@ class TemplateManagementDialog extends StatefulWidget {
   const TemplateManagementDialog({Key? key}) : super(key: key);
 
   @override
-  State<TemplateManagementDialog> createState() => _TemplateManagementDialogState();
+  State<TemplateManagementDialog> createState() =>
+      _TemplateManagementDialogState();
 }
 
 class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
@@ -28,11 +30,9 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.7,
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
         child: Column(
           children: [
             // Header
@@ -93,7 +93,11 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.article_rounded, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.article_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -112,7 +116,9 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
               if (!provider.hasTemplates) return SizedBox();
               return IconButton(
                 icon: Icon(
-                  _isSearching ? Icons.search_off_rounded : Icons.search_rounded,
+                  _isSearching
+                      ? Icons.search_off_rounded
+                      : Icons.search_rounded,
                   color: Colors.white70,
                 ),
                 onPressed: () {
@@ -124,7 +130,9 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                     }
                   });
                 },
-                tooltip: _isSearching ? AppLocalizations.of(context).closeSearch : AppLocalizations.of(context).searchTemplate,
+                tooltip: _isSearching
+                    ? AppLocalizations.of(context).closeSearch
+                    : AppLocalizations.of(context).searchTemplate,
               );
             },
           ),
@@ -164,9 +172,12 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: Theme.of(context).colorScheme.surfaceContainer,
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -184,16 +195,26 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.article_outlined, size: 60, color: Colors.grey[400]),
+          Icon(
+            Icons.article_outlined,
+            size: 60,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           SizedBox(height: 16),
           Text(
             AppLocalizations.of(context).noTemplatesCreated,
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           SizedBox(height: 8),
           Text(
             AppLocalizations.of(context).saveFrequentStructures,
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -219,12 +240,15 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             width: double.infinity,
-            color: AppTheme.background,
+            color: Theme.of(context).scaffoldBackgroundColor,
             child: Text(
-              AppLocalizations.of(context).showingTemplates(filteredTemplates.length, provider.templates.length),
-              style: const TextStyle(
+              AppLocalizations.of(context).showingTemplates(
+                filteredTemplates.length,
+                provider.templates.length,
+              ),
+              style: TextStyle(
                 fontSize: 13,
-                color: AppTheme.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -244,29 +268,43 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.lightBlue,
+                      color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.article_rounded, color: AppTheme.primaryBlue),
+                    child: const Icon(
+                      Icons.article_rounded,
+                      color: AppTheme.primaryBlue,
+                    ),
                   ),
-                  title: _buildHighlightedText(template.templateName, _searchQuery),
+                  title: _buildHighlightedText(
+                    template.templateName,
+                    _searchQuery,
+                  ),
                   subtitle: Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      '${template.columns.length} sütun',
-                      style: const TextStyle(
+                      AppLocalizations.of(
+                        context,
+                      ).nColumns(template.columns.length),
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
                   trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSecondary),
-                    tooltip: 'İşlemler',
+                    icon: Icon(
+                      Icons.more_vert_rounded,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    tooltip: AppLocalizations.of(context).moreActions,
                     onSelected: (value) {
                       switch (value) {
                         case 'create':
@@ -281,29 +319,38 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'create',
                         child: ListTile(
-                          leading: Icon(Icons.add_circle_outline, color: AppTheme.success),
-                          title: Text('Tablo Oluştur'),
+                          leading: const Icon(
+                            Icons.add_circle_outline,
+                            color: AppTheme.success,
+                          ),
+                          title: Text(AppLocalizations.of(context).createTable),
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'edit',
                         child: ListTile(
-                          leading: Icon(Icons.edit_outlined, color: AppTheme.primaryBlue),
-                          title: Text('Düzenle'),
+                          leading: const Icon(
+                            Icons.edit_outlined,
+                            color: AppTheme.primaryBlue,
+                          ),
+                          title: Text(AppLocalizations.of(context).edit),
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'delete',
                         child: ListTile(
-                          leading: Icon(Icons.delete_outline, color: AppTheme.error),
-                          title: Text('Sil'),
+                          leading: const Icon(
+                            Icons.delete_outline,
+                            color: AppTheme.error,
+                          ),
+                          title: Text(AppLocalizations.of(context).delete),
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                         ),
@@ -328,10 +375,14 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.warningLight,
+              color: AppTheme.tintedSurface(context, AppTheme.warning),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.search_off_rounded, size: 48, color: AppTheme.warning),
+            child: const Icon(
+              Icons.search_off_rounded,
+              size: 48,
+              color: AppTheme.warning,
+            ),
           ),
           SizedBox(height: 16),
           Text(
@@ -339,15 +390,15 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 4),
           Text(
             AppLocalizations.of(context).deleteTemplateConfirm(_searchQuery),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -359,8 +410,8 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.background,
-        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(16),
           bottomRight: Radius.circular(16),
@@ -369,10 +420,10 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
       child: Row(
         children: [
           Expanded(
-            child: ElevatedButton.icon(
+            child: FilledButton.icon(
               icon: const Icon(Icons.add_rounded),
               label: Text(AppLocalizations.of(context).createNewTemplate),
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -389,10 +440,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
   // Arama sorgusunu vurgulayan text widget
   Widget _buildHighlightedText(String text, String query) {
     if (query.isEmpty) {
-      return Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      );
+      return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
     }
 
     final lowerText = text.toLowerCase();
@@ -400,19 +448,16 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     final startIndex = lowerText.indexOf(lowerQuery);
 
     if (startIndex == -1) {
-      return Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      );
+      return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
     }
 
     final endIndex = startIndex + query.length;
 
     return RichText(
       text: TextSpan(
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
-          color: Colors.black87,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         children: [
           TextSpan(text: text.substring(0, startIndex)),
@@ -430,62 +475,179 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
   }
 
   void _showCreateTemplateDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => CreateTemplateDialog(),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const CreateTemplateDialog(),
+      ),
     );
   }
 
   void _editTemplate(BuildContext context, int templateIndex) {
-    showDialog(
-      context: context,
-      builder: (context) => EditTemplateDialog(templateIndex: templateIndex),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => EditTemplateDialog(templateIndex: templateIndex),
+      ),
     );
   }
 
-  void _createTableFromTemplate(BuildContext context, TemplateModel template) {
-    final tableNameController = TextEditingController(text: template.templateName);
+  Future<void> _createTableFromTemplate(
+    BuildContext context,
+    TemplateModel template,
+  ) async {
+    final managementRoute = ModalRoute.of(context);
+    final managementNavigator = Navigator.of(context);
+    final tableNameController = TextEditingController(
+      text: template.templateName,
+    );
+    final columns = template.columns
+        .map((column) => column.copyWith())
+        .toList();
+    final quickSelectionControllers = <int, TextEditingController>{
+      for (var i = 0; i < columns.length; i++)
+        if (columns[i].isNormal)
+          i: TextEditingController(text: columns[i].autoFillOptions.join('\n')),
+    };
+    String? nameError;
+    bool isSaving = false;
 
-    showDialog(
+    final route = DialogRoute<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context).createTableFromTemplate),
-        content: TextField(
-          controller: tableNameController,
-          decoration: InputDecoration(
-            labelText: AppLocalizations.of(context).tableName,
-            border: OutlineInputBorder(),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(AppLocalizations.of(context).createTableFromTemplate),
+          scrollable: true,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: tableNameController,
+                enabled: !isSaving,
+                onChanged: (_) {
+                  if (nameError != null) setDialogState(() => nameError = null);
+                },
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).tableName,
+                  errorText: nameError,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              if (quickSelectionControllers.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(
+                  AppLocalizations.of(context).quickSelectionList,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  AppLocalizations.of(context).templateQuickSelectionHelp,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                for (final entry in quickSelectionControllers.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: TextField(
+                      controller: entry.value,
+                      enabled: !isSaving,
+                      minLines: 1,
+                      maxLines: 4,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      decoration: InputDecoration(
+                        labelText: columns[entry.key].name,
+                        hintText: AppLocalizations.of(
+                          context,
+                        ).quickSelectionLinesHint,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
           ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+              child: Text(AppLocalizations.of(context).cancel),
+            ),
+            FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (tableNameController.text.trim().isEmpty) {
+                        setDialogState(() {
+                          nameError = AppLocalizations.of(
+                            context,
+                          ).tableNameEmpty;
+                        });
+                        return;
+                      }
+                      final tableProvider = Provider.of<TableProvider>(
+                        context,
+                        listen: false,
+                      );
+                      setDialogState(() => isSaving = true);
+                      final newColumns = columns
+                          .map((column) => column.copyWith())
+                          .toList();
+                      for (final entry in quickSelectionControllers.entries) {
+                        if (entry.value.text !=
+                            columns[entry.key].autoFillOptions.join('\n')) {
+                          newColumns[entry.key].autoFillOptions = entry
+                              .value
+                              .text
+                              .split(RegExp(r'\r?\n'))
+                              .map((option) => option.trim())
+                              .where((option) => option.isNotEmpty)
+                              .toList();
+                        }
+                      }
+                      final success = await tableProvider.createTable(
+                        tableNameController.text.trim(),
+                        newColumns,
+                        isPremium: context
+                            .read<SubscriptionProvider>()
+                            .hasUnlimitedPlan,
+                      );
+
+                      if (!dialogContext.mounted) return;
+                      if (success) {
+                        Navigator.pop(dialogContext, true);
+                      } else {
+                        setDialogState(() {
+                          isSaving = false;
+                          nameError = AppLocalizations.of(
+                            context,
+                          ).tableCreateFailed;
+                        });
+                      }
+                    },
+              child: Text(AppLocalizations.of(context).create),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context).cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (tableNameController.text.trim().isNotEmpty) {
-                final tableProvider = Provider.of<TableProvider>(context, listen: false);
-                final success = await tableProvider.createTable(
-                  tableNameController.text.trim(),
-                  List.from(template.columns),
-                );
-
-                Navigator.pop(context); // Dialog'u kapat
-                Navigator.pop(context); // Template management dialog'u kapat
-
-                if (!success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.of(context).tableCreateFailed)),
-                  );
-                }
-              }
-            },
-            child: Text(AppLocalizations.of(context).create),
-          ),
-        ],
       ),
     );
+    final created = await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(route);
+    // The text field remains mounted throughout the closing animation.
+    await route.completed;
+    tableNameController.dispose();
+    for (final controller in quickSelectionControllers.values) {
+      controller.dispose();
+    }
+    if (created == true && mounted && managementRoute?.isCurrent == true) {
+      managementNavigator.pop();
+    }
   }
 
   void _deleteTemplate(BuildContext context, int index) {
@@ -496,23 +658,28 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context).deleteTemplate),
-        content: Text(AppLocalizations.of(context).deleteTemplateConfirm(templateName)),
+        content: Text(
+          AppLocalizations.of(context).deleteTemplateConfirm(templateName),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              await provider.deleteTemplate(index);
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+            // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
+            onPressed: () {
               Navigator.pop(context);
+              provider.deleteTemplate(index);
             },
-            child: Text(AppLocalizations.of(context).delete, style: const TextStyle(color: Colors.white)),
+            child: Text(
+              AppLocalizations.of(context).delete,
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
-
 }

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
+import '../providers/tally_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/ux_localizations.dart';
 
 class TableSearchDialog extends StatefulWidget {
-  const TableSearchDialog({Key? key}) : super(key: key);
+  const TableSearchDialog({super.key, this.isTally = false});
+
+  final bool isTally;
 
   @override
   State<TableSearchDialog> createState() => _TableSearchDialogState();
@@ -52,12 +56,18 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.search_rounded, color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.search_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      AppLocalizations.of(context).searchTable,
+                      widget.isTally
+                          ? AppLocalizations.of(context).searchTally
+                          : AppLocalizations.of(context).searchTable,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -66,7 +76,11 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white70,
+                    ),
+                    tooltip: AppLocalizations.of(context).close,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -80,11 +94,14 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                 controller: _searchController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context).typeTableName,
+                  hintText: widget.isTally
+                      ? AppLocalizations.of(context).typeTallyName
+                      : AppLocalizations.of(context).typeTableName,
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear_rounded),
+                          tooltip: AppLocalizations.of(context).clear,
                           onPressed: () {
                             _searchController.clear();
                             setState(() {
@@ -97,7 +114,7 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
-                  fillColor: AppTheme.background,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainer,
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -109,17 +126,28 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
 
             // Sonuçlar
             Expanded(
-              child: Consumer<TableProvider>(
-                builder: (context, provider, child) {
-                  final filteredTables = provider.tables.where((table) {
+              child: Consumer2<TableProvider, TallyProvider>(
+                builder: (context, provider, tallyProvider, child) {
+                  final entries = _tableEntries(
+                    context,
+                    provider,
+                    tallyProvider,
+                  );
+                  final filteredTables = entries.where((table) {
                     return table.tableName.toLowerCase().contains(_searchQuery);
                   }).toList();
 
-                  if (provider.tables.isEmpty) {
+                  if (entries.isEmpty) {
                     return _buildEmptyState(
-                      icon: Icons.table_chart_outlined,
-                      title: AppLocalizations.of(context).noTablesCreated,
-                      subtitle: AppLocalizations.of(context).createYourFirst,
+                      icon: widget.isTally
+                          ? Icons.grid_on_rounded
+                          : Icons.table_chart_outlined,
+                      title: widget.isTally
+                          ? AppLocalizations.of(context).tallyEmptyTitle
+                          : AppLocalizations.of(context).noTablesCreated,
+                      subtitle: widget.isTally
+                          ? AppLocalizations.of(context).tallyEmptySubtitle
+                          : AppLocalizations.of(context).createYourFirst,
                     );
                   }
 
@@ -127,7 +155,9 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                     return _buildEmptyState(
                       icon: Icons.search_off_rounded,
                       title: AppLocalizations.of(context).noResults,
-                      subtitle: AppLocalizations.of(context).noMatchingTable(_searchQuery),
+                      subtitle: AppLocalizations.of(
+                        context,
+                      ).noMatchingTable(_searchQuery),
                     );
                   }
 
@@ -136,8 +166,12 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                     itemCount: filteredTables.length,
                     itemBuilder: (context, index) {
                       final table = filteredTables[index];
-                      final originalIndex = provider.tables.indexOf(table);
-                      final isActive = originalIndex == provider.currentTableIndex;
+                      final originalIndex = table.index;
+                      final isActive =
+                          originalIndex ==
+                          (widget.isTally
+                              ? tallyProvider.currentIndex
+                              : provider.currentTableIndex);
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -145,28 +179,50 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: isActive
-                              ? const BorderSide(color: AppTheme.primaryBlue, width: 2)
-                              : BorderSide(color: Colors.grey[200]!),
+                              ? const BorderSide(
+                                  color: AppTheme.primaryBlue,
+                                  width: 2,
+                                )
+                              : BorderSide(
+                                  color: Theme.of(context).dividerColor,
+                                ),
                         ),
                         child: ListTile(
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: isActive ? AppTheme.lightBlue : AppTheme.background,
+                              color: isActive
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainer,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
-                              Icons.table_chart_rounded,
-                              color: isActive ? AppTheme.primaryBlue : AppTheme.textSecondary,
+                              widget.isTally
+                                  ? Icons.grid_on_rounded
+                                  : Icons.table_chart_rounded,
+                              color: isActive
+                                  ? AppTheme.primaryBlue
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          title: _buildHighlightedText(table.tableName, _searchQuery),
+                          title: _buildHighlightedText(
+                            table.tableName,
+                            _searchQuery,
+                          ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              AppLocalizations.of(context).recordsAndColumns(table.rows.length, table.columns.length),
-                              style: const TextStyle(
-                                color: AppTheme.textSecondary,
+                              table.subtitle,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                                 fontSize: 13,
                               ),
                             ),
@@ -178,22 +234,35 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.successLight,
+                                    color: AppTheme.tintedSurface(
+                                      context,
+                                      AppTheme.success,
+                                    ),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
                                     AppLocalizations.of(context).active,
                                     style: TextStyle(
-                                      color: AppTheme.success,
+                                      color: AppTheme.successForeground,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 )
-                              : const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppTheme.textSecondary),
+                              : Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 16,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           onTap: () {
-                            provider.changeTable(originalIndex);
-                            Navigator.pop(context);
+                            if (widget.isTally) {
+                              tallyProvider.changeTable(originalIndex);
+                            } else {
+                              provider.changeTable(originalIndex);
+                            }
+                            Navigator.pop(context, true);
                           },
                         ),
                       );
@@ -204,17 +273,20 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
             ),
 
             // Alt bilgi
-            Consumer<TableProvider>(
-              builder: (context, provider, child) {
-                final filteredCount = provider.tables
-                    .where((t) => t.tableName.toLowerCase().contains(_searchQuery))
+            Consumer2<TableProvider, TallyProvider>(
+              builder: (context, provider, tallyProvider, child) {
+                final entries = _tableEntries(context, provider, tallyProvider);
+                final filteredCount = entries
+                    .where(
+                      (t) => t.tableName.toLowerCase().contains(_searchQuery),
+                    )
                     .length;
-                final totalCount = provider.tables.length;
+                final totalCount = entries.length;
 
                 return Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: AppTheme.background,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(16),
                       bottomRight: Radius.circular(16),
@@ -223,14 +295,22 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.textSecondary),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         _searchQuery.isEmpty
-                            ? AppLocalizations.of(context).totalNTables(totalCount)
-                            : AppLocalizations.of(context).showingNofM(filteredCount, totalCount),
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
+                            ? AppLocalizations.of(
+                                context,
+                              ).totalNTables(totalCount)
+                            : AppLocalizations.of(
+                                context,
+                              ).showingNofM(filteredCount, totalCount),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 13,
                         ),
                       ),
@@ -245,6 +325,39 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
     );
   }
 
+  List<({int index, String tableName, String subtitle})> _tableEntries(
+    BuildContext context,
+    TableProvider provider,
+    TallyProvider tallyProvider,
+  ) {
+    final loc = AppLocalizations.of(context);
+    final material = MaterialLocalizations.of(context);
+    if (widget.isTally) {
+      return [
+        for (final entry in tallyProvider.tables.asMap().entries)
+          (
+            index: entry.key,
+            tableName: entry.value.tableName,
+            subtitle:
+                '${entry.value.items.length} ${loc.tallyItems} • '
+                '${material.formatShortDate(entry.value.startDate)} – '
+                '${material.formatShortDate(entry.value.endDate)}',
+          ),
+      ];
+    }
+    return [
+      for (final entry in provider.tables.asMap().entries)
+        (
+          index: entry.key,
+          tableName: entry.value.tableName,
+          subtitle: loc.recordsAndColumns(
+            entry.value.rows.length,
+            entry.value.columns.length,
+          ),
+        ),
+    ];
+  }
+
   Widget _buildEmptyState({
     required IconData icon,
     required String title,
@@ -257,7 +370,7 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.lightBlue,
+              color: Theme.of(context).colorScheme.primaryContainer,
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 48, color: AppTheme.primaryBlue),
@@ -265,18 +378,18 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
           const SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -287,10 +400,7 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
   // Arama sorgusunu vurgulayan text widget
   Widget _buildHighlightedText(String text, String query) {
     if (query.isEmpty) {
-      return Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      );
+      return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
     }
 
     final lowerText = text.toLowerCase();
@@ -298,19 +408,16 @@ class _TableSearchDialogState extends State<TableSearchDialog> {
     final startIndex = lowerText.indexOf(lowerQuery);
 
     if (startIndex == -1) {
-      return Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      );
+      return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
     }
 
     final endIndex = startIndex + query.length;
 
     return RichText(
       text: TextSpan(
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
-          color: AppTheme.textPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         children: [
           TextSpan(text: text.substring(0, startIndex)),

@@ -45,17 +45,167 @@ class AppLocalizations {
   String get english => _t('english');
   String get languageSettings => _t('languageSettings');
   String get selectLanguage => _t('selectLanguage');
+  String get appearance => _t('appearance');
+  String get darkTheme => _t('darkTheme');
+  String get darkThemeDescription => _t('darkThemeDescription');
   String get menu => _t('menu');
   String get openMenuToCreate => _t('openMenuToCreate');
+  String get skip => _t('skip');
+  String get continueLabel => _t('continueLabel');
+  String get startUsing => _t('startUsing');
+  String get onboardingOrganizeTitle => _t('onboardingOrganizeTitle');
+  String get onboardingOrganizeDescription =>
+      _t('onboardingOrganizeDescription');
+  String get onboardingOfflineTitle => _t('onboardingOfflineTitle');
+  String get onboardingOfflineDescription => _t('onboardingOfflineDescription');
+  String get onboardingVoiceTitle => _t('onboardingVoiceTitle');
+  String get onboardingVoiceDescription => _t('onboardingVoiceDescription');
+  String get onboardingPremiumTitle => _t('onboardingPremiumTitle');
+  String get onboardingPremiumDescription => _t('onboardingPremiumDescription');
+  String get premium => _t('premium');
+  String get unlockPremium => _t('unlockPremium');
+  String get premiumDescription => _t('premiumDescription');
+  String get premiumActive => _t('premiumActive');
+  String get premiumActiveDescription => _t('premiumActiveDescription');
+  String get premiumVoiceFeature => _t('premiumVoiceFeature');
+  String get premiumCloudFeature => _t('premiumCloudFeature');
+  String get premiumShareFeature => _t('premiumShareFeature');
+  String get premiumImportFeature => _t('premiumImportFeature');
+  String get premiumUnlimitedFeature => _t('premiumUnlimitedFeature');
+  String get premiumTallyFeature => _t('premiumTallyFeature');
+  String get planYearly => _t('planYearly');
+  String get planMonthly => _t('planMonthly');
+  String get perYear => _t('perYear');
+  String get perMonth => _t('perMonth');
+  String trialBadge(int days) => _t('trialBadge').replaceAll('{days}', '$days');
+  String savingBadge(int percent) =>
+      _t('savingBadge').replaceAll('{percent}', '$percent');
+  String startTrial(int days) => _t('startTrial').replaceAll('{days}', '$days');
+  String get subscribeNow => _t('subscribeNow');
+  String get trialTodayLabel => _t('trialTodayLabel');
+  String get trialTodayText => _t('trialTodayText');
+  String trialChargeLabel(int days) =>
+      _t('trialChargeLabel').replaceAll('{days}', '$days');
+  String trialChargeText(String price, String unit) => _t(
+    'trialChargeText',
+  ).replaceAll('{price}', price).replaceAll('{unit}', unit);
+  String get trialCancelLabel => _t('trialCancelLabel');
+  String trialCancelText(String store) =>
+      _t('trialCancelText').replaceAll('{store}', store);
+  String renewalTerms(String price, String unit, String store) =>
+      _t('renewalTerms')
+          .replaceAll('{price}', price)
+          .replaceAll('{unit}', unit)
+          .replaceAll('{store}', store);
+  String get premiumKeepsData => _t('premiumKeepsData');
+  String get signInToSubscribeHint => _t('signInToSubscribeHint');
+  String get priceUnavailable => _t('priceUnavailable');
+  String get retry => _t('retry');
+  String get billingPreparing => _t('billingPreparing');
+  String get verifyingPurchase => _t('verifyingPurchase');
+  String get purchasePending => _t('purchasePending');
+  String get premiumWelcomeTitle => _t('premiumWelcomeTitle');
+  String get premiumWelcomeBody => _t('premiumWelcomeBody');
+  String get premiumWelcomeNext => _t('premiumWelcomeNext');
+  String get welcomeBackup => _t('welcomeBackup');
+  String get welcomeBackupHint => _t('welcomeBackupHint');
+  String get welcomeShare => _t('welcomeShare');
+  String get welcomeShareHint => _t('welcomeShareHint');
+  String get welcomeVoice => _t('welcomeVoice');
+  String get welcomeVoiceHint => _t('welcomeVoiceHint');
+  String get welcomeClose => _t('welcomeClose');
+  String get manageSubscription => _t('manageSubscription');
+  String premiumValidUntil(String date) =>
+      _t('premiumValidUntil').replaceAll('{date}', date);
+  String manageSubscriptionFailed(String store) =>
+      _t('manageSubscriptionFailed').replaceAll('{store}', store);
+  String get restorePurchases => _t('restorePurchases');
+  String get signInToSubscribe => _t('signInToSubscribe');
+  String get purchaseNotVerified => _t('purchaseNotVerified');
+  String get purchaseNoConnection => _t('purchaseNoConnection');
+  String get purchaseFailed => _t('purchaseFailed');
+  String get account => _t('account');
+  String get noAccountConnected => _t('noAccountConnected');
+  String get accountDescription => _t('accountDescription');
+  String get accountPreparing => _t('accountPreparing');
+  String get onlineServicesUnavailable => _t('onlineServicesUnavailable');
+  String get onlineServicesUnavailableDescription =>
+      _t('onlineServicesUnavailableDescription');
+  String get signIn => _t('signIn');
+  String get signOut => _t('signOut');
+  String get signInWithGoogle => _t('signInWithGoogle');
+  String get pleaseWait => _t('pleaseWait');
+  String get ok => _t('ok');
+  String get cloudBackup => _t('cloudBackup');
+  String get cloudBackupSubtitle => _t('cloudBackupSubtitle');
+  String get backupComplete => _t('backupComplete');
+  String get restoreTable => _t('restoreTable');
+  String get restoreChoiceDescription => _t('restoreChoiceDescription');
+  String get newCopy => _t('newCopy');
+  String get overwrite => _t('overwrite');
+  String get restoredToDevice => _t('restoredToDevice');
+  String get shareCode => _t('shareCode');
+  String shareCodeValidity(String code) =>
+      _t('shareCodeValidity').replaceAll('{code}', code);
+  String get addSharedTable => _t('addSharedTable');
+  String get premiumRequired => _t('premiumRequired');
+  String freeQuotaUsed(int used, int limit) => _t(
+    'freeQuotaUsed',
+  ).replaceAll('{used}', '$used').replaceAll('{limit}', '$limit');
+  String get cloudPremiumMessage => _t('cloudPremiumMessage');
+  String get viewPremium => _t('viewPremium');
+  String get connectAccount => _t('connectAccount');
+  String get connectAccountMessage => _t('connectAccountMessage');
+  String get backupNow => _t('backupNow');
+  String get backupLater => _t('backupLater');
+  String get whatIsBackup => _t('whatIsBackup');
+  String get backupHelpWhat => _t('backupHelpWhat');
+  String get backupHelpRestore => _t('backupHelpRestore');
+  String get backupHelpManual => _t('backupHelpManual');
+  String get backupHelpShared => _t('backupHelpShared');
+  String get backupReminderNever => _t('backupReminderNever');
+  String backupReminderDays(int days) =>
+      _t('backupReminderDays').replaceAll('{days}', '$days');
+
+  /// "Son yedekleme: 3 gün önce". [days] null ise hiç yedek alınmamıştır.
+  String lastBackupLabel(int? days) => switch (days) {
+    null => _t('lastBackupNever'),
+    0 => _t('lastBackupToday'),
+    1 => _t('lastBackupYesterday'),
+    _ => _t('lastBackupDaysAgo').replaceAll('{days}', '$days'),
+  };
+  String get addShareCodeTooltip => _t('addShareCodeTooltip');
+  String get noCloudBackup => _t('noCloudBackup');
+  String get myBackup => _t('myBackup');
+  String get sharedWithMe => _t('sharedWithMe');
+  String get voiceFill => _t('voiceFill');
+  String get voiceExample => _t('voiceExample');
+  String get onDeviceRecognition => _t('onDeviceRecognition');
+  String get preparingMicrophone => _t('preparingMicrophone');
+  String get tapToSpeak => _t('tapToSpeak');
+  String get listening => _t('listening');
+  String get stopListening => _t('stopListening');
+  String get recognizedSpeech => _t('recognizedSpeech');
+  String get recognizedSpeechHint => _t('recognizedSpeechHint');
+  String get offlineSpeechUnavailable => _t('offlineSpeechUnavailable');
+  String get reviewFields => _t('reviewFields');
+  String get confirmAndAdd => _t('confirmAndAdd');
 
   // ============== TABLE SCREEN ==============
   String get tableNote => _t('tableNote');
+  String get tablesTab => _t('tablesTab');
+  String get importCsv => _t('importCsv');
+  String get moreActions => _t('moreActions');
   String get findTable => _t('findTable');
   String get exportData => _t('exportData');
   String get newTable => _t('newTable');
   String get templates => _t('templates');
   String get addRecord => _t('addRecord');
   String get searchInTable => _t('searchInTable');
+  String searchColumnHint(String column) =>
+      _t('searchColumnHint').replaceAll('{column}', column);
+  String searchingInColumn(String column) =>
+      _t('searchingInColumn').replaceAll('{column}', column);
   String nRecords(int n) => _t('nRecords').replaceAll('{n}', n.toString());
   String nColumns(int n) => _t('nColumns').replaceAll('{n}', n.toString());
   String recordsAndColumns(int r, int c) => '${nRecords(r)} • ${nColumns(c)}';
@@ -80,8 +230,10 @@ class AppLocalizations {
   String get deleteColumn => _t('deleteColumn');
   String get tableNameEmpty => _t('tableNameEmpty');
   String get atLeastOneColumn => _t('atLeastOneColumn');
-  String formulaRequired(String n) => _t('formulaRequired').replaceAll('{name}', n);
-  String defaultValueRequired(String n) => _t('defaultValueRequired').replaceAll('{name}', n);
+  String formulaRequired(String n) =>
+      _t('formulaRequired').replaceAll('{name}', n);
+  String defaultValueRequired(String n) =>
+      _t('defaultValueRequired').replaceAll('{name}', n);
   String get tableCreateFailed => _t('tableCreateFailed');
   String get noTemplatesYet => _t('noTemplatesYet');
   String get createTableFromTemplate => _t('createTableFromTemplate');
@@ -96,6 +248,18 @@ class AppLocalizations {
   String get autoNumber => _t('autoNumber');
   String get numericColumn => _t('numericColumn');
   String get numericColumnDesc => _t('numericColumnDesc');
+  String get startingValue => _t('startingValue');
+  String get startingValueHint => _t('startingValueHint');
+  String get startingValueExample => _t('startingValueExample');
+  String get startingValueInvalid => _t('startingValueInvalid');
+  String get startingValueRemove => _t('startingValueRemove');
+  String get remaining => _t('remaining');
+  String get totalLabel => _t('totalLabel');
+  String get wholeTableNote => _t('wholeTableNote');
+  String startingValueOf(String column) =>
+      _t('startingValueOf').replaceAll('{column}', column);
+  String remainingOf(String column) =>
+      _t('remainingOf').replaceAll('{column}', column);
   String get manualInput => _t('manualInput');
   String get defaultValueComes => _t('defaultValueComes');
   String get autoCalculated => _t('autoCalculated');
@@ -105,6 +269,8 @@ class AppLocalizations {
 
   // ============== COLUMN SETTINGS ==============
   String get quickSelectionList => _t('quickSelectionList');
+  String get templateQuickSelectionHelp => _t('templateQuickSelectionHelp');
+  String get quickSelectionLinesHint => _t('quickSelectionLinesHint');
   String get quickSelectionHint => _t('quickSelectionHint');
   String get addQuickSelectionList => _t('addQuickSelectionList');
   String get defaultValue => _t('defaultValue');
@@ -152,6 +318,7 @@ class AppLocalizations {
   String get formulaLabel => _t('formulaLabel');
   String get quickSelect => _t('quickSelect');
   String get today => _t('today');
+  String get yesterday => _t('yesterday');
   String get selectDate => _t('selectDate');
   String get now => _t('now');
   String get selectTime => _t('selectTime');
@@ -165,7 +332,8 @@ class AppLocalizations {
 
   // ============== TABLE LIST ==============
   String get noResults => _t('noResults');
-  String noMatchingRecord(String q) => _t('noMatchingRecord').replaceAll('{query}', q);
+  String noMatchingRecord(String q) =>
+      _t('noMatchingRecord').replaceAll('{query}', q);
   String get tableEmpty => _t('tableEmpty');
   String get tapToAddFirst => _t('tapToAddFirst');
   String get deleteRecord => _t('deleteRecord');
@@ -185,18 +353,26 @@ class AppLocalizations {
   String get switchToTable => _t('switchToTable');
   String get editStructure => _t('editStructure');
   String get deleteTable => _t('deleteTable');
-  String deleteTableConfirm(String n) => _t('deleteTableConfirm').replaceAll('{name}', n);
-  String nRecordsPermanentDelete(int n) => _t('nRecordsPermanentDelete').replaceAll('{n}', n.toString());
+  String deleteTableConfirm(String n) =>
+      _t('deleteTableConfirm').replaceAll('{name}', n);
+  String nRecordsPermanentDelete(int n) =>
+      _t('nRecordsPermanentDelete').replaceAll('{n}', n.toString());
 
   // ============== SEARCH DIALOG ==============
   String get searchTable => _t('searchTable');
+  String get searchTally => _t('searchTally');
+  String get typeTallyName => _t('typeTallyName');
   String get typeTableName => _t('typeTableName');
   String get noTablesCreated => _t('noTablesCreated');
   String get createYourFirst => _t('createYourFirst');
-  String noMatchingTable(String q) => _t('noMatchingTable').replaceAll('{query}', q);
+  String noMatchingTable(String q) =>
+      _t('noMatchingTable').replaceAll('{query}', q);
   String get active => _t('active');
-  String totalNTables(int n) => _t('totalNTables').replaceAll('{n}', n.toString());
-  String showingNofM(int n, int m) => _t('showingNofM').replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
+  String totalNTables(int n) =>
+      _t('totalNTables').replaceAll('{n}', n.toString());
+  String showingNofM(int n, int m) => _t(
+    'showingNofM',
+  ).replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
 
   // ============== EXPORT ==============
   String get exportTitle => _t('exportTitle');
@@ -214,7 +390,8 @@ class AppLocalizations {
 
   // ============== TABLE SELECTOR ==============
   String get selectTable => _t('selectTable');
-  String deleteTableConfirmFull(String n) => _t('deleteTableConfirmFull').replaceAll('{name}', n);
+  String deleteTableConfirmFull(String n) =>
+      _t('deleteTableConfirmFull').replaceAll('{name}', n);
 
   // ============== TEMPLATE MANAGEMENT ==============
   String get tableTemplates => _t('tableTemplates');
@@ -224,9 +401,12 @@ class AppLocalizations {
   String get noTemplatesCreated => _t('noTemplatesCreated');
   String get saveFrequentStructures => _t('saveFrequentStructures');
   String get createNewTemplate => _t('createNewTemplate');
-  String showingTemplates(int n, int m) => _t('showingTemplates').replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
+  String showingTemplates(int n, int m) => _t(
+    'showingTemplates',
+  ).replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
   String get deleteTemplate => _t('deleteTemplate');
-  String deleteTemplateConfirm(String n) => _t('deleteTemplateConfirm').replaceAll('{name}', n);
+  String deleteTemplateConfirm(String n) =>
+      _t('deleteTemplateConfirm').replaceAll('{name}', n);
   String get columnsLabel => _t('columnsLabel');
 
   // ============== CREATE/EDIT TEMPLATE ==============
@@ -238,7 +418,8 @@ class AppLocalizations {
   String get templateCreateFailed => _t('templateCreateFailed');
   String get editTemplate => _t('editTemplate');
   String get templateNameEmptyError => _t('templateNameEmptyError');
-  String columnNameEmpty(int n) => _t('columnNameEmpty').replaceAll('{n}', n.toString());
+  String columnNameEmpty(int n) =>
+      _t('columnNameEmpty').replaceAll('{n}', n.toString());
   String get templateUpdated => _t('templateUpdated');
   String get templateUpdateFailed => _t('templateUpdateFailed');
 
@@ -255,9 +436,12 @@ class AppLocalizations {
   String get constant => _t('constant');
 
   // ============== PDF ==============
-  String totalNRecords(int n) => _t('totalNRecords').replaceAll('{n}', n.toString());
+  String totalNRecords(int n) =>
+      _t('totalNRecords').replaceAll('{n}', n.toString());
   String get totalsLabel => _t('totalsLabel');
-  String pageNofM(int n, int m) => _t('pageNofM').replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
+  String pageNofM(int n, int m) => _t(
+    'pageNofM',
+  ).replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
 
   // ============== MISC ==============
   String get autoNumberDescShort => _t('autoNumberDescShort');
@@ -267,7 +451,6 @@ class AppLocalizations {
   String get quickSelectionHintShort => _t('quickSelectionHintShort');
   String get quickSelectionAdd => _t('quickSelectionAdd');
   String get addColumnLabel => _t('addColumnLabel');
-
 
   // ============== TALLY ==============
   String get tallyTable => _t('tallyTable');
@@ -279,11 +462,13 @@ class AppLocalizations {
   String get tallyAddItemHint => _t('tallyAddItemHint');
   String get tallyAddItem => _t('tallyAddItem');
   String get tallyItemName => _t('tallyItemName');
+  String get recordNameRequired => _t('recordNameRequired');
   String get tallyClear => _t('tallyClear');
   String get tallySummary => _t('tallySummary');
   String get tallyRenameItem => _t('tallyRenameItem');
   String get tallyDeleteItem => _t('tallyDeleteItem');
-  String tallyDeleteItemConfirm(String name) => _t('tallyDeleteItemConfirm').replaceAll('{name}', name);
+  String tallyDeleteItemConfirm(String name) =>
+      _t('tallyDeleteItemConfirm').replaceAll('{name}', name);
   String get tallyTotalDays => _t('tallyTotalDays');
   String get tallyEmpty => _t('tallyEmpty');
   String get tallyNameHint => _t('tallyNameHint');
@@ -320,6 +505,135 @@ class AppLocalizations {
   String get tallyEditTitle => _t('tallyEditTitle');
   String get tallyUpdateFailed => _t('tallyUpdateFailed');
   String get tallyDeleteStatusWarning => _t('tallyDeleteStatusWarning');
+  String get duplicateStatusCode => _t('duplicateStatusCode');
+  String get goToToday => _t('goToToday');
+  String get tallyTools => _t('tallyTools');
+  String get overallSummary => _t('overallSummary');
+  String get reorderRows => _t('reorderRows');
+  String get searchPersonOrItem => _t('searchPersonOrItem');
+  String get bulkMark => _t('bulkMark');
+  String get forToday => _t('forToday');
+  String get chooseDateRange => _t('chooseDateRange');
+  String get undoLastAction => _t('undoLastAction');
+  // ============== ORTAK TABLO ==============
+  String get joinTable => _t('joinTable');
+  String get joinCode => _t('joinCode');
+  String get invitePeople => _t('invitePeople');
+  String get shareAsFile => _t('shareAsFile');
+  String get shareSendCode => _t('shareSendCode');
+  String shareCodeMessage(String name, String code) => _t(
+    'shareCodeMessage',
+  ).replaceAll('{name}', name).replaceAll('{code}', code);
+  String get shareHowToJoin =>
+      _t('shareHowToJoin').replaceAll('{join}', joinTable);
+  String get shareNeedsAccount => _t('shareNeedsAccount');
+  String get sharePassword => _t('sharePassword');
+  String get sharePasswordHint => _t('sharePasswordHint');
+  String get shareMembersHistory => _t('shareMembersHistory');
+  String get roleViewer => _t('roleViewer');
+  String get roleEditor => _t('roleEditor');
+  String roleLabel(String? role) => role == 'editor' ? roleEditor : roleViewer;
+  String get memberCanEdit => _t('memberCanEdit');
+  String get requestEditAccess => _t('requestEditAccess');
+  String get editAccessRequested => _t('editAccessRequested');
+  String get requestEditAccessTitle => _t('requestEditAccessTitle');
+  String get requestEditAccessMessage => _t('requestEditAccessMessage');
+  String get sendRequest => _t('sendRequest');
+  String get editAccessRequestSent => _t('editAccessRequestSent');
+  String get viewOnlyNotice => _t('viewOnlyNotice');
+  String get viewOnlyRequested => _t('viewOnlyRequested');
+  String get editRequests => _t('editRequests');
+  String get wantsEditAccess => _t('wantsEditAccess');
+  String get approve => _t('approve');
+  String get decline => _t('decline');
+  String get activityEditRequested => _t('activityEditRequested');
+  String get activityLeft => _t('activityLeft');
+  String get activityTableReplaced => _t('activityTableReplaced');
+  String get leaveShared => _t('leaveShared');
+  String leaveSharedConfirm(String name) =>
+      _t('leaveSharedConfirm').replaceAll('{name}', name);
+  String leavePendingWillSend(int count) =>
+      _t('leavePendingWillSend').replaceAll('{count}', '$count');
+  String get leaveSendFailed => _t('leaveSendFailed');
+  String get leaveAction => _t('leaveAction');
+  String get leaveAnyway => _t('leaveAnyway');
+  String leftShared(String name) => _t('leftShared').replaceAll('{name}', name);
+  String get joinPassword => _t('joinPassword');
+  String get joinPasswordOptional => _t('joinPasswordOptional');
+  String get yourName => _t('yourName');
+  String get joinAction => _t('joinAction');
+  String get saveToCloud => _t('saveToCloud');
+  String get syncSending => _t('syncSending');
+  String get syncUpToDate => _t('syncUpToDate');
+  String get reviewConflicts => _t('reviewConflicts');
+  String get conflictTitle => _t('conflictTitle');
+  String get conflictExplainer => _t('conflictExplainer');
+  String get conflictRowChanged => _t('conflictRowChanged');
+  String get conflictRowDeleted => _t('conflictRowDeleted');
+  String get conflictRowGone => _t('conflictRowGone');
+  String get conflictMine => _t('conflictMine');
+  String get conflictTheirs => _t('conflictTheirs');
+  String get conflictKeepMine => _t('conflictKeepMine');
+  String get conflictKeepTheirs => _t('conflictKeepTheirs');
+  String pendingChangeCount(int n) =>
+      _t('pendingChangeCount').replaceAll('{n}', n.toString());
+  String conflictCount(int n) =>
+      _t('conflictCount').replaceAll('{n}', n.toString());
+  String get joinTableExplainer => _t('joinTableExplainer');
+  String get yourNameHint => _t('yourNameHint');
+  String joinedTable(String name) =>
+      _t('joinedTable').replaceAll('{name}', name);
+  String joiningTable(String name) =>
+      _t('joiningTable').replaceAll('{name}', name);
+  String get joinPasswordRequired => _t('joinPasswordRequired');
+  String get joinNameStepExplainer => _t('joinNameStepExplainer');
+  String get sharedTableMembers => _t('sharedTableMembers');
+  String get activityLog => _t('activityLog');
+  String get activityLogOwnerOnly => _t('activityLogOwnerOnly');
+  String get shareExplainer => _t('shareExplainer');
+  String get codeHiddenExplainer => _t('codeHiddenExplainer');
+  String get startSharing => _t('startSharing');
+  String get stopSharing => _t('stopSharing');
+  String get newCode => _t('newCode');
+  String get joinPasswordHint => _t('joinPasswordHint');
+  String get passwordSaved => _t('passwordSaved');
+  String get passwordRemoved => _t('passwordRemoved');
+  String get noMembersYet => _t('noMembersYet');
+  String get noActivityYet => _t('noActivityYet');
+  String get activityJoined => _t('activityJoined');
+  String get activityRowAdded => _t('activityRowAdded');
+  String get activityRowDeleted => _t('activityRowDeleted');
+  String get activityActorSelf => _t('activityActorSelf');
+  String get activityActorDeleted => _t('activityActorDeleted');
+  String get activityItemAdded => _t('activityItemAdded');
+  String get activityItemDeleted => _t('activityItemDeleted');
+  String get activityColumnsChanged => _t('activityColumnsChanged');
+  String get sharedStructureLocked => _t('sharedStructureLocked');
+  String get sharedStructureLockedTitle => _t('sharedStructureLockedTitle');
+  String get copy => _t('copy');
+  String get columnNameDate => _t('columnNameDate');
+  String get columnNameTime => _t('columnNameTime');
+  String get columnNameOrder => _t('columnNameOrder');
+  String get copySuffix => _t('copySuffix');
+  String get copied => _t('copied');
+  String sharedTableError(String code) => _t('err_$code');
+  String get redoLastAction => _t('redoLastAction');
+  String get done => _t('done');
+  String get selectAll => _t('selectAll');
+  String get apply => _t('apply');
+  String get status => _t('status');
+  String get csvImportDescription => _t('csvImportDescription');
+  String get selectFile => _t('selectFile');
+  String get selectAnotherFile => _t('selectAnotherFile');
+  String get fileCouldNotBeRead => _t('fileCouldNotBeRead');
+  String get csvEmptyOrTooLarge => _t('csvEmptyOrTooLarge');
+  String get csvHeaderMissing => _t('csvHeaderMissing');
+  String get csvTooManyRows => _t('csvTooManyRows');
+  String get csvInvalid => _t('csvInvalid');
+  String get csvImportedTable => _t('csvImportedTable');
+  String get cloudOperationFailed => _t('cloudOperationFailed');
+  String get accountOperationFailed => _t('accountOperationFailed');
+  String get exportFailed => _t('exportFailed');
 
   // ============== TALLY TEMPLATES ==============
   String get tallyTemplates => _t('tallyTemplates');
@@ -331,15 +645,16 @@ class AppLocalizations {
   String get tallyTemplateCreateFailed => _t('tallyTemplateCreateFailed');
   String get tallyTemplateUpdateFailed => _t('tallyTemplateUpdateFailed');
   String get tallyTemplateDelete => _t('tallyTemplateDelete');
-  String tallyTemplateDeleteConfirm(String name) => _t('tallyTemplateDeleteConfirm').replaceAll('{name}', name);
+  String tallyTemplateDeleteConfirm(String name) =>
+      _t('tallyTemplateDeleteConfirm').replaceAll('{name}', name);
   String get tallyNoTemplates => _t('tallyNoTemplates');
   String get tallyNoTemplatesHint => _t('tallyNoTemplatesHint');
   String get tallyCreateNewTemplate => _t('tallyCreateNewTemplate');
   String get tallyFromTemplate => _t('tallyFromTemplate');
   String get tallyCreateFromTemplate => _t('tallyCreateFromTemplate');
-  String tallyTemplateStatusItemCount(int s, int i) => _t('tallyTemplateStatusItemCount')
-      .replaceAll('{s}', s.toString())
-      .replaceAll('{i}', i.toString());
+  String tallyTemplateStatusItemCount(int s, int i) => _t(
+    'tallyTemplateStatusItemCount',
+  ).replaceAll('{s}', s.toString()).replaceAll('{i}', i.toString());
   String get tallyIncludeItems => _t('tallyIncludeItems');
   String get tallyIncludeItemsHint => _t('tallyIncludeItemsHint');
 
@@ -366,15 +681,168 @@ class AppLocalizations {
     'english': 'English',
     'languageSettings': 'Dil Ayarları',
     'selectLanguage': 'Dil Seçin',
+    'appearance': 'Görünüm',
+    'darkTheme': 'Koyu Tema',
+    'darkThemeDescription': 'Karanlık ortamlarda daha rahat kullanım',
     'menu': 'Menü',
     'openMenuToCreate': 'Yeni tablo veya çetele için menüyü açın',
+    'skip': 'Atla',
+    'continueLabel': 'İleri',
+    'startUsing': 'Kullanmaya Başla',
+    'onboardingOrganizeTitle': 'Kendi Defterini Tasarla',
+    'onboardingOrganizeDescription':
+        'Sütunları kendin belirle, işine göre bir defter kur.',
+    'onboardingOfflineTitle': 'Çeteleni Gün Gün Tut',
+    'onboardingOfflineDescription':
+        'Kim geldi kim gelmedi, internetsiz bile tek dokunuşla işaretle.',
+    'onboardingVoiceTitle': 'Konuşarak Kayıt Ekle',
+    'onboardingVoiceDescription':
+        'Sütunun adını ve değerini söyle, alanlar kendiliğinden dolsun.',
+    'onboardingPremiumTitle': 'Sınırları Ortadan Kaldır',
+    'onboardingPremiumDescription':
+        'Sesle kayıt gir, tabloları ortak kullan ve verilerini buluta yedekle.',
+    'premium': 'Premium',
+    'unlockPremium': 'Table Note Premium',
+    'premiumDescription':
+        'Tüm gelişmiş özellikleri aç ve kayıtlarını güvenle yönet.',
+    'premiumActive': 'Premium Aktif',
+    'premiumActiveDescription': 'Tüm Premium özelliklere erişebilirsin.',
+    'premiumVoiceFeature': 'Konuşarak tablo doldurma',
+    'premiumCloudFeature': 'Bulut yedekleme ve geri yükleme',
+    'premiumShareFeature': 'Güvenli tablo paylaşımı',
+    'premiumImportFeature': 'CSV dosyasından içe aktarma',
+    'premiumUnlimitedFeature': 'Sınırsız tablo, çetele ve şablon',
+    'premiumTallyFeature': 'Gelişmiş çetele araçları',
+    'planYearly': 'Yıllık',
+    'planMonthly': 'Aylık',
+    'perYear': 'yıl',
+    'perMonth': 'ay',
+    'trialBadge': '{days} gün ücretsiz',
+    'savingBadge': '%{percent} tasarruf',
+    'startTrial': '{days} Gün Ücretsiz Dene',
+    'subscribeNow': 'Abone ol',
+    'trialTodayLabel': 'Bugün',
+    'trialTodayText': 'Premium açılır, ödeme alınmaz.',
+    'trialChargeLabel': '{days} gün sonra',
+    'trialChargeText': '{price} çekilir; her {unit} kendiliğinden yenilenir.',
+    'trialCancelLabel': 'İstediğin zaman',
+    'trialCancelText':
+        '{store} aboneliklerinden iptal edebilirsin. Deneme bitmeden en az 24 saat önce iptal edersen ücret alınmaz.',
+    'premiumKeepsData':
+        'Premium biterse cihazındaki tabloların ve çetelelerin silinmez.',
+    'signInToSubscribeHint':
+        'Premium hesabına bağlanır. Satın almadan önce giriş yapman ya da hesap açman gerekiyor.',
+    'renewalTerms':
+        'Bugün {price} ödersin; her {unit} kendiliğinden yenilenir. {store} aboneliklerinden istediğin zaman iptal edebilirsin.',
+    'priceUnavailable': 'Fiyat şu anda mağazadan alınamıyor.',
+    'retry': 'Yeniden dene',
+    'billingPreparing': 'Abonelik bağlantısı hazırlanıyor',
+    'verifyingPurchase': 'Satın alma doğrulanıyor…',
+    'purchasePending':
+        'Ödemen mağazada onay bekliyor. Onaylanınca Premium kendiliğinden açılır.',
+    'premiumWelcomeTitle': 'Premium açıldı',
+    'premiumWelcomeBody': 'Teşekkürler! Bütün özellikler artık senin.',
+    'premiumWelcomeNext': 'Şimdi ne yapabilirsin',
+    'welcomeBackup': 'İlk yedeğini al',
+    'welcomeBackupHint': 'Tablolarının bir kopyası hesabında dursun.',
+    'welcomeShare': 'Bir tabloyu paylaş',
+    'welcomeShareHint': 'Kod ver, başkaları da aynı tabloya baksın.',
+    'welcomeVoice': 'Sesle kayıt dene',
+    'welcomeVoiceHint': 'Sütunu ve değeri söyle, alanlar dolsun.',
+    'welcomeClose': 'Uygulamaya dön',
+    'manageSubscription': 'Aboneliği yönet',
+    'premiumValidUntil':
+        'Premium {date} tarihine kadar geçerli. Mağaza aboneliğin sürdükçe kendiliğinden yenilenir.',
+    'manageSubscriptionFailed':
+        '{store} açılamadı. Aboneliğini {store} uygulamasındaki Abonelikler bölümünden yönetebilirsin.',
+    'restorePurchases': 'Satın Almaları Geri Yükle',
+    'signInToSubscribe': 'Giriş yap ve devam et',
+    'purchaseNotVerified':
+        'Satın alman mağazada duruyor ama şu an doğrulanamadı. Ödemen kaybolmaz: biraz sonra “Satın Almaları Geri Yükle”ye dokun.',
+    'purchaseNoConnection':
+        'İnternete ulaşılamadı. Bağlantını kontrol edip tekrar dene.',
+    'purchaseFailed': 'İşlem tamamlanamadı. Biraz sonra tekrar dene.',
+    'account': 'Hesap',
+    'noAccountConnected': 'Bağlı hesap yok',
+    'accountDescription':
+        'Bulut yedekleme, paylaşım ve Premium erişimi için hesabını bağla.',
+    'accountPreparing': 'Hesap bağlantısı hazırlanıyor',
+    'onlineServicesUnavailable': 'Çevrimiçi hizmet kullanılamıyor',
+    'onlineServicesUnavailableDescription':
+        'Hesap ve bulut özellikleri şu anda kullanılamıyor. Cihazdaki tablolar etkilenmez; çevrimdışı çalışmaya devam edebilirsin.',
+    'signIn': 'Giriş Yap',
+    'signOut': 'Çıkış Yap',
+    'signInWithGoogle': 'Google ile Giriş Yap',
+    'pleaseWait': 'Lütfen bekleyin...',
+    'ok': 'Tamam',
+    'cloudBackup': 'Bulut Yedekleme',
+    'cloudBackupSubtitle': 'Elle yedekle, geri yükle ve paylaş',
+    'backupComplete': 'Yedekleme tamamlandı.',
+    'restoreTable': 'Tabloyu geri yükle',
+    'restoreChoiceDescription':
+        'Aynı kimlikteki tablo varsa üzerine yazabilir veya yeni bir kopya oluşturabilirsin.',
+    'newCopy': 'Yeni kopya',
+    'overwrite': 'Üzerine yaz',
+    'restoredToDevice': 'Tablo cihaza geri yüklendi.',
+    'shareCode': 'Paylaşım kodu',
+    'shareCodeValidity':
+        '{code}\n\nKod 7 gün geçerli ve bir kez kullanılabilir.',
+    'addSharedTable': 'Paylaşılmış tabloyu ekle',
+    'premiumRequired': 'Premium gerekli',
+    'freeQuotaUsed': '{used}/{limit} ücretsiz',
+    'cloudPremiumMessage': 'Bulut yedekleme ve paylaşım Premium özelliğidir.',
+    'viewPremium': 'Premium’u Gör',
+    'connectAccount': 'Hesabını bağla',
+    'connectAccountMessage':
+        'Yedeklerini güvenle saklamak için giriş yapmalısın.',
+    'backupNow': 'Şimdi Yedekle',
+    'backupLater': 'Sonra',
+    'whatIsBackup': 'Yedekleme nedir?',
+    'backupHelpWhat':
+        'Yedekleme, tablolarının ve çetelelerinin bir kopyasını hesabında, internette saklar.',
+    'backupHelpRestore':
+        'Telefonun kaybolur, bozulur ya da değişirse aynı hesapla giriş yapıp hepsini geri yüklersin.',
+    'backupHelpManual':
+        'Yedekleme kendiliğinden olmaz. “Şimdi Yedekle”ye bastığın andaki hâli saklanır; sonradan yaptığın değişiklikler için yeniden yedekle.',
+    'backupHelpShared':
+        'Başkalarıyla paylaştığın tablolar zaten sürekli eşitlenir; onları ayrıca yedeklemen gerekmez.',
+    'backupReminderNever':
+        'Tabloların henüz yedeklenmedi. Şimdi yedeklemek ister misin?',
+    'backupReminderDays':
+        '{days} gündür yedekleme yapmadın. Şimdi yedeklemek ister misin?',
+    'lastBackupNever': 'Henüz yedekleme yapılmadı',
+    'lastBackupToday': 'Son yedekleme: bugün',
+    'lastBackupYesterday': 'Son yedekleme: dün',
+    'lastBackupDaysAgo': 'Son yedekleme: {days} gün önce',
+    'addShareCodeTooltip': 'Paylaşım kodu ekle',
+    'noCloudBackup': 'Henüz bulut yedeği yok.',
+    'myBackup': 'Benim yedeğim',
+    'sharedWithMe': 'Benimle paylaşıldı',
+    'voiceFill': 'Konuşarak Doldur',
+    'voiceExample': '“Ad defter, adet 3, not mavi kapaklı.”',
+    'onDeviceRecognition': 'Cihazda işlenir · İnternet gerekmez',
+    'preparingMicrophone': 'Mikrofon hazırlanıyor…',
+    'tapToSpeak': 'Konuşmaya başlamak için dokun',
+    'listening': 'Seni dinliyorum…',
+    'stopListening': 'Dinlemeyi bitir',
+    'recognizedSpeech': 'Algılanan konuşma',
+    'recognizedSpeechHint': 'Söylediklerin burada görünecek',
+    'offlineSpeechUnavailable':
+        'Bu cihazda çevrimdışı Türkçe konuşma modeli bulunamadı veya mikrofon izni verilmedi.',
+    'reviewFields': 'Alanları kontrol et',
+    'confirmAndAdd': 'Onayla ve Ekle',
     'tableNote': 'Table Note',
+    'tablesTab': 'Tablolar',
+    'importCsv': 'CSV İçe Aktar',
+    'moreActions': 'Diğer işlemler',
     'findTable': 'Tablo Bul',
     'exportData': 'Çıktı Al',
     'newTable': 'Yeni Tablo',
     'templates': 'Şablonlar',
     'addRecord': 'Kayıt Ekle',
     'searchInTable': 'Tabloda ara...',
+    'searchColumnHint': 'Tek sütunda aramak için “{column}: …” yaz',
+    'searchingInColumn': 'Yalnızca “{column}” sütununda aranıyor',
     'nRecords': '{n} kayıt',
     'nColumns': '{n} sütun',
     'welcome': 'Hoş Geldiniz!',
@@ -385,7 +853,7 @@ class AppLocalizations {
     'manualCreate': 'Manuel Oluştur',
     'createFromTemplate': 'Şablondan Oluştur',
     'tableName': 'Tablo Adı',
-    'tableNameHint': 'Örn: Sefer Kayıtları',
+    'tableNameHint': 'Örn: Günlük Kayıtlar',
     'columns': 'Sütunlar',
     'help': 'Yardım',
     'columnN': 'Sütun {n}',
@@ -408,6 +876,17 @@ class AppLocalizations {
     'autoNumber': 'Sıra No',
     'numericColumn': 'Sayısal Sütun',
     'numericColumnDesc': 'Bu sütundaki değerler toplanabilir',
+    'startingValue': 'Başlangıç değeri',
+    'startingValueHint':
+        'İsteğe bağlı. Sütunun toplamı bu değerden düşülür; kalan, toplamların yanında gösterilir. Sonradan değiştirebilirsin.',
+    'startingValueExample': 'Örn: 100.000',
+    'startingValueInvalid': 'Geçerli bir sayı yaz.',
+    'startingValueRemove': 'Kaldır',
+    'remaining': 'Kalan',
+    'totalLabel': 'Toplam',
+    'wholeTableNote': 'tüm tablo',
+    'startingValueOf': '{column}: başlangıç değeri',
+    'remainingOf': '{column} · kalan',
     'manualInput': 'Manuel veri girişi',
     'defaultValueComes': 'Varsayılan değer gelir',
     'autoCalculated': 'Otomatik hesaplanır',
@@ -415,30 +894,40 @@ class AppLocalizations {
     'currentTimeAuto': 'Şu anki saat otomatik gelir',
     'autoIncrement': 'Otomatik artan numara',
     'quickSelectionList': 'Hızlı Seçim Listesi',
+    'templateQuickSelectionHelp':
+        'Her satıra bir seçenek yazın. Ekleyebilir, değiştirebilir veya silebilirsiniz. Değişiklikler yalnızca yeni tabloya uygulanır; şablon değişmez.',
+    'quickSelectionLinesHint': 'Her satıra bir seçenek',
     'quickSelectionHint': 'Virgülle ayırın (örn: İstanbul, Ankara)',
     'addQuickSelectionList': 'Hızlı Seçim Listesi Ekle',
     'defaultValue': 'Varsayılan Değer',
     'defaultValueHint': 'Örn: 0.2',
-    'defaultValueInfo': 'Bu değer tüm satırlara varsayılan olarak gelir. Satır bazında değiştirilebilir.',
+    'defaultValueInfo':
+        'Bu değer tüm satırlara varsayılan olarak gelir. Satır bazında değiştirilebilir.',
     'formulaAutoCalcInfo': 'Bu sütun diğer sütunlardan otomatik hesaplanır.',
     'formulaHint': 'Örn: {Kg}*{Birim Fiyat}',
     'operationsHint': 'İşlemler: + - * / % (yüzde)',
     'clickToAddColumn': 'Sütun eklemek için tıklayın:',
     'addOperation': 'İşlem ekle:',
     'autoDate': 'Otomatik Tarih',
-    'autoDateDesc': 'Yeni kayıt eklerken bugünün tarihi otomatik gelir.\nİsterseniz değiştirebilirsiniz.',
+    'autoDateDesc':
+        'Yeni kayıt eklerken bugünün tarihi otomatik gelir.\nİsterseniz değiştirebilirsiniz.',
     'autoTime': 'Otomatik Saat',
-    'autoTimeDesc': 'Yeni kayıt eklerken şu anki saat otomatik gelir.\nİsterseniz değiştirebilirsiniz.',
+    'autoTimeDesc':
+        'Yeni kayıt eklerken şu anki saat otomatik gelir.\nİsterseniz değiştirebilirsiniz.',
     'autoNumberTitle': 'Otomatik Sıra Numarası',
-    'autoNumberDesc': 'Her yeni kayıt için otomatik artan numara atanır.\n1, 2, 3, 4... şeklinde devam eder.',
+    'autoNumberDesc':
+        'Her yeni kayıt için otomatik artan numara atanır.\n1, 2, 3, 4... şeklinde devam eder.',
     'example': 'Örnek: {val}',
     'columnTypes': 'Sütun Tipleri',
     'normalColumn': 'Normal Sütun',
-    'normalColumnDesc': 'Manuel veri girişi yapılır. Hızlı seçim listesi eklenebilir.',
+    'normalColumnDesc':
+        'Manuel veri girişi yapılır. Hızlı seçim listesi eklenebilir.',
     'constantColumnTitle': 'Sabit Değer Sütunu',
-    'constantColumnDesc': 'Belirlediğiniz varsayılan değer tüm satırlara otomatik gelir. İsterseniz satır bazında değiştirebilirsiniz.',
+    'constantColumnDesc':
+        'Belirlediğiniz varsayılan değer tüm satırlara otomatik gelir. İsterseniz satır bazında değiştirebilirsiniz.',
     'formulaColumnTitle': 'Formül Sütunu',
-    'formulaColumnDesc': "Diğer sütunlardan otomatik hesaplanır. Desteklenen işlemler:\n• + (toplama)\n• - (çıkarma)\n• * (çarpma)\n• / (bölme)\n• % (yüzde: {Fiyat}%18 = Fiyatın %18'i)",
+    'formulaColumnDesc':
+        "Diğer sütunlardan otomatik hesaplanır. Desteklenen işlemler:\n• + (toplama)\n• - (çıkarma)\n• * (çarpma)\n• / (bölme)\n• % (yüzde: {Fiyat}%18 = Fiyatın %18'i)",
     'exampleFormulas': 'Örnek Formüller:',
     'multiplyKgPrice': 'Kg ile Birim Fiyatı çarp',
     'priceVat': 'Fiyat + KDV',
@@ -456,6 +945,7 @@ class AppLocalizations {
     'formulaLabel': 'Formül',
     'quickSelect': 'Hızlı Seç',
     'today': 'Bugün',
+    'yesterday': 'Dün',
     'selectDate': 'Tarih Seç',
     'now': 'Şu an',
     'selectTime': 'Saat Seç',
@@ -483,9 +973,12 @@ class AppLocalizations {
     'switchToTable': 'Tabloya Geç',
     'editStructure': 'Yapıyı Düzenle',
     'deleteTable': 'Tabloyu Sil',
-    'deleteTableConfirm': '"{name}" tablosunu silmek istediğinizden emin misiniz?',
+    'deleteTableConfirm':
+        '"{name}" tablosunu silmek istediğinizden emin misiniz?',
     'nRecordsPermanentDelete': '{n} kayıt kalıcı olarak silinecek.',
     'searchTable': 'Tablo Ara',
+    'searchTally': 'Çetele Ara',
+    'typeTallyName': 'Çetele adı yazın...',
     'typeTableName': 'Tablo adı yazın...',
     'noTablesCreated': 'Henüz tablo yok',
     'createYourFirst': 'İlk tablonuzu oluşturun',
@@ -506,21 +999,24 @@ class AppLocalizations {
     'fileSaveFailed': 'Dosya kaydedilemedi. Depolama izni gerekebilir.',
     'tableData': 'Tablo Verisi',
     'selectTable': 'Tablo Seç',
-    'deleteTableConfirmFull': '{name} tablosunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+    'deleteTableConfirmFull':
+        '{name} tablosunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
     'tableTemplates': 'Tablo Şablonları',
     'searchTemplate': 'Şablon Ara',
     'closeSearch': 'Aramayı Kapat',
     'typeTemplateName': 'Şablon adı yazın...',
     'noTemplatesCreated': 'Henüz şablon oluşturmadınız',
-    'saveFrequentStructures': 'Sık kullandığınız tablo yapılarını şablon olarak kaydedin',
+    'saveFrequentStructures':
+        'Sık kullandığınız tablo yapılarını şablon olarak kaydedin',
     'createNewTemplate': 'Yeni Şablon Oluştur',
     'showingTemplates': '{n} / {m} şablon gösteriliyor',
     'deleteTemplate': 'Şablonu Sil',
-    'deleteTemplateConfirm': '{name} şablonunu silmek istediğinizden emin misiniz?',
+    'deleteTemplateConfirm':
+        '{name} şablonunu silmek istediğinizden emin misiniz?',
     'columnsLabel': 'Sütunlar:',
     'createNewTemplateTitle': 'Yeni Şablon Oluştur',
     'templateName': 'Şablon Adı',
-    'templateNameHint': 'Örn: Sefer Kayıt Şablonu',
+    'templateNameHint': 'Örn: Günlük Kayıt Şablonu',
     'templateCreate': 'Şablon Oluştur',
     'templateNameEmpty': 'Şablon adı boş olamaz',
     'templateCreateFailed': 'Şablon oluşturulamadı',
@@ -542,9 +1038,12 @@ class AppLocalizations {
     'totalNRecords': 'Toplam: {n} kayıt',
     'totalsLabel': 'TOPLAMLAR',
     'pageNofM': 'Sayfa {n} / {m}',
-    'autoNumberDescShort': 'Her yeni kayıt için otomatik artan numara (1, 2, 3...) atanır.',
-    'dateAutoDescShort': 'Kayıt eklerken bugünün tarihi otomatik gelir, değiştirilebilir.',
-    'timeAutoDescShort': 'Kayıt eklerken şu anki saat otomatik gelir, değiştirilebilir.',
+    'autoNumberDescShort':
+        'Her yeni kayıt için otomatik artan numara (1, 2, 3...) atanır.',
+    'dateAutoDescShort':
+        'Kayıt eklerken bugünün tarihi otomatik gelir, değiştirilebilir.',
+    'timeAutoDescShort':
+        'Kayıt eklerken şu anki saat otomatik gelir, değiştirilebilir.',
     'quickSelectionListOptional': 'Hızlı Seçim Listesi (opsiyonel)',
     'quickSelectionHintShort': 'Virgülle ayırın: Ankara, İstanbul, İzmir',
     'quickSelectionAdd': 'Hızlı Seçim Ekle',
@@ -552,17 +1051,19 @@ class AppLocalizations {
     'tallyTable': 'Çetele Tablosu',
     'tallyEmptyTitle': 'Çetele Tablosu Yok',
     'tallyEmptySubtitle': 'Yeni tablo oluşturarak\nçetele tutmaya başlayın',
-    'tallyItems': 'öğe',
+    'tallyItems': 'kayıt',
     'tallyDays': 'gün',
-    'tallySearchHint': 'Öğe ara...',
-    'tallyAddItemHint': 'Öğe eklemek için aşağıdaki butona dokunun',
-    'tallyAddItem': 'Öğe Ekle',
-    'tallyItemName': 'Öğe Adı',
+    'tallySearchHint': 'Kayıt ara...',
+    'tallyAddItemHint': 'Kayıt eklemek için aşağıdaki butona dokunun',
+    'tallyAddItem': 'Kayıt Ekle',
+    'tallyItemName': 'Kayıt Adı',
+    'recordNameRequired': 'Kayıt adı boş olamaz',
     'tallyClear': 'Temizle',
     'tallySummary': 'Özet',
-    'tallyRenameItem': 'Yeniden Adlandır',
-    'tallyDeleteItem': 'Öğeyi Sil',
-    'tallyDeleteItemConfirm': '"{name}" öğesini silmek istediğinizden emin misiniz?',
+    'tallyRenameItem': 'Kaydı Yeniden Adlandır',
+    'tallyDeleteItem': 'Kaydı Sil',
+    'tallyDeleteItemConfirm':
+        '"{name}" kaydını silmek istediğinizden emin misiniz?',
     'tallyTotalDays': 'Toplam Gün',
     'tallyEmpty': 'Boş',
     'tallyNameHint': 'Örn: Ocak 2026 Puantaj',
@@ -582,7 +1083,8 @@ class AppLocalizations {
     'tallyDeleteTable': 'Çeteleyi Sil',
     'tallyTableName': 'Çetele Adı',
     'tallyTableNameHint': 'Örn: Ocak 2026 Puantaj',
-    'tallyAddStatusHint': 'En az bir durum etiketi ekleyin (örn: Ç-Çalıştı, İ-İzinli)',
+    'tallyAddStatusHint':
+        'En az bir durum etiketi ekleyin (örn: Ç-Çalıştı, İ-İzinli)',
     'tallyCode': 'Kod',
     'tallyStatusLabel': 'Açıklama',
     'tallyPickColor': 'Renk Seçin',
@@ -591,14 +1093,174 @@ class AppLocalizations {
     'tallyStatusRequired': 'En az bir durum etiketi eklemelisiniz',
     'tallyCodeRequired': 'Durum kodu boş olamaz',
     'tallyCreateFailed': 'Çetele oluşturulamadı',
-    'tallyItemsLabel': 'Öğeler',
-    'tallyItem': 'Öğe',
+    'tallyItemsLabel': 'Kayıtlar',
+    'tallyItem': 'Kayıt',
     'tallyItemNameHint': 'Örn: Ali, Ürün A',
-    'tallyNoItems': 'Henüz öğe eklenmemiş',
-    'tallyItemHeader': 'Ad',
+    'tallyNoItems': 'Henüz kayıt eklenmemiş',
+    'tallyItemHeader': 'Kayıt',
     'tallyEditTitle': 'Çeteleyi Düzenle',
     'tallyUpdateFailed': 'Çetele güncellenemedi',
-    'tallyDeleteStatusWarning': 'Sildiğiniz durumların hücrelerdeki verileri de silinecek',
+    'tallyDeleteStatusWarning':
+        'Sildiğiniz durumların hücrelerdeki verileri de silinecek',
+    'duplicateStatusCode': 'Aynı durum kodu birden fazla kullanılamaz.',
+    'goToToday': 'Bugüne git',
+    'tallyTools': 'Çetele araçları',
+    'overallSummary': 'Genel özet',
+    'reorderRows': 'Satırları sırala',
+    'searchPersonOrItem': 'Kayıt ara',
+    'bulkMark': 'Toplu işaretle',
+    'forToday': 'Bugün için',
+    'chooseDateRange': 'Veya tarih aralığı seç',
+    'undoLastAction': 'Son işlemi geri al',
+    'joinTable': 'Tabloya katıl',
+    'joinCode': 'Katılım kodu',
+    'invitePeople': 'Kişi davet et',
+    'shareAsFile': 'Dosya olarak paylaş',
+    'shareSendCode': 'Kodu gönder',
+    'shareCodeMessage':
+        'Table Note’ta “{name}” paylaşımına katıl.\nKatılım kodu: {code}',
+    'shareHowToJoin':
+        'Kodu alan kişi menüden “{join}” bölümüne girer, kodu ve adını yazar. Hesap açması gerekmez.',
+    'shareNeedsAccount': 'Paylaşmak için hesabına giriş yap.',
+    'sharePassword': 'Şifre koy ya da değiştir',
+    'sharePasswordHint': 'İsteğe bağlı. Kodu öğrenen herkes katılamasın diye.',
+    'shareMembersHistory': 'Katılanlar ve geçmiş',
+    'roleViewer': 'Yalnızca görüntüler',
+    'roleEditor': 'Düzenleyebilir',
+    'memberCanEdit': 'Düzenleme yetkisi',
+    'requestEditAccess': 'Yetki iste',
+    'editAccessRequested': 'Yetki talebi gönderildi',
+    'requestEditAccessTitle': 'Düzenleme yetkisi iste',
+    'requestEditAccessMessage':
+        'Tablo sahibine düzenleme yetkisi talebi gönderilecek. Onaylıyor musun?',
+    'sendRequest': 'Talebi gönder',
+    'editAccessRequestSent':
+        'Talebin gönderildi. Tablo sahibi onaylayınca düzenleyebilirsin.',
+    'viewOnlyNotice': 'Burayı yalnızca görüntüleyebilirsin.',
+    'viewOnlyRequested':
+        'Burayı yalnızca görüntüleyebilirsin. Yetki talebin yanıt bekliyor.',
+    'editRequests': 'Yetki talepleri',
+    'wantsEditAccess': 'Düzenleme yetkisi istiyor',
+    'approve': 'Onayla',
+    'decline': 'Reddet',
+    'activityEditRequested': 'düzenleme yetkisi istedi',
+    'activityTableReplaced': 'tabloyu baştan yükledi',
+    'activityLeft': 'paylaşımdan ayrıldı',
+    'leaveShared': 'Paylaşımdan ayrıl',
+    'leaveSharedConfirm':
+        '“{name}” paylaşımından ayrılırsın ve bu cihazdan kaldırılır. Yeniden katılmak için kodu tekrar girmen gerekir.',
+    'leavePendingWillSend':
+        'Gönderilmemiş {count} değişikliğin ayrılmadan önce gönderilecek.',
+    'leaveSendFailed':
+        'Değişikliklerin gönderilemedi. Yine de ayrılırsan silinirler.',
+    'leaveAction': 'Ayrıl',
+    'leaveAnyway': 'Yine de ayrıl',
+    'leftShared': '“{name}” paylaşımından ayrıldın.',
+    'err_table_owner_required':
+        'Bu tablo başka birinin paylaşımından geldi, buradan paylaşılamaz.',
+    'joinPassword': 'Şifre',
+    'joinPasswordOptional': 'Şifre (varsa)',
+    'yourName': 'Adın',
+    'joinAction': 'Katıl',
+    'joiningTable': '{name} tablosuna katılıyorsun.',
+    'joinPasswordRequired':
+        'Bu tablo şifreli. Paylaşan kişiden aldığın şifreyi gir.',
+    'joinNameStepExplainer':
+        'Bu tabloda görünecek adın. Aynı tabloda her ad yalnızca bir kişide olabilir.',
+    'saveToCloud': 'Buluta kaydet',
+    'syncSending': 'Gönderiliyor…',
+    'syncUpToDate': 'Bulutla eşit',
+    'reviewConflicts': 'İncele',
+    'conflictTitle': 'Çakışan satırlar',
+    'conflictExplainer':
+        'Bu satırlar sen düzenlerken başkası tarafından da değiştirildi. Her biri için hangisinin kalacağını seç.',
+    'conflictRowChanged': 'Bu satırı başkası da değiştirdi',
+    'conflictRowDeleted': 'Bu satırı başkası sildi',
+    'conflictRowGone': '(satır yok)',
+    'conflictMine': 'Seninki',
+    'conflictTheirs': 'Kayıttaki',
+    'conflictKeepMine': 'Benimki kalsın',
+    'conflictKeepTheirs': 'Kayıttaki kalsın',
+    'pendingChangeCount': '{n} değişiklik bekliyor',
+    'conflictCount': '{n} satır çakıştı',
+    'joinTableExplainer':
+        'Sana verilen kodu gir. Hesap açmana gerek yok; sadece bu tabloda '
+        'görünecek adını yaz.',
+    'yourNameHint': 'Tabloyu paylaşan kişi değişiklikleri bu adla görür.',
+    'joinedTable': '{name} tablosuna katıldın.',
+    'sharedTableMembers': 'Katılanlar',
+    'activityLog': 'Değişiklik geçmişi',
+    'activityLogOwnerOnly': 'Bu geçmişi yalnızca tabloyu paylaşan kişi görür.',
+    'shareExplainer':
+        'Kod üret, karşındakine söyle. Hesap açmasına gerek yok; sadece adını yazıp katılır.',
+    'codeHiddenExplainer':
+        'Bu tablo paylaşımda. Kod güvenlik gereği saklanmıyor; hatırlamıyorsan yenisini üret.',
+    'startSharing': 'Paylaşımı başlat',
+    'stopSharing': 'Paylaşımı kapat',
+    'newCode': 'Yeni kod üret',
+    'joinPasswordHint': 'Boş bırakırsan şifre kaldırılır. En az 4 karakter.',
+    'passwordSaved': 'Şifre kaydedildi.',
+    'passwordRemoved': 'Şifre kaldırıldı.',
+    'noMembersYet': 'Henüz kimse katılmadı.',
+    'noActivityYet': 'Henüz değişiklik yok.',
+    'activityJoined': 'tabloya katıldı',
+    'activityRowAdded': 'satır ekledi',
+    'activityRowDeleted': 'satır sildi',
+    'activityActorSelf': 'Sen',
+    'activityActorDeleted': 'Silinmiş hesap',
+    'activityItemAdded': 'öğe ekledi',
+    'activityItemDeleted': 'öğe sildi',
+    'activityColumnsChanged': 'yapıyı değiştirdi',
+    'sharedStructureLockedTitle': 'Yapı kilitli',
+    'sharedStructureLocked':
+        'Yapıyı yalnızca paylaşan kişi değiştirebilir. Kayıtları ve '
+        'işaretleri düzenlemeye devam edebilirsin.',
+    'copy': 'Kopyala',
+    'columnNameDate': 'tarih',
+    'columnNameTime': 'saat',
+    'columnNameOrder': 'sıra',
+    'copySuffix': ' (kopya)',
+    'copied': 'Kopyalandı',
+    'err_authentication_required': 'Bağlantı kurulamadı, tekrar dene.',
+    'err_invalid_table_code': 'Kod bulunamadı. Kodu kontrol et.',
+    'err_invalid_table_password': 'Şifre yanlış.',
+    'err_owner_premium_required':
+        'Tabloyu paylaşan kişinin aboneliği aktif değil.',
+    'err_invalid_display_name': 'Ad 2-32 karakter olmalı.',
+    'err_display_name_taken':
+        'Bu ad bu tabloda kullanılıyor. Başka bir ad dene.',
+    'err_too_many_attempts':
+        'Çok fazla deneme yapıldı. Biraz sonra tekrar dene.',
+    'err_table_not_found': 'Tablo bulunamadı.',
+    'err_password_too_short': 'Şifre en az 4 karakter olmalı.',
+    'err_shared_table_needs_upgrade':
+        'Tablo buluttaki eski biçimde. Tabloyu paylaşan kişinin bir kez kaydetmesi gerekiyor.',
+    'err_shared_table_locked_by_other':
+        'Şu anda başkası tablonun yapısını değiştiriyor. Birazdan tekrar dene.',
+    'err_shared_table_edit_access_required': 'Bu tabloda düzenleme yetkin yok.',
+    'err_shared_table_revision_conflict':
+        'Tablo sen bakarken değişti. Yenileyip tekrar dene.',
+    'err_unknown': 'Bir şeyler ters gitti, tekrar dene.',
+    'redoLastAction': 'Geri alınanı yinele',
+    'done': 'Bitti',
+    'selectAll': 'Tümünü seç',
+    'apply': 'Uygula',
+    'status': 'Durum',
+    'csvImportDescription':
+        'İlk satır sütun adları kabul edilir. İçe aktarmadan önce bir önizleme gösterilir.',
+    'selectFile': 'Dosya Seç',
+    'selectAnotherFile': 'Başka Dosya',
+    'fileCouldNotBeRead': 'Dosya okunamadı.',
+    'csvEmptyOrTooLarge': 'CSV dosyası boş veya 10 MB sınırını aşıyor.',
+    'csvHeaderMissing': 'CSV başlık satırı bulunamadı.',
+    'csvTooManyRows': 'CSV en fazla 10.000 kayıt içerebilir.',
+    'csvInvalid': 'CSV dosyası geçerli bir biçimde değil.',
+    'csvImportedTable': 'CSV İçe Aktarma',
+    'cloudOperationFailed':
+        'Bulut işlemi tamamlanamadı. Bağlantını kontrol edip tekrar dene.',
+    'accountOperationFailed':
+        'Hesap işlemi tamamlanamadı. Bağlantını kontrol edip tekrar dene.',
+    'exportFailed': 'Dosya oluşturulamadı. Lütfen tekrar dene.',
     'tallyTemplates': 'Çetele Şablonları',
     'tallyTemplateCreate': 'Şablon Oluştur',
     'tallyTemplateEdit': 'Şablonu Düzenle',
@@ -608,15 +1270,17 @@ class AppLocalizations {
     'tallyTemplateCreateFailed': 'Şablon oluşturulamadı',
     'tallyTemplateUpdateFailed': 'Şablon güncellenemedi',
     'tallyTemplateDelete': 'Şablonu Sil',
-    'tallyTemplateDeleteConfirm': '"{name}" şablonunu silmek istediğinizden emin misiniz?',
+    'tallyTemplateDeleteConfirm':
+        '"{name}" şablonunu silmek istediğinizden emin misiniz?',
     'tallyNoTemplates': 'Henüz çetele şablonu yok',
-    'tallyNoTemplatesHint': 'Sık kullandığınız durum ve öğeleri şablon olarak kaydedin',
+    'tallyNoTemplatesHint':
+        'Sık kullandığınız durum ve kayıtları şablon olarak kaydedin',
     'tallyCreateNewTemplate': 'Yeni Şablon Oluştur',
     'tallyFromTemplate': 'Şablondan Oluştur',
     'tallyCreateFromTemplate': 'Şablondan Çetele Oluştur',
-    'tallyTemplateStatusItemCount': '{s} durum • {i} öğe',
-    'tallyIncludeItems': 'Öğeleri de yükle',
-    'tallyIncludeItemsHint': 'Şablondaki öğe adları yeni çeteleye eklenir',
+    'tallyTemplateStatusItemCount': '{s} durum • {i} kayıt',
+    'tallyIncludeItems': 'Kayıtları da yükle',
+    'tallyIncludeItemsHint': 'Şablondaki kayıt adları yeni çeteleye eklenir',
   };
 
   // ============== ENGLISH ==============
@@ -642,15 +1306,168 @@ class AppLocalizations {
     'english': 'English',
     'languageSettings': 'Language Settings',
     'selectLanguage': 'Select Language',
+    'appearance': 'Appearance',
+    'darkTheme': 'Dark Theme',
+    'darkThemeDescription': 'More comfortable in low-light environments',
     'menu': 'Menu',
     'openMenuToCreate': 'Open the menu to create a table or tally',
+    'skip': 'Skip',
+    'continueLabel': 'Next',
+    'startUsing': 'Get Started',
+    'onboardingOrganizeTitle': 'Create Your Notebook',
+    'onboardingOrganizeDescription':
+        'Set your own columns and build a notebook that fits your work.',
+    'onboardingOfflineTitle': 'Track Day by Day',
+    'onboardingOfflineDescription':
+        'Mark who showed up with one tap, even with no connection.',
+    'onboardingVoiceTitle': 'Add Records by Voice',
+    'onboardingVoiceDescription':
+        'Say the column and its value, and the fields fill themselves.',
+    'onboardingPremiumTitle': 'Unlock Premium Features',
+    'onboardingPremiumDescription':
+        'Add records by voice, share tables and backup to the cloud.',
+    'premium': 'Premium',
+    'unlockPremium': 'Table Note Premium',
+    'premiumDescription':
+        'Unlock every advanced feature and manage your records securely.',
+    'premiumActive': 'Premium Active',
+    'premiumActiveDescription': 'You have access to all Premium features.',
+    'premiumVoiceFeature': 'Fill tables by speaking',
+    'premiumCloudFeature': 'Cloud backup and restore',
+    'premiumShareFeature': 'Secure table sharing',
+    'premiumImportFeature': 'Import from CSV files',
+    'premiumUnlimitedFeature': 'Unlimited tables, tallies, and templates',
+    'premiumTallyFeature': 'Advanced tally tools',
+    'planYearly': 'Yearly',
+    'planMonthly': 'Monthly',
+    'perYear': 'year',
+    'perMonth': 'month',
+    'trialBadge': '{days} days free',
+    'savingBadge': 'Save {percent}%',
+    'startTrial': 'Try {days} Days Free',
+    'subscribeNow': 'Subscribe',
+    'trialTodayLabel': 'Today',
+    'trialTodayText': 'Premium unlocks. No payment is taken.',
+    'trialChargeLabel': 'After {days} days',
+    'trialChargeText':
+        'You are charged {price}. It renews automatically every {unit}.',
+    'trialCancelLabel': 'Anytime',
+    'trialCancelText':
+        'Cancel in your {store} subscriptions. If you cancel at least 24 hours before the trial ends, you are not charged.',
+    'premiumKeepsData':
+        'If Premium ends, the tables and tallies on your device are not deleted.',
+    'signInToSubscribeHint':
+        'Premium is tied to your account. Sign in or create an account before purchasing.',
+    'renewalTerms':
+        'You pay {price} today. It renews automatically every {unit}; cancel anytime in your {store} subscriptions.',
+    'priceUnavailable': 'The price is not available from the store right now.',
+    'retry': 'Try again',
+    'billingPreparing': 'Subscription connection is being prepared',
+    'verifyingPurchase': 'Verifying your purchase…',
+    'purchasePending':
+        'Your payment is awaiting approval in the store. Premium unlocks automatically once it is approved.',
+    'premiumWelcomeTitle': 'Premium is on',
+    'premiumWelcomeBody': 'Thank you! Every feature is now yours.',
+    'premiumWelcomeNext': 'What you can do now',
+    'welcomeBackup': 'Take your first backup',
+    'welcomeBackupHint': 'Keep a copy of your tables in your account.',
+    'welcomeShare': 'Share a table',
+    'welcomeShareHint': 'Give a code so others can see the same table.',
+    'welcomeVoice': 'Try adding by voice',
+    'welcomeVoiceHint': 'Say the column and its value to fill the fields.',
+    'welcomeClose': 'Back to the app',
+    'manageSubscription': 'Manage subscription',
+    'premiumValidUntil':
+        'Premium is valid until {date}. It renews automatically while your store subscription is active.',
+    'manageSubscriptionFailed':
+        'Could not open {store}. You can manage your subscription in the Subscriptions section of the {store} app.',
+    'restorePurchases': 'Restore Purchases',
+    'signInToSubscribe': 'Sign in to continue',
+    'purchaseNotVerified':
+        'Your purchase is in the store but could not be verified right now. Your payment is not lost: tap “Restore Purchases” in a little while.',
+    'purchaseNoConnection':
+        'Could not reach the internet. Check your connection and try again.',
+    'purchaseFailed':
+        'This could not be completed. Please try again in a little while.',
+    'account': 'Account',
+    'noAccountConnected': 'No account connected',
+    'accountDescription':
+        'Connect your account for cloud backup, sharing, and Premium access.',
+    'accountPreparing': 'Account connection is being prepared',
+    'onlineServicesUnavailable': 'Online service unavailable',
+    'onlineServicesUnavailableDescription':
+        'Account and cloud features are currently unavailable. Your on-device tables are safe and you can continue working offline.',
+    'signIn': 'Sign In',
+    'signOut': 'Sign Out',
+    'signInWithGoogle': 'Sign in with Google',
+    'pleaseWait': 'Please wait...',
+    'ok': 'OK',
+    'cloudBackup': 'Cloud Backup',
+    'cloudBackupSubtitle': 'Back up, restore, and share manually',
+    'backupComplete': 'Backup completed.',
+    'restoreTable': 'Restore table',
+    'restoreChoiceDescription':
+        'If the same table already exists, you can overwrite it or create a new copy.',
+    'newCopy': 'New copy',
+    'overwrite': 'Overwrite',
+    'restoredToDevice': 'The table was restored to this device.',
+    'shareCode': 'Share code',
+    'shareCodeValidity':
+        '{code}\n\nThe code is valid for 7 days and can be used once.',
+    'addSharedTable': 'Add shared table',
+    'premiumRequired': 'Premium required',
+    'freeQuotaUsed': '{used}/{limit} free',
+    'cloudPremiumMessage': 'Cloud backup and sharing are Premium features.',
+    'viewPremium': 'View Premium',
+    'connectAccount': 'Connect your account',
+    'connectAccountMessage': 'Sign in to keep your backups secure.',
+    'backupNow': 'Back Up Now',
+    'backupLater': 'Later',
+    'whatIsBackup': 'What is a backup?',
+    'backupHelpWhat':
+        'A backup keeps a copy of your tables and tallies online, in your account.',
+    'backupHelpRestore':
+        'If your phone is lost, broken or replaced, sign in with the same account and restore everything.',
+    'backupHelpManual':
+        'Backups are not automatic. Tapping “Back Up Now” saves things as they are at that moment; back up again after later changes.',
+    'backupHelpShared':
+        'Tables you share with others are synced all the time; you do not need to back them up separately.',
+    'backupReminderNever': 'Your tables are not backed up yet. Back up now?',
+    'backupReminderDays':
+        'You have not backed up for {days} days. Back up now?',
+    'lastBackupNever': 'No backup yet',
+    'lastBackupToday': 'Last backup: today',
+    'lastBackupYesterday': 'Last backup: yesterday',
+    'lastBackupDaysAgo': 'Last backup: {days} days ago',
+    'addShareCodeTooltip': 'Add share code',
+    'noCloudBackup': 'No cloud backups yet.',
+    'myBackup': 'My backup',
+    'sharedWithMe': 'Shared with me',
+    'voiceFill': 'Fill by Voice',
+    'voiceExample': '“Name notebook, quantity 3, note blue cover.”',
+    'onDeviceRecognition': 'Processed on device · No internet required',
+    'preparingMicrophone': 'Preparing microphone…',
+    'tapToSpeak': 'Tap to start speaking',
+    'listening': 'Listening…',
+    'stopListening': 'Stop listening',
+    'recognizedSpeech': 'Recognized speech',
+    'recognizedSpeechHint': 'Your words will appear here',
+    'offlineSpeechUnavailable':
+        'Offline speech recognition is unavailable on this device or microphone permission was denied.',
+    'reviewFields': 'Review the fields',
+    'confirmAndAdd': 'Confirm and Add',
     'tableNote': 'Table Note',
+    'tablesTab': 'Tables',
+    'importCsv': 'Import CSV',
+    'moreActions': 'More actions',
     'findTable': 'Find Table',
     'exportData': 'Export',
     'newTable': 'New Table',
     'templates': 'Templates',
     'addRecord': 'Add Record',
     'searchInTable': 'Search in table...',
+    'searchColumnHint': 'To search one column, type “{column}: …”',
+    'searchingInColumn': 'Searching only in “{column}”',
     'nRecords': '{n} records',
     'nColumns': '{n} columns',
     'welcome': 'Welcome!',
@@ -661,7 +1478,7 @@ class AppLocalizations {
     'manualCreate': 'Manual Create',
     'createFromTemplate': 'From Template',
     'tableName': 'Table Name',
-    'tableNameHint': 'e.g. Trip Records',
+    'tableNameHint': 'e.g. Daily Records',
     'columns': 'Columns',
     'help': 'Help',
     'columnN': 'Column {n}',
@@ -684,6 +1501,17 @@ class AppLocalizations {
     'autoNumber': 'Auto #',
     'numericColumn': 'Numeric Column',
     'numericColumnDesc': 'Values in this column can be summed',
+    'startingValue': 'Starting value',
+    'startingValueHint':
+        'Optional. The column total is subtracted from this value; the remainder is shown next to the totals. You can change it later.',
+    'startingValueExample': 'e.g. 100,000',
+    'startingValueInvalid': 'Enter a valid number.',
+    'startingValueRemove': 'Remove',
+    'remaining': 'Remaining',
+    'totalLabel': 'Total',
+    'wholeTableNote': 'whole table',
+    'startingValueOf': '{column}: starting value',
+    'remainingOf': '{column} · left',
     'manualInput': 'Manual data entry',
     'defaultValueComes': 'Default value is applied',
     'autoCalculated': 'Automatically calculated',
@@ -691,30 +1519,40 @@ class AppLocalizations {
     'currentTimeAuto': 'Current time auto-fills',
     'autoIncrement': 'Auto-incrementing number',
     'quickSelectionList': 'Quick Selection List',
+    'templateQuickSelectionHelp':
+        'Enter one option per line. Add, edit or remove options. Changes apply only to the new table; the template stays unchanged.',
+    'quickSelectionLinesHint': 'One option per line',
     'quickSelectionHint': 'Separate with commas (e.g. New York, London)',
     'addQuickSelectionList': 'Add Quick Selection List',
     'defaultValue': 'Default Value',
     'defaultValueHint': 'e.g. 0.2',
-    'defaultValueInfo': 'This value is applied to all rows by default. Can be changed per row.',
-    'formulaAutoCalcInfo': 'This column is automatically calculated from other columns.',
+    'defaultValueInfo':
+        'This value is applied to all rows by default. Can be changed per row.',
+    'formulaAutoCalcInfo':
+        'This column is automatically calculated from other columns.',
     'formulaHint': 'e.g. {Kg}*{Unit Price}',
     'operationsHint': 'Operations: + - * / % (percent)',
     'clickToAddColumn': 'Click to add column:',
     'addOperation': 'Add operation:',
     'autoDate': 'Auto Date',
-    'autoDateDesc': "Today's date auto-fills when adding a new record.\nYou can change it if needed.",
+    'autoDateDesc':
+        "Today's date auto-fills when adding a new record.\nYou can change it if needed.",
     'autoTime': 'Auto Time',
-    'autoTimeDesc': 'Current time auto-fills when adding a new record.\nYou can change it if needed.',
+    'autoTimeDesc':
+        'Current time auto-fills when adding a new record.\nYou can change it if needed.',
     'autoNumberTitle': 'Auto Number',
-    'autoNumberDesc': 'An auto-incrementing number is assigned to each new record.\nContinues as 1, 2, 3, 4...',
+    'autoNumberDesc':
+        'An auto-incrementing number is assigned to each new record.\nContinues as 1, 2, 3, 4...',
     'example': 'Example: {val}',
     'columnTypes': 'Column Types',
     'normalColumn': 'Normal Column',
     'normalColumnDesc': 'Manual data entry. Quick selection list can be added.',
     'constantColumnTitle': 'Constant Value Column',
-    'constantColumnDesc': 'Your default value is automatically applied to all rows. Can be changed per row.',
+    'constantColumnDesc':
+        'Your default value is automatically applied to all rows. Can be changed per row.',
     'formulaColumnTitle': 'Formula Column',
-    'formulaColumnDesc': "Automatically calculated from other columns. Supported operations:\n• + (addition)\n• - (subtraction)\n• * (multiplication)\n• / (division)\n• % (percent: {Price}%18 = 18% of Price)",
+    'formulaColumnDesc':
+        "Automatically calculated from other columns. Supported operations:\n• + (addition)\n• - (subtraction)\n• * (multiplication)\n• / (division)\n• % (percent: {Price}%18 = 18% of Price)",
     'exampleFormulas': 'Example Formulas:',
     'multiplyKgPrice': 'Multiply Kg by Unit Price',
     'priceVat': 'Price + VAT',
@@ -732,6 +1570,7 @@ class AppLocalizations {
     'formulaLabel': 'Formula',
     'quickSelect': 'Quick Select',
     'today': 'Today',
+    'yesterday': 'Yesterday',
     'selectDate': 'Select Date',
     'now': 'Now',
     'selectTime': 'Select Time',
@@ -762,6 +1601,8 @@ class AppLocalizations {
     'deleteTableConfirm': 'Are you sure you want to delete "{name}"?',
     'nRecordsPermanentDelete': '{n} records will be permanently deleted.',
     'searchTable': 'Search Table',
+    'searchTally': 'Search Tally',
+    'typeTallyName': 'Type tally name...',
     'typeTableName': 'Type table name...',
     'noTablesCreated': 'No tables yet',
     'createYourFirst': 'Create your first table',
@@ -779,16 +1620,19 @@ class AppLocalizations {
     'selectAnotherFormat': 'Select another format',
     'creatingFile': 'Creating file...',
     'fileSaved': 'File saved: {name}',
-    'fileSaveFailed': 'Could not save file. Storage permission may be required.',
+    'fileSaveFailed':
+        'Could not save file. Storage permission may be required.',
     'tableData': 'Table Data',
     'selectTable': 'Select Table',
-    'deleteTableConfirmFull': 'Are you sure you want to delete {name}? This action cannot be undone.',
+    'deleteTableConfirmFull':
+        'Are you sure you want to delete {name}? This action cannot be undone.',
     'tableTemplates': 'Table Templates',
     'searchTemplate': 'Search Template',
     'closeSearch': 'Close Search',
     'typeTemplateName': 'Type template name...',
     'noTemplatesCreated': 'No templates created yet',
-    'saveFrequentStructures': 'Save your frequently used table structures as templates',
+    'saveFrequentStructures':
+        'Save your frequently used table structures as templates',
     'createNewTemplate': 'Create New Template',
     'showingTemplates': '{n} / {m} templates shown',
     'deleteTemplate': 'Delete Template',
@@ -796,7 +1640,7 @@ class AppLocalizations {
     'columnsLabel': 'Columns:',
     'createNewTemplateTitle': 'Create New Template',
     'templateName': 'Template Name',
-    'templateNameHint': 'e.g. Trip Record Template',
+    'templateNameHint': 'e.g. Daily Record Template',
     'templateCreate': 'Create Template',
     'templateNameEmpty': 'Template name cannot be empty',
     'templateCreateFailed': 'Failed to create template',
@@ -818,7 +1662,8 @@ class AppLocalizations {
     'totalNRecords': 'Total: {n} records',
     'totalsLabel': 'TOTALS',
     'pageNofM': 'Page {n} / {m}',
-    'autoNumberDescShort': 'Auto-incrementing number (1, 2, 3...) for each new record.',
+    'autoNumberDescShort':
+        'Auto-incrementing number (1, 2, 3...) for each new record.',
     'dateAutoDescShort': "Today's date auto-fills when adding, can be changed.",
     'timeAutoDescShort': 'Current time auto-fills when adding, can be changed.',
     'quickSelectionListOptional': 'Quick Selection List (optional)',
@@ -828,16 +1673,17 @@ class AppLocalizations {
     'tallyTable': 'Tally Table',
     'tallyEmptyTitle': 'No Tally Tables',
     'tallyEmptySubtitle': 'Create a new table\nto start tracking',
-    'tallyItems': 'items',
+    'tallyItems': 'records',
     'tallyDays': 'days',
-    'tallySearchHint': 'Search items...',
-    'tallyAddItemHint': 'Tap the button below to add an item',
-    'tallyAddItem': 'Add Item',
-    'tallyItemName': 'Item Name',
+    'tallySearchHint': 'Search records...',
+    'tallyAddItemHint': 'Tap the button below to add a record',
+    'tallyAddItem': 'Add Record',
+    'tallyItemName': 'Record Name',
+    'recordNameRequired': 'Record name cannot be empty',
     'tallyClear': 'Clear',
     'tallySummary': 'Summary',
-    'tallyRenameItem': 'Rename',
-    'tallyDeleteItem': 'Delete Item',
+    'tallyRenameItem': 'Rename Record',
+    'tallyDeleteItem': 'Delete Record',
     'tallyDeleteItemConfirm': 'Are you sure you want to delete "{name}"?',
     'tallyTotalDays': 'Total Days',
     'tallyEmpty': 'Empty',
@@ -858,7 +1704,8 @@ class AppLocalizations {
     'tallyDeleteTable': 'Delete Tally',
     'tallyTableName': 'Tally Name',
     'tallyTableNameHint': 'e.g. January 2026 Attendance',
-    'tallyAddStatusHint': 'Add at least one status label (e.g. W-Worked, L-Leave)',
+    'tallyAddStatusHint':
+        'Add at least one status label (e.g. W-Worked, L-Leave)',
     'tallyCode': 'Code',
     'tallyStatusLabel': 'Description',
     'tallyPickColor': 'Pick Color',
@@ -867,14 +1714,177 @@ class AppLocalizations {
     'tallyStatusRequired': 'You must add at least one status label',
     'tallyCodeRequired': 'Status code cannot be empty',
     'tallyCreateFailed': 'Failed to create tally',
-    'tallyItemsLabel': 'Items',
-    'tallyItem': 'Item',
+    'tallyItemsLabel': 'Records',
+    'tallyItem': 'Record',
     'tallyItemNameHint': 'e.g. Ali, Product A',
-    'tallyNoItems': 'No items added yet',
-    'tallyItemHeader': 'Name',
+    'tallyNoItems': 'No records added yet',
+    'tallyItemHeader': 'Record',
     'tallyEditTitle': 'Edit Tally',
     'tallyUpdateFailed': 'Failed to update tally',
-    'tallyDeleteStatusWarning': 'Data in cells using deleted statuses will be removed',
+    'tallyDeleteStatusWarning':
+        'Data in cells using deleted statuses will be removed',
+    'duplicateStatusCode': 'Each status code can only be used once.',
+    'goToToday': 'Go to today',
+    'tallyTools': 'Tally tools',
+    'overallSummary': 'Overall summary',
+    'reorderRows': 'Reorder rows',
+    'searchPersonOrItem': 'Search records',
+    'bulkMark': 'Bulk mark',
+    'forToday': 'For today',
+    'chooseDateRange': 'Or choose a date range',
+    'undoLastAction': 'Undo last action',
+    'joinTable': 'Join a table',
+    'joinCode': 'Join code',
+    'invitePeople': 'Invite people',
+    'shareAsFile': 'Share as a file',
+    'shareSendCode': 'Send code',
+    'shareCodeMessage': 'Join “{name}” on Table Note.\nJoin code: {code}',
+    'shareHowToJoin':
+        'The other person opens “{join}” from the menu and enters the code and their name. No account needed.',
+    'shareNeedsAccount': 'Sign in to your account to share.',
+    'sharePassword': 'Set or change the password',
+    'sharePasswordHint':
+        'Optional. Keeps out people who only learned the code.',
+    'shareMembersHistory': 'Members and history',
+    'roleViewer': 'View only',
+    'roleEditor': 'Can edit',
+    'memberCanEdit': 'Edit access',
+    'requestEditAccess': 'Request access',
+    'editAccessRequested': 'Access requested',
+    'requestEditAccessTitle': 'Request edit access',
+    'requestEditAccessMessage':
+        'A request for edit access will be sent to the table owner. Do you confirm?',
+    'sendRequest': 'Send request',
+    'editAccessRequestSent':
+        'Your request was sent. You can edit once the owner approves.',
+    'viewOnlyNotice': 'You can only view this.',
+    'viewOnlyRequested':
+        'You can only view this. Your access request is waiting for a reply.',
+    'editRequests': 'Access requests',
+    'wantsEditAccess': 'Is asking for edit access',
+    'approve': 'Approve',
+    'decline': 'Decline',
+    'activityEditRequested': 'asked for edit access',
+    'activityTableReplaced': 'replaced the whole table',
+    'activityLeft': 'left the table',
+    'leaveShared': 'Leave shared table',
+    'leaveSharedConfirm':
+        'You will leave “{name}” and it will be removed from this device. To join again you will need the code.',
+    'leavePendingWillSend':
+        '{count} unsent changes will be sent before you leave.',
+    'leaveSendFailed':
+        'Your changes could not be sent. If you leave anyway they will be lost.',
+    'leaveAction': 'Leave',
+    'leaveAnyway': 'Leave anyway',
+    'leftShared': 'You left “{name}”.',
+    'err_table_owner_required':
+        'This table came from someone else’s share and cannot be shared from here.',
+    'joinPassword': 'Password',
+    'joinPasswordOptional': 'Password (if any)',
+    'yourName': 'Your name',
+    'joinAction': 'Join',
+    'joiningTable': 'You are joining {name}.',
+    'joinPasswordRequired':
+        'This table has a password. Enter the one you were given.',
+    'joinNameStepExplainer':
+        'Your name in this table. Each name can belong to only one person here.',
+    'saveToCloud': 'Save to cloud',
+    'syncSending': 'Sending…',
+    'syncUpToDate': 'Up to date',
+    'reviewConflicts': 'Review',
+    'conflictTitle': 'Conflicting rows',
+    'conflictExplainer':
+        'Someone else changed these rows while you were editing them. Choose which version to keep for each.',
+    'conflictRowChanged': 'Someone else changed this row too',
+    'conflictRowDeleted': 'Someone else deleted this row',
+    'conflictRowGone': '(row is gone)',
+    'conflictMine': 'Yours',
+    'conflictTheirs': 'On record',
+    'conflictKeepMine': 'Keep mine',
+    'conflictKeepTheirs': 'Keep theirs',
+    'pendingChangeCount': '{n} changes waiting',
+    'conflictCount': '{n} rows conflicted',
+    'joinTableExplainer':
+        'Enter the code you were given. No account needed — just the name '
+        'you will appear under in this table.',
+    'yourNameHint':
+        'The person sharing the table sees your changes under this name.',
+    'joinedTable': 'You joined {name}.',
+    'sharedTableMembers': 'Members',
+    'activityLog': 'Change history',
+    'activityLogOwnerOnly':
+        'Only the person who shared the table sees this history.',
+    'shareExplainer':
+        'Generate a code and tell the other person. They need no account, just a name.',
+    'codeHiddenExplainer':
+        'This table is shared. The code is not kept for security; generate a new one if you forgot it.',
+    'startSharing': 'Start sharing',
+    'stopSharing': 'Stop sharing',
+    'newCode': 'Generate a new code',
+    'joinPasswordHint':
+        'Leave empty to remove the password. At least 4 characters.',
+    'passwordSaved': 'Password saved.',
+    'passwordRemoved': 'Password removed.',
+    'noMembersYet': 'Nobody has joined yet.',
+    'noActivityYet': 'No changes yet.',
+    'activityJoined': 'joined the table',
+    'activityRowAdded': 'added a row',
+    'activityRowDeleted': 'deleted a row',
+    'activityActorSelf': 'You',
+    'activityActorDeleted': 'Deleted account',
+    'activityItemAdded': 'added an item',
+    'activityItemDeleted': 'deleted an item',
+    'activityColumnsChanged': 'changed the structure',
+    'sharedStructureLockedTitle': 'Structure locked',
+    'sharedStructureLocked':
+        'Only the person who shared this can change its structure. You can '
+        'still edit records and marks.',
+    'copy': 'Copy',
+    'columnNameDate': 'date',
+    'columnNameTime': 'time',
+    'columnNameOrder': 'no',
+    'copySuffix': ' (copy)',
+    'copied': 'Copied',
+    'err_authentication_required': 'Could not connect. Try again.',
+    'err_invalid_table_code': 'No table for that code. Check the code.',
+    'err_invalid_table_password': 'Wrong password.',
+    'err_owner_premium_required':
+        'The person sharing this table has no active subscription.',
+    'err_invalid_display_name': 'A name must be 2-32 characters.',
+    'err_display_name_taken':
+        'That name is taken in this table. Try another one.',
+    'err_too_many_attempts': 'Too many attempts. Try again in a little while.',
+    'err_table_not_found': 'Table not found.',
+    'err_password_too_short': 'A password must be at least 4 characters.',
+    'err_shared_table_needs_upgrade':
+        'The cloud copy is in an older format. The person sharing it needs to save once.',
+    'err_shared_table_locked_by_other':
+        'Someone is changing the table structure right now. Try again shortly.',
+    'err_shared_table_edit_access_required':
+        'You do not have edit access to this table.',
+    'err_shared_table_revision_conflict':
+        'The table changed while you were looking. Refresh and try again.',
+    'err_unknown': 'Something went wrong. Try again.',
+    'redoLastAction': 'Redo last action',
+    'done': 'Done',
+    'selectAll': 'Select all',
+    'apply': 'Apply',
+    'status': 'Status',
+    'csvImportDescription':
+        'The first row is treated as column names. A preview is shown before importing.',
+    'selectFile': 'Select File',
+    'selectAnotherFile': 'Choose Another File',
+    'fileCouldNotBeRead': 'The file could not be read.',
+    'csvEmptyOrTooLarge': 'The CSV file is empty or exceeds the 10 MB limit.',
+    'csvHeaderMissing': 'The CSV header row could not be found.',
+    'csvTooManyRows': 'A CSV file can contain at most 10,000 records.',
+    'csvInvalid': 'The CSV file is not in a valid format.',
+    'csvImportedTable': 'CSV Import',
+    'cloudOperationFailed':
+        'The cloud operation could not be completed. Check your connection and try again.',
+    'accountOperationFailed':
+        'The account operation could not be completed. Check your connection and try again.',
+    'exportFailed': 'The file could not be created. Please try again.',
     'tallyTemplates': 'Tally Templates',
     'tallyTemplateCreate': 'Create Template',
     'tallyTemplateEdit': 'Edit Template',
@@ -884,26 +1894,31 @@ class AppLocalizations {
     'tallyTemplateCreateFailed': 'Failed to create template',
     'tallyTemplateUpdateFailed': 'Failed to update template',
     'tallyTemplateDelete': 'Delete Template',
-    'tallyTemplateDeleteConfirm': 'Are you sure you want to delete "{name}" template?',
+    'tallyTemplateDeleteConfirm':
+        'Are you sure you want to delete "{name}" template?',
     'tallyNoTemplates': 'No tally templates yet',
-    'tallyNoTemplatesHint': 'Save your frequently used statuses and items as templates',
+    'tallyNoTemplatesHint':
+        'Save your frequently used statuses and records as templates',
     'tallyCreateNewTemplate': 'Create New Template',
     'tallyFromTemplate': 'From Template',
     'tallyCreateFromTemplate': 'Create Tally from Template',
-    'tallyTemplateStatusItemCount': '{s} statuses • {i} items',
-    'tallyIncludeItems': 'Include items',
-    'tallyIncludeItemsHint': 'Item names from the template will be added to the new tally',
+    'tallyTemplateStatusItemCount': '{s} statuses • {i} records',
+    'tallyIncludeItems': 'Include records',
+    'tallyIncludeItemsHint':
+        'Record names from the template will be added to the new tally',
   };
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
   bool isSupported(Locale locale) => ['tr', 'en'].contains(locale.languageCode);
 
   @override
-  Future<AppLocalizations> load(Locale locale) async => AppLocalizations(locale);
+  Future<AppLocalizations> load(Locale locale) async =>
+      AppLocalizations(locale);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
