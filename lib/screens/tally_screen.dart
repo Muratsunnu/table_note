@@ -187,7 +187,12 @@ class _TallyScreenState extends State<TallyScreen> {
       summary: loc.nRecords(table.items.length),
       detail: dateFormat,
       compact: compact,
-      footer: const BackupStatusLine(),
+      footer: BackupStatusLine(
+        changedAt: table.updatedAt,
+        createdAt: table.createdAt,
+        hasData: table.items.isNotEmpty,
+        shared: provider.isSharedTally(table.id),
+      ),
       // Ortak olmayan cetelede hicbir sey cizmez.
       titleTrailing: const SharedSyncIndicator(isTally: true),
       actions: [

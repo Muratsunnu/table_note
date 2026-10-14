@@ -25,19 +25,25 @@ BackupStatus backupStatusOf(BuildContext context) {
   final tallies = context.watch<TallyProvider?>();
 
   DateTime? latest;
-  void consider(DateTime changed) {
+  DateTime? oldest;
+  void consider(DateTime changed, DateTime created) {
     if (latest == null || changed.isAfter(latest!)) latest = changed;
+    if (oldest == null || created.isBefore(oldest!)) oldest = created;
   }
 
   // Paylaşılan tablolar sürekli eşitlenir; elle yedekleme onları kapsamaz.
   if (tables != null) {
     for (final table in tables.tables) {
-      if (!tables.isSharedTable(table.id)) consider(table.updatedAt);
+      if (!tables.isSharedTable(table.id)) {
+        consider(table.updatedAt, table.createdAt);
+      }
     }
   }
   if (tallies != null) {
     for (final tally in tallies.tables) {
-      if (!tallies.isSharedTally(tally.id)) consider(tally.updatedAt);
+      if (!tallies.isSharedTally(tally.id)) {
+        consider(tally.updatedAt, tally.createdAt);
+      }
     }
   }
 
@@ -45,6 +51,7 @@ BackupStatus backupStatusOf(BuildContext context) {
     userId: auth.user?.id,
     canBackUp: auth.hasAccount && subscription.isPremium,
     latestChange: latest,
+    oldestData: oldest,
   );
 }
 
@@ -152,15 +159,51 @@ class BackupReminderCard extends StatelessWidget {
 
 /// Başlığın altındaki küçük "Son yedekleme: 3 gün önce" satırı. Dokununca
 /// yedekleme ekranını açar. Hatırlatacak bir şey yoksa hiç yer kaplamaz.
+///
+/// Satır, altında durduğu tabloya bakar: o tabloda yedeklenmemiş bir
+/// değişiklik yoksa, tablo boşsa ya da yeni kurulduysa çıkmaz.
 class BackupStatusLine extends StatelessWidget {
-  const BackupStatusLine({super.key, this.onTap});
+  const BackupStatusLine({
+    super.key,
+    required this.changedAt,
+    required this.createdAt,
+    required this.hasData,
+    this.shared = false,
+    this.onTap,
+  });
+
+  /// Tablonun son değişikliği ve kurulduğu an.
+  final DateTime changedAt;
+  final DateTime createdAt;
+
+  /// Tabloda yedeklenecek kayıt var mı; boş tablo için hatırlatılmaz.
+  final bool hasData;
+
+  /// Paylaşılan tablo sürekli eşitlenir; elle yedekleme onu kapsamaz.
+  final bool shared;
 
   /// Verilmezse yedekleme ekranı açılır.
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final status = backupStatusOf(context);
+    if (shared || !hasData) return const SizedBox.shrink();
+    // Kart görünürken aynı bilgiyi satır yinelemez.
+    if (backupStatusOf(context).nudge == BackupNudge.card) {
+      return const SizedBox.shrink();
+    }
+    final reminder = context.watch<BackupReminderProvider?>();
+    final auth = context.watch<AuthProvider?>();
+    final subscription = context.watch<SubscriptionProvider?>();
+    if (reminder == null || auth == null || subscription == null) {
+      return const SizedBox.shrink();
+    }
+    final status = reminder.lineFor(
+      userId: auth.user?.id,
+      canBackUp: auth.hasAccount && subscription.isPremium,
+      changedAt: changedAt,
+      createdAt: createdAt,
+    );
     if (status.nudge != BackupNudge.line) return const SizedBox.shrink();
     final ink = AppTheme.readableAccent(context, AppTheme.warning);
     return InkWell(

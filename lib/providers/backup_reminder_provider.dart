@@ -31,7 +31,8 @@ class BackupStatus {
 /// hatırlatmaya bugün "sonra" dendi mi.
 ///
 /// Yedekleme bilerek elle yapılır; burası yalnızca hatırlatır. Kural:
-/// 3 günden sonra küçük bir satır, 7 günden sonra kart. Karta "sonra"
+/// 3 günden sonra küçük bir satır, 7 günden sonra kart. Hiç yedek alınmamışsa
+/// süre, yedeklenecek ilk verinin oluştuğu andan sayılır. Karta "sonra"
 /// denirse o gün bir daha çıkmaz, ertesi gün yeniden gelir.
 class BackupReminderProvider extends ChangeNotifier
     with WidgetsBindingObserver {
@@ -83,10 +84,14 @@ class BackupReminderProvider extends ChangeNotifier
   /// [canBackUp]: giriş yapmış ve yedekleme hakkı olan kullanıcı.
   /// [latestChange]: yedeklenecek tablo ve çetelelerdeki en son değişiklik;
   /// hiç yoksa null. Son yedekten sonra bir şey değişmediyse hatırlatılmaz.
+  /// [oldestData]: yedeklenecek ilk tablo ya da çetelenin oluşturulduğu an.
+  /// Hiç yedek alınmamışsa süre buradan sayılır: tablosunu az önce kuran
+  /// kişiye "henüz yedek almadın" denmez, üç gün sonra denir.
   BackupStatus statusFor({
     required String? userId,
     required bool canBackUp,
     required DateTime? latestChange,
+    DateTime? oldestData,
   }) {
     if (!_loaded || !canBackUp || userId == null || latestChange == null) {
       return BackupStatus.none;
@@ -94,16 +99,41 @@ class BackupReminderProvider extends ChangeNotifier
     final last = _lastBackups[userId];
     if (last != null && !latestChange.isAfter(last)) return BackupStatus.none;
 
+    // Yedeksiz geçen süre: son yedekten, hiç yedek yoksa ilk veriden beri.
+    final waited = _now().difference(last ?? oldestData ?? latestChange).inDays;
+    // Hiç yedek yoksa gün sayısı da yoktur; metin "henüz yedek almadın" olur.
     final days = daysSinceBackup(userId);
-    if (days == null || days >= cardAfterDays) {
+    if (waited >= cardAfterDays) {
       // "Sonra" denmişse o gün kart yerine sessiz satır kalır.
       return BackupStatus(
         _snoozedToday ? BackupNudge.line : BackupNudge.card,
         days,
       );
     }
-    return days >= lineAfterDays
+    return waited >= lineAfterDays
         ? BackupStatus(BackupNudge.line, days)
+        : BackupStatus.none;
+  }
+
+  /// Tek bir tablonun (ya da çetelenin) başlığındaki küçük satır gösterilsin
+  /// mi. Kart hesaptaki bütün veriye bakar; satır yalnızca açık olan tabloya:
+  /// yeni kurulmuş ya da son yedekten beri değişmemiş bir tablonun altında
+  /// "yedeklenmedi" yazmaz.
+  ///
+  /// [changedAt] tablonun son değişikliği, [createdAt] kurulduğu an. Hiç
+  /// yedek yoksa süre tablonun kurulduğu andan sayılır.
+  BackupStatus lineFor({
+    required String? userId,
+    required bool canBackUp,
+    required DateTime changedAt,
+    required DateTime createdAt,
+  }) {
+    if (!_loaded || !canBackUp || userId == null) return BackupStatus.none;
+    final last = _lastBackups[userId];
+    if (last != null && !changedAt.isAfter(last)) return BackupStatus.none;
+    final waited = _now().difference(last ?? createdAt).inDays;
+    return waited >= lineAfterDays
+        ? BackupStatus(BackupNudge.line, daysSinceBackup(userId))
         : BackupStatus.none;
   }
 

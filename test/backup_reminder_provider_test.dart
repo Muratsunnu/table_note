@@ -100,18 +100,39 @@ void main() {
     expect(status.nudge, BackupNudge.none);
   });
 
-  test('hiç yedek almamış kişiye kart çıkar, gün sayısı yoktur', () async {
+  test('tablosunu az önce kuran kişiye yedek hatırlatılmaz', () async {
     await start();
 
+    // Hiç yedek yok ama yedeklenecek veri de bugün oluştu.
     final status = reminder.statusFor(
       userId: user,
       canBackUp: true,
       latestChange: now,
+      oldestData: now.subtract(const Duration(minutes: 5)),
     );
 
-    expect(status.nudge, BackupNudge.card);
-    expect(status.days, isNull);
+    expect(status.nudge, BackupNudge.none);
   });
+
+  test(
+    'hiç yedek almamış kişide süre ilk verinin oluştuğu andan sayılır',
+    () async {
+      await start();
+      BackupStatus after(int days) => reminder.statusFor(
+        userId: user,
+        canBackUp: true,
+        latestChange: now,
+        oldestData: now.subtract(Duration(days: days, minutes: 1)),
+      );
+
+      expect(after(2).nudge, BackupNudge.none);
+      expect(after(3).nudge, BackupNudge.line);
+      expect(after(6).nudge, BackupNudge.line);
+      expect(after(7).nudge, BackupNudge.card);
+      // Yedek hiç alınmadığı için gün sayısı yoktur; metin bunu söyler.
+      expect(after(7).days, isNull);
+    },
+  );
 
   test('yedekleyemeyen kişiye ya da boş cihazda hatırlatmaz', () async {
     await start();

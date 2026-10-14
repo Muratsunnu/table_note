@@ -531,7 +531,12 @@ class _TableScreenState extends State<TableScreen> {
       title: table.tableName,
       summary: loc.nRecords(table.rows.length),
       compact: compact,
-      footer: const BackupStatusLine(),
+      footer: BackupStatusLine(
+        changedAt: table.updatedAt,
+        createdAt: table.createdAt,
+        hasData: table.rows.isNotEmpty,
+        shared: provider.isSharedTable(table.id),
+      ),
       // Ortak olmayan tabloda hicbir sey cizmez.
       titleTrailing: const SharedSyncIndicator(),
       actions: [

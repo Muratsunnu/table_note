@@ -50,16 +50,25 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     int? daysSinceBackup,
+    // Tablonun kaç gün önce kurulduğu; hiç yedek yoksa süre buradan sayılır.
+    int tableAgeDays = 0,
+    // Tabloya en son kaç gün önce dokunulduğu; verilmezse az önce.
+    int? changedDaysAgo,
+    bool empty = false,
     Locale locale = const Locale('tr'),
   }) async {
     SharedPreferences.setMockInitialValues({});
+    final created = DateTime.now().subtract(Duration(days: tableAgeDays));
     await StorageService.saveTables([
       TableModel(
         tableName: 'Seferler',
         columns: [ColumnModel(name: 'nereden')],
         rows: [
-          ['Konya'],
+          if (!empty) ['Konya'],
         ],
+        createdAt: created,
+        // Varsayılan: tabloya az önce dokunulmuş, yedeklenmemiş değişiklik var.
+        updatedAt: DateTime.now().subtract(Duration(days: changedDaysAgo ?? 0)),
       ),
     ]);
     now = DateTime.now().add(const Duration(minutes: 1));
@@ -95,7 +104,19 @@ void main() {
             body: Column(
               children: [
                 BackupReminderCard(onBackUp: () => opened++),
-                BackupStatusLine(onTap: () => opened++),
+                // Açık olan tablonun başlığındaki satır.
+                Builder(
+                  builder: (context) {
+                    final table = context.watch<TableProvider>().currentTable;
+                    if (table == null) return const SizedBox.shrink();
+                    return BackupStatusLine(
+                      changedAt: table.updatedAt,
+                      createdAt: table.createdAt,
+                      hasData: table.rows.isNotEmpty,
+                      onTap: () => opened++,
+                    );
+                  },
+                ),
                 const BackupHelpLink(),
               ],
             ),
@@ -164,10 +185,41 @@ void main() {
     expect(find.text(tr.backupReminderDays(10)), findsOneWidget);
   });
 
-  testWidgets('hiç yedek almamış Premium kullanıcıya kart çıkar', (
+  testWidgets('tablosunu az önce kuran kişiye hiçbir hatırlatma çıkmaz', (
     tester,
   ) async {
     await pumpScreen(tester);
+
+    expect(find.byKey(card), findsNothing);
+    expect(find.byKey(const ValueKey('backup-status-line')), findsNothing);
+  });
+
+  testWidgets('son yedekten beri değişmemiş tablonun altında satır çıkmaz', (
+    tester,
+  ) async {
+    // Yedek 4 gün önce alınmış, tabloya ondan önce dokunulmuş.
+    await pumpScreen(tester, daysSinceBackup: 4, changedDaysAgo: 6);
+
+    expect(find.byKey(const ValueKey('backup-status-line')), findsNothing);
+  });
+
+  testWidgets('boş tablonun altında satır çıkmaz', (tester) async {
+    await pumpScreen(tester, tableAgeDays: 5, empty: true);
+
+    expect(find.byKey(const ValueKey('backup-status-line')), findsNothing);
+  });
+
+  testWidgets('günlerdir duran, hiç yedeklenmemiş tablonun altında satır '
+      'çıkar', (tester) async {
+    await pumpScreen(tester, tableAgeDays: 5);
+
+    expect(find.text(tr.lastBackupLabel(null)), findsOneWidget);
+  });
+
+  testWidgets('bir haftadır tablosu olup hiç yedek almamış kişiye kart çıkar', (
+    tester,
+  ) async {
+    await pumpScreen(tester, tableAgeDays: 9);
 
     expect(find.text(tr.backupReminderNever), findsOneWidget);
   });
