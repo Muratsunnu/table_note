@@ -1,3 +1,4 @@
+import 'code_column_note.dart';
 import 'dart:math' as math;
 
 import 'edit_access.dart';
@@ -349,6 +350,7 @@ class TableListWidget extends StatelessWidget {
     if (column.isTime) return (Icons.access_time_rounded, Colors.indigo);
     if (column.isAutoNumber) return (Icons.tag_rounded, AppTheme.brown);
     if (column.isNumeric) return (Icons.numbers_rounded, AppTheme.success);
+    if (column.isCode) return (codeColumnIcon, codeColumnColor);
     return null;
   }
 

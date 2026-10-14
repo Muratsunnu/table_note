@@ -53,7 +53,9 @@ class RowSorter {
       final left = timeValue(a);
       final right = timeValue(b);
       if (left != null && right != null) return left.compareTo(right);
-    } else if (column.isAutoNumber || column.isEffectivelyNumeric) {
+    } else if (column.isAutoNumber ||
+        column.isEffectivelyNumeric ||
+        column.isCode) {
       final left = numberValue(a);
       final right = numberValue(b);
       if (left != null && right != null) return left.compareTo(right);

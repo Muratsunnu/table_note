@@ -1,3 +1,4 @@
+import 'code_column_note.dart';
 import 'starting_value_field.dart';
 import 'package:flutter/material.dart';
 import 'add_column_card.dart';
@@ -426,6 +427,8 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
           color: Colors.brown,
           size: 20,
         );
+      case ColumnType.code:
+        return const Icon(codeColumnIcon, color: codeColumnColor);
     }
   }
 
@@ -443,6 +446,8 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
         return AppLocalizations.of(context).time;
       case ColumnType.autoNumber:
         return AppLocalizations.of(context).autoNumber;
+      case ColumnType.code:
+        return AppLocalizations.of(context).codeColumn;
     }
   }
 
@@ -513,6 +518,14 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
                 Icons.format_list_numbered,
                 Colors.brown,
               ),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.code,
+                AppLocalizations.of(context).codeColumn,
+                codeColumnIcon,
+                codeColumnColor,
+              ),
             ],
           ),
         ],
@@ -573,7 +586,9 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
             } else if (type == ColumnType.formula) {
               column.constantValue = null;
               column.isNumeric = true;
-            } else if (type == ColumnType.date || type == ColumnType.time) {
+            } else if (type == ColumnType.date ||
+                type == ColumnType.time ||
+                type == ColumnType.code) {
               column.constantValue = null;
               column.formula = null;
               column.isNumeric = false;
@@ -619,6 +634,8 @@ class _EditTableStructureDialogState extends State<EditTableStructureDialog> {
       case ColumnType.time:
       case ColumnType.autoNumber:
         return const SizedBox(height: 8);
+      case ColumnType.code:
+        return const CodeColumnNote();
     }
   }
 

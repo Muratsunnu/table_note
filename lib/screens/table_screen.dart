@@ -24,7 +24,7 @@ import '../widgets/template_management_dialog.dart';
 import '../widgets/column_sums_widget.dart';
 import '../widgets/share_file_sheet.dart';
 import '../widgets/table_drawer.dart';
-import '../widgets/create_table_dialog.dart';
+import '../widgets/quick_table_builder.dart';
 import '../services/export_service.dart';
 import '../services/storage_service.dart';
 import '../l10n/app_localizations.dart';
@@ -796,7 +796,7 @@ class _TableScreenState extends State<TableScreen> {
     context,
     MaterialPageRoute(
       fullscreenDialog: true,
-      builder: (_) => const CreateTableDialog(),
+      builder: (_) => const QuickTableBuilder(),
     ),
   );
   void _showVoiceAddRowDialog(BuildContext context) => Navigator.push(

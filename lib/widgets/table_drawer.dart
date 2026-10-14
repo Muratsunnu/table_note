@@ -6,7 +6,7 @@ import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../config/plan_limits.dart';
 import '../theme/app_theme.dart';
-import 'create_table_dialog.dart';
+import 'quick_table_builder.dart';
 import 'table_search_dialog.dart';
 import 'edit_table_structure_dialog.dart';
 import 'edit_tally_dialog.dart';
@@ -791,7 +791,7 @@ class TableDrawer extends StatelessWidget {
                     navigator.push(
                       MaterialPageRoute(
                         fullscreenDialog: true,
-                        builder: (_) => const CreateTableDialog(),
+                        builder: (_) => const QuickTableBuilder(),
                       ),
                     );
                   },

@@ -199,6 +199,29 @@ class AppLocalizations {
   String get findTable => _t('findTable');
   String get exportData => _t('exportData');
   String get newTable => _t('newTable');
+  String get quickDuplicateColumn => _t('quickDuplicateColumn');
+  String get quickNeedColumn => _t('quickNeedColumn');
+  String get quickEmptyHint => _t('quickEmptyHint');
+  String get quickMoreHint => _t('quickMoreHint');
+  String get quickReorderHint => _t('quickReorderHint');
+  String get editColumnTitle => _t('editColumnTitle');
+  String get startFromExample => _t('startFromExample');
+  String kindConstantNote(String value) =>
+      _t('kindConstantNote').replaceAll('{value}', value);
+  String get kindFormulaNote => _t('kindFormulaNote');
+  String get kindAutoNumberNote => _t('kindAutoNumberNote');
+  String get kindCodeNote => _t('kindCodeNote');
+  String get codeColumn => _t('codeColumn');
+  String get codeColumnTooltip => _t('codeColumnTooltip');
+  String get codeColumnDesc => _t('codeColumnDesc');
+  String get quickSampleText => _t('quickSampleText');
+  String get quickOptionRemove => _t('quickOptionRemove');
+  String get kindTextNote => _t('kindTextNote');
+  String get kindNumberNote => _t('kindNumberNote');
+  String get kindDateNote => _t('kindDateNote');
+  String get kindTimeNote => _t('kindTimeNote');
+  String get exampleTemplates => _t('exampleTemplates');
+  String get exampleTemplatesHint => _t('exampleTemplatesHint');
   String get templates => _t('templates');
   String get addRecord => _t('addRecord');
   String get searchInTable => _t('searchInTable');
@@ -268,11 +291,6 @@ class AppLocalizations {
   String get autoIncrement => _t('autoIncrement');
 
   // ============== COLUMN SETTINGS ==============
-  String get quickSelectionList => _t('quickSelectionList');
-  String get templateQuickSelectionHelp => _t('templateQuickSelectionHelp');
-  String get quickSelectionLinesHint => _t('quickSelectionLinesHint');
-  String get quickSelectionHint => _t('quickSelectionHint');
-  String get addQuickSelectionList => _t('addQuickSelectionList');
   String get defaultValue => _t('defaultValue');
   String get defaultValueHint => _t('defaultValueHint');
   String get defaultValueInfo => _t('defaultValueInfo');
@@ -316,7 +334,6 @@ class AppLocalizations {
   String get addNewRecord => _t('addNewRecord');
   String get calculating => _t('calculating');
   String get formulaLabel => _t('formulaLabel');
-  String get quickSelect => _t('quickSelect');
   String get today => _t('today');
   String get yesterday => _t('yesterday');
   String get selectDate => _t('selectDate');
@@ -447,9 +464,6 @@ class AppLocalizations {
   String get autoNumberDescShort => _t('autoNumberDescShort');
   String get dateAutoDescShort => _t('dateAutoDescShort');
   String get timeAutoDescShort => _t('timeAutoDescShort');
-  String get quickSelectionListOptional => _t('quickSelectionListOptional');
-  String get quickSelectionHintShort => _t('quickSelectionHintShort');
-  String get quickSelectionAdd => _t('quickSelectionAdd');
   String get addColumnLabel => _t('addColumnLabel');
 
   // ============== TALLY ==============
@@ -838,6 +852,31 @@ class AppLocalizations {
     'findTable': 'Tablo Bul',
     'exportData': 'Çıktı Al',
     'newTable': 'Yeni Tablo',
+    'quickDuplicateColumn': 'Bu adda bir sütun zaten var.',
+    'quickNeedColumn': 'En az bir sütun ekle: + düğmesine bas.',
+    'quickEmptyHint': 'İlk sütunu eklemek için + düğmesine bas.',
+    'quickMoreHint':
+        'Yeni sütun için + düğmesine, bir sütunu değiştirmek için başlığına dokun.',
+    'quickReorderHint': 'Sırayı değiştirmek için başlığa basılı tutup sürükle.',
+    'editColumnTitle': 'Sütunu Düzenle',
+    'startFromExample': 'Hazır örnekten ya da şablondan başla',
+    'kindConstantNote': 'sabit: {value}',
+    'kindFormulaNote': 'formül · kendisi hesaplar',
+    'kindAutoNumberNote': 'sıra no · kendisi artar',
+    'kindCodeNote': 'numara · toplanmaz',
+    'codeColumn': 'Numara',
+    'codeColumnTooltip': 'Rakam yazılır, toplanmaz',
+    'codeColumnDesc':
+        'Fiş no, seri no, telefon gibi. Kayıt eklerken rakam klavyesi açılır; değer yazıldığı gibi durur ve toplanmaz.',
+    'quickSampleText': 'örnek',
+    'quickOptionRemove': 'Öneriden kaldır',
+    'kindTextNote': 'yazı',
+    'kindNumberNote': 'sayı · toplanır',
+    'kindDateNote': 'tarih · bugün gelir',
+    'kindTimeNote': 'saat · şimdi gelir',
+    'exampleTemplates': 'Hazır örnekler',
+    'exampleTemplatesHint':
+        'Dokun, adını ver, tablo hazır. Sonradan istediğin gibi değiştirebilirsin.',
     'templates': 'Şablonlar',
     'addRecord': 'Kayıt Ekle',
     'searchInTable': 'Tabloda ara...',
@@ -893,12 +932,6 @@ class AppLocalizations {
     'todaysDateAuto': 'Bugünün tarihi otomatik gelir',
     'currentTimeAuto': 'Şu anki saat otomatik gelir',
     'autoIncrement': 'Otomatik artan numara',
-    'quickSelectionList': 'Hızlı Seçim Listesi',
-    'templateQuickSelectionHelp':
-        'Her satıra bir seçenek yazın. Ekleyebilir, değiştirebilir veya silebilirsiniz. Değişiklikler yalnızca yeni tabloya uygulanır; şablon değişmez.',
-    'quickSelectionLinesHint': 'Her satıra bir seçenek',
-    'quickSelectionHint': 'Virgülle ayırın (örn: İstanbul, Ankara)',
-    'addQuickSelectionList': 'Hızlı Seçim Listesi Ekle',
     'defaultValue': 'Varsayılan Değer',
     'defaultValueHint': 'Örn: 0.2',
     'defaultValueInfo':
@@ -943,7 +976,6 @@ class AppLocalizations {
     'addNewRecord': 'Yeni Kayıt Ekle',
     'calculating': 'Hesaplanıyor...',
     'formulaLabel': 'Formül',
-    'quickSelect': 'Hızlı Seç',
     'today': 'Bugün',
     'yesterday': 'Dün',
     'selectDate': 'Tarih Seç',
@@ -1044,9 +1076,6 @@ class AppLocalizations {
         'Kayıt eklerken bugünün tarihi otomatik gelir, değiştirilebilir.',
     'timeAutoDescShort':
         'Kayıt eklerken şu anki saat otomatik gelir, değiştirilebilir.',
-    'quickSelectionListOptional': 'Hızlı Seçim Listesi (opsiyonel)',
-    'quickSelectionHintShort': 'Virgülle ayırın: Ankara, İstanbul, İzmir',
-    'quickSelectionAdd': 'Hızlı Seçim Ekle',
     'addColumnLabel': 'Sütun ekle:',
     'tallyTable': 'Çetele Tablosu',
     'tallyEmptyTitle': 'Çetele Tablosu Yok',
@@ -1463,6 +1492,31 @@ class AppLocalizations {
     'findTable': 'Find Table',
     'exportData': 'Export',
     'newTable': 'New Table',
+    'quickDuplicateColumn': 'A column with this name already exists.',
+    'quickNeedColumn': 'Add at least one column: press +.',
+    'quickEmptyHint': 'Press + to add the first column.',
+    'quickMoreHint':
+        'Press + for a new column; tap a header to change that column.',
+    'quickReorderHint': 'To reorder, press and hold a header, then drag it.',
+    'editColumnTitle': 'Edit Column',
+    'startFromExample': 'Start from an example or a template',
+    'kindConstantNote': 'constant: {value}',
+    'kindFormulaNote': 'formula · calculated',
+    'kindAutoNumberNote': 'row number · automatic',
+    'kindCodeNote': 'ID number · not summed',
+    'codeColumn': 'ID number',
+    'codeColumnTooltip': 'Digits, never summed',
+    'codeColumnDesc':
+        'For receipt numbers, serial numbers, phone numbers. Adding a record opens the number keypad; the value stays as typed and is never summed.',
+    'quickSampleText': 'sample',
+    'quickOptionRemove': 'Remove suggestion',
+    'kindTextNote': 'text',
+    'kindNumberNote': 'number · summed',
+    'kindDateNote': 'date · today by default',
+    'kindTimeNote': 'time · now by default',
+    'exampleTemplates': 'Ready-made examples',
+    'exampleTemplatesHint':
+        'Tap one, name it, and the table is ready. You can change it any way you like afterwards.',
     'templates': 'Templates',
     'addRecord': 'Add Record',
     'searchInTable': 'Search in table...',
@@ -1518,12 +1572,6 @@ class AppLocalizations {
     'todaysDateAuto': "Today's date auto-fills",
     'currentTimeAuto': 'Current time auto-fills',
     'autoIncrement': 'Auto-incrementing number',
-    'quickSelectionList': 'Quick Selection List',
-    'templateQuickSelectionHelp':
-        'Enter one option per line. Add, edit or remove options. Changes apply only to the new table; the template stays unchanged.',
-    'quickSelectionLinesHint': 'One option per line',
-    'quickSelectionHint': 'Separate with commas (e.g. New York, London)',
-    'addQuickSelectionList': 'Add Quick Selection List',
     'defaultValue': 'Default Value',
     'defaultValueHint': 'e.g. 0.2',
     'defaultValueInfo':
@@ -1568,7 +1616,6 @@ class AppLocalizations {
     'addNewRecord': 'Add New Record',
     'calculating': 'Calculating...',
     'formulaLabel': 'Formula',
-    'quickSelect': 'Quick Select',
     'today': 'Today',
     'yesterday': 'Yesterday',
     'selectDate': 'Select Date',
@@ -1666,9 +1713,6 @@ class AppLocalizations {
         'Auto-incrementing number (1, 2, 3...) for each new record.',
     'dateAutoDescShort': "Today's date auto-fills when adding, can be changed.",
     'timeAutoDescShort': 'Current time auto-fills when adding, can be changed.',
-    'quickSelectionListOptional': 'Quick Selection List (optional)',
-    'quickSelectionHintShort': 'Separate with commas: NYC, London, Berlin',
-    'quickSelectionAdd': 'Add Quick Selection',
     'addColumnLabel': 'Add column:',
     'tallyTable': 'Tally Table',
     'tallyEmptyTitle': 'No Tally Tables',

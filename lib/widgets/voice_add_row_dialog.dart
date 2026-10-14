@@ -429,7 +429,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final busy = _saving || _starting || _restoringDraft;
-    final canSpeak = _columns.any((column) => column.isNormal);
+    final canSpeak = _columns.any((column) => column.isTyped);
     final hasTranscript = _transcript.text.trim().isNotEmpty;
     return FormDraftGuard(
       isSaving: _saving || _restoringDraft,
@@ -710,15 +710,18 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
   );
 
   String _example(AppLocalizations loc) {
-    final spokenColumns = _columns.where((column) => column.isNormal).take(3);
-    if (spokenColumns.isEmpty) return loc.voiceNoEditableColumns;
-    final parts = spokenColumns.map((column) {
-      final value = column.isNumeric
+    final spoken = [
+      for (var index = 0; index < _columns.length; index++)
+        if (_columns[index].isTyped) index,
+    ].take(3);
+    if (spoken.isEmpty) return loc.voiceNoEditableColumns;
+    final tables = context.read<TableProvider>();
+    final parts = spoken.map((index) {
+      final column = _columns[index];
+      // Örnek değer, tabloya en sık yazılan değerden alınır.
+      final value = column.isNumeric || column.isCode
           ? '10'
-          : column.autoFillOptions
-                    .where((value) => value.trim().isNotEmpty)
-                    .firstOrNull ??
-                loc.voiceExampleValue;
+          : tables.quickOptions(index).firstOrNull ?? loc.voiceExampleValue;
       return '${column.name} $value';
     });
     return loc.voiceExampleFor(parts.join(', '));
@@ -777,7 +780,9 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
         focusNode: focusNode,
         readOnly:
             computed || _listening || _starting || _saving || _restoringDraft,
-        keyboardType: column.isEffectivelyNumeric
+        keyboardType: column.isCode
+            ? TextInputType.number
+            : column.isEffectivelyNumeric
             ? const TextInputType.numberWithOptions(decimal: true, signed: true)
             : TextInputType.text,
         textInputAction: TextInputAction.next,

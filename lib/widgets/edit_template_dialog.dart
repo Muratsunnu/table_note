@@ -1,3 +1,4 @@
+import 'code_column_note.dart';
 import 'package:flutter/material.dart';
 import 'form_field_reveal.dart';
 import 'added_field_focus.dart';
@@ -28,7 +29,6 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
   late List<TextEditingController> _nameControllers;
   late List<TextEditingController> _constantValueControllers;
   late List<TextEditingController> _formulaControllers;
-  late List<TextEditingController> _autoFillControllers;
   late List<String?> _columnNameErrors;
   late List<String?> _constantValueErrors;
   late List<String?> _formulaErrors;
@@ -59,11 +59,6 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
     _formulaControllers = _columns
         .map((col) => TextEditingController(text: col.formula ?? ''))
         .toList();
-    _autoFillControllers = _columns
-        .map(
-          (col) => TextEditingController(text: col.autoFillOptions.join(', ')),
-        )
-        .toList();
     // growable: true sart. Varsayilan List.filled SABIT uzunlukta bir liste
     // dondurur; "Yeni Sutun" bu listelere add() cagirinca istisna firlatiyor
     // ve istisna setState'in icinde patladigi icin widget kirli
@@ -92,7 +87,6 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
     for (var c in _nameControllers) c.dispose();
     for (var c in _constantValueControllers) c.dispose();
     for (var c in _formulaControllers) c.dispose();
-    for (var c in _autoFillControllers) c.dispose();
     super.dispose();
   }
 
@@ -327,6 +321,8 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
           color: Colors.brown,
           size: 20,
         );
+      case ColumnType.code:
+        return const Icon(codeColumnIcon, color: codeColumnColor);
     }
   }
 
@@ -397,6 +393,14 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
                 Icons.format_list_numbered,
                 Colors.brown,
               ),
+              _buildTypeChip(
+                index,
+                column,
+                ColumnType.code,
+                AppLocalizations.of(context).codeColumn,
+                codeColumnIcon,
+                codeColumnColor,
+              ),
             ],
           ),
         ],
@@ -457,7 +461,9 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
             } else if (type == ColumnType.formula) {
               column.constantValue = null;
               column.isNumeric = true;
-            } else if (type == ColumnType.date || type == ColumnType.time) {
+            } else if (type == ColumnType.date ||
+                type == ColumnType.time ||
+                type == ColumnType.code) {
               column.constantValue = null;
               column.formula = null;
               column.isNumeric = false;
@@ -495,6 +501,8 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
           AppLocalizations.of(context).autoNumberDescShort,
           Colors.brown,
         );
+      case ColumnType.code:
+        return const CodeColumnNote();
     }
   }
 
@@ -543,23 +551,6 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
               setState(() => column.isNumeric = value ?? false),
           dense: true,
           contentPadding: EdgeInsets.zero,
-        ),
-        SizedBox(height: 8),
-        TextField(
-          controller: _autoFillControllers[index],
-          decoration: InputDecoration(
-            labelText: AppLocalizations.of(context).quickSelectionListOptional,
-            hintText: AppLocalizations.of(context).quickSelectionHintShort,
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.list),
-          ),
-          onChanged: (value) {
-            column.autoFillOptions = value
-                .split(',')
-                .map((s) => s.trim())
-                .where((s) => s.isNotEmpty)
-                .toList();
-          },
         ),
       ],
     );
@@ -696,7 +687,6 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
       _nameControllers.add(TextEditingController());
       _constantValueControllers.add(TextEditingController());
       _formulaControllers.add(TextEditingController());
-      _autoFillControllers.add(TextEditingController());
       _columnNameErrors.add(null);
       _constantValueErrors.add(null);
       _formulaErrors.add(null);
@@ -714,8 +704,6 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
         _constantValueControllers.removeAt(index);
         _formulaControllers[index].dispose();
         _formulaControllers.removeAt(index);
-        _autoFillControllers[index].dispose();
-        _autoFillControllers.removeAt(index);
         _columnNameErrors.removeAt(index);
         _constantValueErrors.removeAt(index);
         _formulaErrors.removeAt(index);
@@ -766,13 +754,6 @@ class _EditTemplateDialogState extends State<EditTemplateDialog> {
         _columns[i].formula = _formulaControllers[i].text.trim().isEmpty
             ? null
             : _formulaControllers[i].text.trim();
-      }
-      if (_columns[i].isNormal) {
-        _columns[i].autoFillOptions = _autoFillControllers[i].text
-            .split(',')
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList();
       }
 
       if (_columns[i].isConstant && _columns[i].constantValue == null) {

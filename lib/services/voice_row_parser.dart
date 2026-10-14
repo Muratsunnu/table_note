@@ -24,7 +24,7 @@ class VoiceRowParser {
     final text = _normalize(transcript, trim: false);
     final matches = <_ColumnMatch>[];
     for (var index = 0; index < columns.length; index++) {
-      if (!columns[index].isNormal) continue;
+      if (!columns[index].isTyped) continue;
       for (final marker in _markers(columns[index])) {
         final match = RegExp(
           '(?:^| )${RegExp.escape(marker)}(?: |\$)',
@@ -48,7 +48,8 @@ class VoiceRowParser {
           .substring(match.end, end)
           .trim()
           .replaceAll(RegExp(r'^[,.: -]+|[,.: -]+$'), '');
-      if (columns[match.columnIndex].isNumeric) {
+      if (columns[match.columnIndex].isNumeric ||
+          columns[match.columnIndex].isCode) {
         // Ses tanıma sayıyı sözcükle ("yüz") ya da dilin alışkanlığıyla
         // ("35.000") yazabilir; hücreye yalnızca rakam girer.
         final number = parseSpokenNumber(value, languageCode: languageCode);

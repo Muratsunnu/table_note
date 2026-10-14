@@ -1,3 +1,5 @@
+import '../data/example_templates.dart';
+import 'example_templates_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
@@ -52,10 +54,6 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                 builder: (context, provider, child) {
                   if (provider.isLoading) {
                     return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!provider.hasTemplates) {
-                    return _buildEmptyState();
                   }
 
                   return _buildTemplateList(provider);
@@ -190,46 +188,24 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.article_outlined,
-            size: 60,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context).noTemplatesCreated,
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            AppLocalizations.of(context).saveFrequentStructures,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTemplateList(TemplateProvider provider) {
     // Filtrelenmiş şablonlar
     final filteredTemplates = provider.templates.where((template) {
       return template.templateName.toLowerCase().contains(_searchQuery);
     }).toList();
+    // Uygulamayla gelen örnekler: kendi şablonlarının ardından, aynı biçimde
+    // kullanılır ama düzenlenmez ve silinmez.
+    final examples =
+        exampleTemplates(
+          AppLocalizations.of(context).locale.languageCode,
+        ).where((template) {
+          return template.templateName.toLowerCase().contains(_searchQuery);
+        }).toList();
 
     // Arama sonucu boşsa
-    if (filteredTemplates.isEmpty && _searchQuery.isNotEmpty) {
+    if (filteredTemplates.isEmpty &&
+        examples.isEmpty &&
+        _searchQuery.isNotEmpty) {
       return _buildNoResultsState();
     }
 
@@ -257,8 +233,60 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: filteredTemplates.length,
+            itemCount:
+                filteredTemplates.length +
+                (examples.isEmpty ? 0 : examples.length + 1),
             itemBuilder: (context, index) {
+              if (index == filteredTemplates.length) {
+                return ExampleTemplatesHeader(
+                  firstInList: filteredTemplates.isEmpty,
+                );
+              }
+              if (index > filteredTemplates.length) {
+                final example = examples[index - filteredTemplates.length - 1];
+                return Card(
+                  key: ValueKey(example.id),
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.auto_awesome_mosaic_rounded,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    title: _buildHighlightedText(
+                      example.templateName,
+                      _searchQuery,
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        example.columns.map((c) => c.name).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _createTableFromTemplate(context, example),
+                  ),
+                );
+              }
               final template = filteredTemplates[index];
               final originalIndex = provider.templates.indexOf(template);
 
@@ -506,11 +534,6 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     final columns = template.columns
         .map((column) => column.copyWith())
         .toList();
-    final quickSelectionControllers = <int, TextEditingController>{
-      for (var i = 0; i < columns.length; i++)
-        if (columns[i].isNormal)
-          i: TextEditingController(text: columns[i].autoFillOptions.join('\n')),
-    };
     String? nameError;
     bool isSaving = false;
 
@@ -536,40 +559,6 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                   border: const OutlineInputBorder(),
                 ),
               ),
-              if (quickSelectionControllers.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Text(
-                  AppLocalizations.of(context).quickSelectionList,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  AppLocalizations.of(context).templateQuickSelectionHelp,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                for (final entry in quickSelectionControllers.entries)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: TextField(
-                      controller: entry.value,
-                      enabled: !isSaving,
-                      minLines: 1,
-                      maxLines: 4,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      decoration: InputDecoration(
-                        labelText: columns[entry.key].name,
-                        hintText: AppLocalizations.of(
-                          context,
-                        ).quickSelectionLinesHint,
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-              ],
             ],
           ),
           actions: [
@@ -597,18 +586,6 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
                       final newColumns = columns
                           .map((column) => column.copyWith())
                           .toList();
-                      for (final entry in quickSelectionControllers.entries) {
-                        if (entry.value.text !=
-                            columns[entry.key].autoFillOptions.join('\n')) {
-                          newColumns[entry.key].autoFillOptions = entry
-                              .value
-                              .text
-                              .split(RegExp(r'\r?\n'))
-                              .map((option) => option.trim())
-                              .where((option) => option.isNotEmpty)
-                              .toList();
-                        }
-                      }
                       final success = await tableProvider.createTable(
                         tableNameController.text.trim(),
                         newColumns,
@@ -642,9 +619,6 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     // The text field remains mounted throughout the closing animation.
     await route.completed;
     tableNameController.dispose();
-    for (final controller in quickSelectionControllers.values) {
-      controller.dispose();
-    }
     if (created == true && mounted && managementRoute?.isCurrent == true) {
       managementNavigator.pop();
     }

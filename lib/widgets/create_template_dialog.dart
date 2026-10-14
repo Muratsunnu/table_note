@@ -1,3 +1,4 @@
+import 'code_column_note.dart';
 import 'starting_value_field.dart';
 import 'package:flutter/material.dart';
 import 'added_field_focus.dart';
@@ -27,10 +28,8 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
   final List<ColumnModel> _columns = [];
 
   final List<TextEditingController> _nameControllers = [];
-  final List<TextEditingController> _autoFillControllers = [];
   final List<TextEditingController> _constantValueControllers = [];
   final List<TextEditingController> _formulaControllers = [];
-  final Map<int, bool> _showAutoFillInput = {};
   final List<String?> _columnNameErrors = [];
   final List<String?> _constantValueErrors = [];
   final List<String?> _formulaErrors = [];
@@ -45,7 +44,6 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
   void dispose() {
     _templateNameController.dispose();
     for (var c in _nameControllers) c.dispose();
-    for (var c in _autoFillControllers) c.dispose();
     for (var c in _constantValueControllers) c.dispose();
     for (var c in _formulaControllers) c.dispose();
     super.dispose();
@@ -53,9 +51,6 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
 
   void _initializeControllersForColumn(ColumnModel col) {
     _nameControllers.add(TextEditingController(text: col.name));
-    _autoFillControllers.add(
-      TextEditingController(text: col.autoFillOptions.join(', ')),
-    );
     _constantValueControllers.add(
       TextEditingController(text: col.constantValue?.toString() ?? ''),
     );
@@ -305,6 +300,8 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
         return const Icon(Icons.access_time, color: Colors.indigo);
       case ColumnType.autoNumber:
         return const Icon(Icons.format_list_numbered, color: Colors.brown);
+      case ColumnType.code:
+        return const Icon(codeColumnIcon, color: codeColumnColor);
     }
   }
 
@@ -361,6 +358,14 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
           Icons.format_list_numbered,
           Colors.brown,
         ),
+        _buildTypeChip(
+          index,
+          column,
+          ColumnType.code,
+          AppLocalizations.of(context).codeColumn,
+          codeColumnIcon,
+          codeColumnColor,
+        ),
       ],
     );
   }
@@ -411,7 +416,9 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
               column.constantValue = null;
               column.formula = null;
               column.isNumeric = false;
-            } else if (type == ColumnType.date || type == ColumnType.time) {
+            } else if (type == ColumnType.date ||
+                type == ColumnType.time ||
+                type == ColumnType.code) {
               column.constantValue = null;
               column.formula = null;
               column.isNumeric = false;
@@ -466,6 +473,8 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
         return _buildTimeSettings();
       case ColumnType.autoNumber:
         return _buildAutoNumberSettings();
+      case ColumnType.code:
+        return const CodeColumnNote();
     }
   }
 
@@ -574,40 +583,6 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
           dense: true,
           contentPadding: EdgeInsets.zero,
         ),
-        if (column.autoFillOptions.isNotEmpty ||
-            _showAutoFillInput[index] == true) ...[
-          TextField(
-            controller: _autoFillControllers[index],
-            decoration: InputDecoration(
-              labelText: AppLocalizations.of(context).quickSelectionList,
-              hintText: AppLocalizations.of(context).quickSelectionHintShort,
-              border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  setState(() {
-                    column.autoFillOptions.clear();
-                    _autoFillControllers[index].clear();
-                    _showAutoFillInput[index] = false;
-                  });
-                },
-              ),
-            ),
-            onChanged: (value) {
-              column.autoFillOptions = value
-                  .split(',')
-                  .map((s) => s.trim())
-                  .where((s) => s.isNotEmpty)
-                  .toList();
-            },
-          ),
-        ] else ...[
-          OutlinedButton.icon(
-            icon: const Icon(Icons.list, size: 16),
-            label: Text(AppLocalizations.of(context).quickSelectionAdd),
-            onPressed: () => setState(() => _showAutoFillInput[index] = true),
-          ),
-        ],
       ],
     );
   }
@@ -752,13 +727,10 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
       _columns.removeAt(index);
       _nameControllers[index].dispose();
       _nameControllers.removeAt(index);
-      _autoFillControllers[index].dispose();
-      _autoFillControllers.removeAt(index);
       _constantValueControllers[index].dispose();
       _constantValueControllers.removeAt(index);
       _formulaControllers[index].dispose();
       _formulaControllers.removeAt(index);
-      _showAutoFillInput.remove(index);
       _columnNameErrors.removeAt(index);
       _constantValueErrors.removeAt(index);
       _formulaErrors.removeAt(index);
@@ -771,11 +743,6 @@ class _CreateTemplateDialogState extends State<CreateTemplateDialog> {
     // Controller'lardan verileri senkronize et
     for (int i = 0; i < _columns.length; i++) {
       _columns[i].name = _nameControllers[i].text.trim();
-      _columns[i].autoFillOptions = _autoFillControllers[i].text
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
       _columns[i].constantValue = double.tryParse(
         _constantValueControllers[i].text,
       );

@@ -1,3 +1,4 @@
+import '../utils/quick_options.dart';
 import '../utils/column_balance.dart';
 import '../utils/table_search.dart';
 import 'dart:async';
@@ -335,6 +336,62 @@ class TableProvider extends ChangeNotifier {
     _loadTables();
   }
 
+  /// Hızlı seçimden kaldırılan seçenekler: tablo kimliği → sütun adı → değer
+  /// → kaldırıldığı andaki giriş sayısı.
+  final Map<String, Map<String, Map<String, int>>> _quickDismissed = {};
+
+  /// Kayıt formu her tuşta yeniden çizilir; seçenekler tablo değişmedikçe
+  /// yeniden sayılmaz. Tablo her değişiklikte yeni bir nesne olur.
+  final Map<int, List<String>> _quickCache = {};
+  TableModel? _quickCacheTable;
+
+  /// [columnIndex] sütununun hızlı seçim seçenekleri: elle tanımlananlar ve
+  /// tabloya üçten fazla kez girilmiş değerler.
+  List<String> quickOptions(int columnIndex) {
+    final table = currentTable;
+    if (table == null) return const [];
+    if (!identical(table, _quickCacheTable)) {
+      _quickCacheTable = table;
+      _quickCache.clear();
+    }
+    return _quickCache.putIfAbsent(columnIndex, () {
+      if (columnIndex < 0 || columnIndex >= table.columns.length) {
+        return const [];
+      }
+      return quickOptionsFor(
+        table,
+        columnIndex,
+        dismissed:
+            _quickDismissed[table.id]?[table.columns[columnIndex].name] ??
+            const {},
+      );
+    });
+  }
+
+  /// Seçeneği hızlı seçimden kaldırır. Değer bundan sonra yeniden üçten
+  /// fazla kez girilirse kendiliğinden geri gelir.
+  Future<void> dismissQuickOption(int columnIndex, String value) async {
+    final table = currentTable;
+    if (table == null ||
+        columnIndex < 0 ||
+        columnIndex >= table.columns.length) {
+      return;
+    }
+    // Büyük küçük harf ayrımı yapılmaz: "konya" ile "Konya" aynı öneridir.
+    final key = quickOptionKey(value);
+    var count = 0;
+    for (final row in table.rows) {
+      if (columnIndex < row.length && quickOptionKey(row[columnIndex]) == key) {
+        count++;
+      }
+    }
+    final column = table.columns[columnIndex].name;
+    ((_quickDismissed[table.id] ??= {})[column] ??= {})[key] = count;
+    _quickCache.clear();
+    notifyListeners();
+    await StorageService.saveQuickDismissals(_quickDismissed);
+  }
+
   Future<void> reloadFromStorage() => _loadTables();
 
   /// Buluttaki bir kaydi cihaza alir.
@@ -380,6 +437,10 @@ class TableProvider extends ChangeNotifier {
     notifyListeners();
 
     _tables = await StorageService.loadTables();
+    _quickDismissed
+      ..clear()
+      ..addAll(await StorageService.loadQuickDismissals());
+    _quickCache.clear();
     _sorts
       ..clear()
       ..addAll(await StorageService.loadTableSorts());

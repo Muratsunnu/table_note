@@ -8,6 +8,8 @@ enum ColumnType {
   date, // Tarih (bugünün tarihi otomatik gelir, değiştirilebilir)
   time, // Saat (şu anki saat otomatik gelir, değiştirilebilir)
   autoNumber, // Otomatik sıra numarası
+  // Yeni tipler hep sona eklenir: tip, sırasıyla (index) saklanır.
+  code, // Numara: rakam yazılır ama sayı değildir (fiş no, seri no, telefon)
 }
 
 class ColumnModel {
@@ -43,6 +45,13 @@ class ColumnModel {
   bool get isDate => columnType == ColumnType.date;
   bool get isTime => columnType == ColumnType.time;
   bool get isAutoNumber => columnType == ColumnType.autoNumber;
+
+  /// Numara sütunu: rakam klavyesiyle yazılır, yazıldığı gibi durur (bin
+  /// ayırıcı konmaz, baştaki sıfır silinmez), toplanmaz, sayıya göre sıralanır.
+  bool get isCode => columnType == ColumnType.code;
+
+  /// Değeri kullanıcının elle yazdığı sütunlar; sesle de doldurulabilirler.
+  bool get isTyped => isNormal || isCode;
 
   // Formül sütunu her zaman sayısaldır
   bool get isEffectivelyNumeric => isNumeric || isFormula || isConstant;

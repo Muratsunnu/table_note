@@ -31,6 +31,7 @@ class StorageService {
   static const String _legacyPlanKey = 'plan_legacy_unlimited_v1';
   static const String _lastBackupKey = 'backup_last_at_v1';
   static const String _backupSnoozeKey = 'backup_reminder_snoozed_on_v1';
+  static const String _quickDismissedKey = 'quick_options_dismissed_v1';
   static const String _legacyBackupSuffix = '_legacy_v1_backup';
   static const String _unreadableBackupSuffix = '_unreadable_backup';
 
@@ -132,6 +133,40 @@ class StorageService {
           entry.key: entry.value.toUtc().toIso8601String(),
       }),
     );
+  }
+
+  /// Hızlı seçimden ×'le kaldırılan seçenekler: tablo kimliği → sütun adı →
+  /// değer → kaldırıldığı andaki giriş sayısı. Yalnızca bu cihazda tutulur;
+  /// tablonun yapısına yazılmaz, böylece paylaşılan tabloda başkasını
+  /// etkilemez.
+  static Future<Map<String, Map<String, Map<String, int>>>>
+  loadQuickDismissals() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_quickDismissedKey);
+    if (raw == null) return {};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return {
+        for (final table in decoded.entries)
+          table.key: {
+            for (final column in (table.value as Map).entries)
+              column.key.toString(): {
+                for (final value in (column.value as Map).entries)
+                  value.key.toString(): (value.value as num).toInt(),
+              },
+          },
+      };
+    } catch (_) {
+      // Okunamayan kayıt yalnızca kaldırılmış önerileri geri getirir.
+      return {};
+    }
+  }
+
+  static Future<bool> saveQuickDismissals(
+    Map<String, Map<String, Map<String, int>>> dismissals,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.setString(_quickDismissedKey, jsonEncode(dismissals));
   }
 
   /// Yedekleme hatırlatmasına "sonra" dendiği gün (yyyy-aa-gg).

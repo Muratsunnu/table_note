@@ -9,6 +9,8 @@ import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/ux_localizations.dart';
 import 'app_form_scaffold.dart';
+import 'code_column_note.dart';
+import 'quick_option_chips.dart';
 import 'row_draft_binding.dart';
 
 class EditRowDialog extends StatefulWidget {
@@ -187,30 +189,22 @@ class _EditRowDialogState extends State<EditRowDialog> {
             labelText: column.name,
             border: const OutlineInputBorder(),
             prefixIcon: Icon(
-              column.isNumeric ? Icons.numbers : Icons.text_fields,
-              color: column.isNumeric ? Colors.green : Colors.blue,
+              column.isCode
+                  ? codeColumnIcon
+                  : column.isNumeric
+                  ? Icons.numbers
+                  : Icons.text_fields,
+              color: column.isCode
+                  ? codeColumnColor
+                  : column.isNumeric
+                  ? Colors.green
+                  : Colors.blue,
             ),
-            suffixIcon: column.autoFillOptions.isNotEmpty
-                ? PopupMenuButton<String>(
-                    icon: const Icon(Icons.arrow_drop_down),
-                    tooltip: AppLocalizations.of(context).quickSelect,
-                    onSelected: (value) {
-                      _controllers[colIndex].text = value;
-                      _recalculateFormulas();
-                      setState(() {});
-                    },
-                    itemBuilder: (context) {
-                      return column.autoFillOptions.map((option) {
-                        return PopupMenuItem<String>(
-                          value: option,
-                          child: Text(option),
-                        );
-                      }).toList();
-                    },
-                  )
-                : null,
           ),
-          keyboardType: column.isNumeric
+          // Numara: yalnızca rakam klavyesi; değer yazıldığı gibi saklanır.
+          keyboardType: column.isCode
+              ? TextInputType.number
+              : column.isNumeric
               ? const TextInputType.numberWithOptions(decimal: true)
               : TextInputType.text,
           onChanged: (value) {
@@ -218,33 +212,16 @@ class _EditRowDialogState extends State<EditRowDialog> {
             setState(() {});
           },
         ),
-        if (column.autoFillOptions.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: column.autoFillOptions.map((option) {
-              final isSelected = _controllers[colIndex].text == option;
-              return ChoiceChip(
-                label: Text(option),
-                selected: isSelected,
-                onSelected: (_) {
-                  _controllers[colIndex].text = option;
-                  _recalculateFormulas();
-                  setState(() {});
-                },
-                selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                labelStyle: TextStyle(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.onPrimaryContainer
-                      : Theme.of(context).colorScheme.onSurface,
-                ),
-                materialTapTargetSize: MaterialTapTargetSize.padded,
-                visualDensity: VisualDensity.standard,
-              );
-            }).toList(),
-          ),
-        ],
+        // Hızlı seçim: elle tanımlananlar ve sık girilen değerler.
+        QuickOptionChips(
+          columnIndex: colIndex,
+          selected: _controllers[colIndex].text,
+          onSelected: (option) {
+            _controllers[colIndex].text = option;
+            _recalculateFormulas();
+            setState(() {});
+          },
+        ),
       ],
     );
   }
