@@ -1,8 +1,9 @@
 import '../models/tabel_model.dart';
 
 /// Uygulamayla birlikte gelen hazır örnekler. Kullanıcının kendi şablonları
-/// gibi kullanılır: dokunulur, ad verilir, tablo açılır. Cihaza yazılmazlar;
-/// bu yüzden ücretsiz şablon sınırına sayılmaz, silinmez ve uygulamanın
+/// gibi kullanılır, düzenlenir ve silinir; ama cihaza yalnızca kullanıcının
+/// yaptığı değişiklik yazılır ([TemplateProvider.examples]). Bu yüzden
+/// ücretsiz şablon sınırına sayılmazlar ve düzenlenmedikçe uygulamanın
 /// diliyle birlikte değişirler.
 List<TemplateModel> exampleTemplates(String languageCode) {
   final tr = languageCode != 'en';

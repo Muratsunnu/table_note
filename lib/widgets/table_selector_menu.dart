@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/table_provider.dart';
-import 'edit_table_structure_dialog.dart';
+import 'quick_table_builder.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 
@@ -96,7 +96,7 @@ class TableSelectorMenu extends StatelessWidget {
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => const EditTableStructureDialog(),
+        builder: (_) => const QuickTableBuilder.editTable(),
       ),
     );
   }

@@ -14,7 +14,6 @@ import '../providers/subscription_provider.dart';
 import '../providers/template_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
-import '../data/example_templates.dart';
 import '../utils/column_naming.dart';
 import 'example_templates_header.dart';
 import '../l10n/ux_localizations.dart';
@@ -37,6 +36,7 @@ class CreateTableDialog extends StatefulWidget {
       column = null,
       siblings = const [],
       columnNumber = 1,
+      existing = false,
       super(key: key);
 
   /// Yalnızca tek bir sütunun formu. Tablo, tablonun üstünde kurulurken her
@@ -47,6 +47,7 @@ class CreateTableDialog extends StatefulWidget {
     this.column,
     this.siblings = const [],
     this.columnNumber = 1,
+    this.existing = false,
   }) : singleColumn = true,
        super(key: key);
 
@@ -57,6 +58,7 @@ class CreateTableDialog extends StatefulWidget {
     ColumnModel? column,
     List<ColumnModel> siblings = const [],
     int columnNumber = 1,
+    bool existing = false,
   }) => showModalBottomSheet<ColumnFormResult>(
     context: context,
     isScrollControlled: true,
@@ -66,6 +68,7 @@ class CreateTableDialog extends StatefulWidget {
       column: column,
       siblings: siblings,
       columnNumber: columnNumber,
+      existing: existing,
     ),
   );
 
@@ -80,6 +83,11 @@ class CreateTableDialog extends StatefulWidget {
 
   /// Başlıkta görünen sıra: "Sütun 3".
   final int columnNumber;
+
+  /// Kayıtlı tablonun, içinde veri olan bir sütunu. Adı ve başlangıç değeri
+  /// değişebilir; türü ve ayarları değişmez, sütun da kaldırılamaz. Eski
+  /// kayıtlar o türe göre yazıldı, değişirse toplamlar ve formüller bozulur.
+  final bool existing;
 
   @override
   State<CreateTableDialog> createState() => _CreateTableDialogState();
@@ -463,7 +471,7 @@ class _CreateTableDialogState extends State<CreateTableDialog>
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: Row(
               children: [
-                if (editing) ...[
+                if (editing && !widget.existing) ...[
                   Expanded(
                     child: OutlinedButton.icon(
                       key: const ValueKey('column-remove'),
@@ -783,7 +791,19 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                     ),
                   ],
                 ),
-              if (widget.singleColumn || _showAdvanced[index]) ...[
+              if (widget.existing) ...[
+                const SizedBox(height: 8),
+                _buildLockedType(column),
+                if (column.isSummed) ...[
+                  const SizedBox(height: 12),
+                  StartingValueField(
+                    key: ObjectKey(column),
+                    value: column.startingValue,
+                    onChanged: (value) =>
+                        setState(() => column.startingValue = value),
+                  ),
+                ],
+              ] else if (widget.singleColumn || _showAdvanced[index]) ...[
                 const SizedBox(height: 8),
                 _buildColumnTypeSelector(index, column),
                 _buildColumnTypeSettings(index, column),
@@ -793,6 +813,44 @@ class _CreateTableDialogState extends State<CreateTableDialog>
         ),
       );
     }).toList();
+  }
+
+  /// Var olan sütunun türü: gösterilir, değiştirilemez.
+  Widget _buildLockedType(ColumnModel column) {
+    final loc = AppLocalizations.of(context);
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      key: const ValueKey('column-locked-type'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.lock_outline_rounded,
+            size: 16,
+            color: colors.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              loc.typeName(_columnTypeLabel(column.columnType)),
+              style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
+            ),
+          ),
+          Text(
+            loc.cannotChange,
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _getColumnTypeIcon(ColumnType type) {
@@ -1707,11 +1765,11 @@ class _CreateTableDialogState extends State<CreateTableDialog>
 
         // Kendi şablonları önce, uygulamayla gelen örnekler ardından.
         final loc = AppLocalizations.of(context);
-        final examples = exampleTemplates(loc.locale.languageCode);
+        final examples = provider.examples(loc.locale.languageCode);
         final own = provider.templates.length;
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: own + 1 + examples.length,
+          itemCount: own + (examples.isEmpty ? 0 : 1 + examples.length),
           itemBuilder: (context, index) {
             if (index == own) {
               return ExampleTemplatesHeader(firstInList: own == 0);

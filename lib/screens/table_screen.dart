@@ -15,7 +15,6 @@ import '../widgets/table_list_widget.dart';
 import '../models/overview_grid.dart';
 import '../widgets/grid_overview_screen.dart';
 import '../widgets/table_section_header.dart';
-import '../widgets/edit_table_structure_dialog.dart';
 import '../widgets/empty_state_widget.dart';
 import '../widgets/add_row_dialog.dart';
 import '../widgets/voice_add_row_dialog.dart';
@@ -588,7 +587,7 @@ class _TableScreenState extends State<TableScreen> {
             context,
             MaterialPageRoute(
               fullscreenDialog: true,
-              builder: (_) => const EditTableStructureDialog(),
+              builder: (_) => const QuickTableBuilder.editTable(),
             ),
           );
         } else if (value == 'delete') {

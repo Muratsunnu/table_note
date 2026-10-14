@@ -1,4 +1,3 @@
-import '../data/example_templates.dart';
 import 'example_templates_header.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,8 +6,7 @@ import '../providers/template_provider.dart';
 import '../providers/table_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
-import 'create_template_dialog.dart';
-import 'edit_template_dialog.dart';
+import 'quick_table_builder.dart';
 import '../l10n/app_localizations.dart';
 
 class TemplateManagementDialog extends StatefulWidget {
@@ -193,14 +191,16 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     final filteredTemplates = provider.templates.where((template) {
       return template.templateName.toLowerCase().contains(_searchQuery);
     }).toList();
-    // Uygulamayla gelen örnekler: kendi şablonlarının ardından, aynı biçimde
-    // kullanılır ama düzenlenmez ve silinmez.
-    final examples =
-        exampleTemplates(
-          AppLocalizations.of(context).locale.languageCode,
-        ).where((template) {
-          return template.templateName.toLowerCase().contains(_searchQuery);
-        }).toList();
+    // Uygulamayla gelen örnekler kendi şablonlarının ardından gelir ve aynı
+    // biçimde kullanılır, düzenlenir, silinir.
+    final examples = provider
+        .examples(AppLocalizations.of(context).locale.languageCode)
+        .where(
+          (template) =>
+              template.templateName.toLowerCase().contains(_searchQuery),
+        )
+        .toList();
+    final showRestore = provider.hasHiddenExamples && _searchQuery.isEmpty;
 
     // Arama sonucu boşsa
     if (filteredTemplates.isEmpty &&
@@ -208,6 +208,9 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
         _searchQuery.isNotEmpty) {
       return _buildNoResultsState();
     }
+
+    final ownCount = filteredTemplates.length;
+    final exampleCount = examples.isEmpty ? 0 : examples.length + 1;
 
     return Column(
       children: [
@@ -233,165 +236,150 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount:
-                filteredTemplates.length +
-                (examples.isEmpty ? 0 : examples.length + 1),
+            itemCount: ownCount + exampleCount + (showRestore ? 1 : 0),
             itemBuilder: (context, index) {
-              if (index == filteredTemplates.length) {
-                return ExampleTemplatesHeader(
-                  firstInList: filteredTemplates.isEmpty,
-                );
+              if (index < ownCount) {
+                return _buildTemplateCard(filteredTemplates[index]);
               }
-              if (index > filteredTemplates.length) {
-                final example = examples[index - filteredTemplates.length - 1];
-                return Card(
-                  key: ValueKey(example.id),
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.auto_awesome_mosaic_rounded,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    title: _buildHighlightedText(
-                      example.templateName,
-                      _searchQuery,
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        example.columns.map((c) => c.name).join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => _createTableFromTemplate(context, example),
-                  ),
-                );
+              index -= ownCount;
+              if (index < exampleCount) {
+                if (index == 0) {
+                  return ExampleTemplatesHeader(firstInList: ownCount == 0);
+                }
+                return _buildTemplateCard(examples[index - 1], example: true);
               }
-              final template = filteredTemplates[index];
-              final originalIndex = provider.templates.indexOf(template);
-
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.article_rounded,
-                      color: AppTheme.primaryBlue,
-                    ),
-                  ),
-                  title: _buildHighlightedText(
-                    template.templateName,
-                    _searchQuery,
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      AppLocalizations.of(
-                        context,
-                      ).nColumns(template.columns.length),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert_rounded,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    tooltip: AppLocalizations.of(context).moreActions,
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'create':
-                          _createTableFromTemplate(context, template);
-                          break;
-                        case 'edit':
-                          _editTemplate(context, originalIndex);
-                          break;
-                        case 'delete':
-                          _deleteTemplate(context, originalIndex);
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'create',
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.add_circle_outline,
-                            color: AppTheme.success,
-                          ),
-                          title: Text(AppLocalizations.of(context).createTable),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.edit_outlined,
-                            color: AppTheme.primaryBlue,
-                          ),
-                          title: Text(AppLocalizations.of(context).edit),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.delete_outline,
-                            color: AppTheme.error,
-                          ),
-                          title: Text(AppLocalizations.of(context).delete),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  onTap: () => _createTableFromTemplate(context, template),
-                ),
-              );
+              return _buildRestoreExamples(provider);
             },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTemplateCard(TemplateModel template, {bool example = false}) {
+    final loc = AppLocalizations.of(context);
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      key: ValueKey(template.id),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: example ? colors.surfaceContainer : colors.primaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: example
+              ? Icon(
+                  Icons.auto_awesome_mosaic_rounded,
+                  color: colors.onSurfaceVariant,
+                )
+              : const Icon(Icons.article_rounded, color: AppTheme.primaryBlue),
+        ),
+        title: _buildHighlightedText(template.templateName, _searchQuery),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            // Örnekte sütunların adı, ne işe yaradığını anlatır.
+            example
+                ? template.columns.map((c) => c.name).join(' · ')
+                : loc.nColumns(template.columns.length),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
+          ),
+        ),
+        trailing: PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert_rounded, color: colors.onSurfaceVariant),
+          tooltip: loc.moreActions,
+          onSelected: (value) {
+            switch (value) {
+              case 'create':
+                _createTableFromTemplate(context, template);
+              case 'edit':
+                _editTemplate(context, template);
+              case 'delete':
+                example
+                    ? _removeExample(template)
+                    : _deleteTemplate(context, template);
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'create',
+              child: ListTile(
+                leading: const Icon(
+                  Icons.add_circle_outline,
+                  color: AppTheme.success,
+                ),
+                title: Text(loc.createTable),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: const Icon(
+                  Icons.edit_outlined,
+                  color: AppTheme.primaryBlue,
+                ),
+                title: Text(loc.edit),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppTheme.error,
+                ),
+                title: Text(loc.delete),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+            ),
+          ],
+        ),
+        onTap: () => _createTableFromTemplate(context, template),
+      ),
+    );
+  }
+
+  /// Örnek silinmez, listeden kaldırılır: hemen geri alınabilir, sonra da
+  /// listenin sonundan geri getirilebilir.
+  void _removeExample(TemplateModel example) {
+    final loc = AppLocalizations.of(context);
+    final provider = context.read<TemplateProvider>();
+    provider.deleteTemplate(example.id);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(loc.exampleRemoved(example.templateName)),
+          action: SnackBarAction(
+            label: loc.undo,
+            onPressed: () => provider.restoreExamples(id: example.id),
+          ),
+        ),
+      );
+  }
+
+  Widget _buildRestoreExamples(TemplateProvider provider) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Center(
+        child: TextButton.icon(
+          key: const ValueKey('restore-examples'),
+          onPressed: () => provider.restoreExamples(),
+          icon: const Icon(Icons.restore_rounded, size: 18),
+          label: Text(AppLocalizations.of(context).restoreExamples),
+        ),
+      ),
     );
   }
 
@@ -423,7 +411,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           ),
           SizedBox(height: 4),
           Text(
-            AppLocalizations.of(context).deleteTemplateConfirm(_searchQuery),
+            AppLocalizations.of(context).noMatchingRecord(_searchQuery),
             style: TextStyle(
               fontSize: 14,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -507,17 +495,17 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => const CreateTemplateDialog(),
+        builder: (_) => const QuickTableBuilder.template(),
       ),
     );
   }
 
-  void _editTemplate(BuildContext context, int templateIndex) {
+  void _editTemplate(BuildContext context, TemplateModel template) {
     Navigator.push(
       context,
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => EditTemplateDialog(templateIndex: templateIndex),
+        builder: (_) => QuickTableBuilder.editTemplate(template: template),
       ),
     );
   }
@@ -624,9 +612,9 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     }
   }
 
-  void _deleteTemplate(BuildContext context, int index) {
+  void _deleteTemplate(BuildContext context, TemplateModel template) {
     final provider = Provider.of<TemplateProvider>(context, listen: false);
-    final templateName = provider.templates[index].templateName;
+    final templateName = template.templateName;
 
     showDialog(
       context: context,
@@ -645,7 +633,7 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
             // Pencere önce kapanır: ikinci bir dokunuş başka bir kaydı silemez.
             onPressed: () {
               Navigator.pop(context);
-              provider.deleteTemplate(index);
+              provider.deleteTemplate(template.id);
             },
             child: Text(
               AppLocalizations.of(context).delete,

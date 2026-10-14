@@ -9,14 +9,12 @@ final _en = AppLocalizations(const Locale('en'));
 void main() {
   late List<String> created;
   late List<String> shared;
-  late List<String> saved;
   late bool shareCompletes;
   Object? createFailure;
 
   setUp(() {
     created = [];
     shared = [];
-    saved = [];
     shareCompletes = true;
     createFailure = null;
   });
@@ -60,10 +58,6 @@ void main() {
                       shared.add('$subject -> $path');
                       return shareCompletes;
                     },
-                    saveFile: (path) async {
-                      saved.add(path);
-                      return '/downloads/${path.split('/').last}';
-                    },
                   ),
                 ),
                 child: const Text('open'),
@@ -88,7 +82,6 @@ void main() {
     // Ayrı bir "paylaş" adımı yok: dosya oluşur ve paylaşım açılır.
     expect(created, ['PDF']);
     expect(shared, ['seferler - PDF -> /tmp/seferler.pdf']);
-    expect(saved, isEmpty);
     // Gönderildi; kâğıdın işi bitti.
     expect(find.byType(ShareFileSheet), findsNothing);
   });
@@ -100,23 +93,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(shared, hasLength(1));
-    // Başka bir tür ya da cihaza kaydetme seçilebilsin.
+    // Başka bir tür seçilebilsin.
     expect(find.byType(ShareFileSheet), findsOneWidget);
   });
 
-  testWidgets('saving to the device is still one tap away', (tester) async {
+  testWidgets('every format shows a share sign, not a download', (
+    tester,
+  ) async {
     await open(tester);
-    await tester.tap(find.byKey(const ValueKey('save-file-CSV')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
 
-    expect(created, ['CSV']);
-    expect(saved, ['/tmp/seferler.csv']);
-    expect(shared, isEmpty);
-    expect(find.text(_en.fileSaved('seferler.csv')), findsOneWidget);
-    // Bildirim kendiliğinden kalkar.
-    await tester.pump(const Duration(seconds: 6));
-    await tester.pumpAndSettle();
+    // Kaydetmek de paylaşım penceresinden yapılır; ayrı düğme yok.
+    expect(find.byIcon(Icons.adaptive.share), findsNWidgets(2));
+    expect(find.byIcon(Icons.save_alt_rounded), findsNothing);
+    expect(find.byType(IconButton), findsNothing);
   });
 
   testWidgets('a file that cannot be created is reported, not shared', (

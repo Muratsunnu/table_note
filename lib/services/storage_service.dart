@@ -32,6 +32,7 @@ class StorageService {
   static const String _lastBackupKey = 'backup_last_at_v1';
   static const String _backupSnoozeKey = 'backup_reminder_snoozed_on_v1';
   static const String _quickDismissedKey = 'quick_options_dismissed_v1';
+  static const String _exampleTemplatesKey = 'example_templates_v1';
   static const String _legacyBackupSuffix = '_legacy_v1_backup';
   static const String _unreadableBackupSuffix = '_unreadable_backup';
 
@@ -167,6 +168,47 @@ class StorageService {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.setString(_quickDismissedKey, jsonEncode(dismissals));
+  }
+
+  /// Hazır örneklerde kullanıcının yaptıkları: sildiği örneklerin kimliği ve
+  /// düzenlediği örneklerin son hali. Örneklerin kendisi uygulamayla gelir.
+  static Future<({Set<String> hidden, Map<String, TemplateModel> edited})>
+  loadExampleTemplateChanges() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_exampleTemplatesKey);
+    final hidden = <String>{};
+    final edited = <String, TemplateModel>{};
+    if (raw == null) return (hidden: hidden, edited: edited);
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      for (final id in decoded['hidden'] as List? ?? const []) {
+        if (id is String) hidden.add(id);
+      }
+      for (final item in decoded['edited'] as List? ?? const []) {
+        if (item is! Map) continue;
+        final template = TemplateModel.fromJson(
+          Map<String, dynamic>.from(item),
+        );
+        edited[template.id] = template;
+      }
+    } catch (e) {
+      debugPrint('Hazır örnek değişiklikleri okunamadı: $e');
+    }
+    return (hidden: hidden, edited: edited);
+  }
+
+  static Future<bool> saveExampleTemplateChanges({
+    required Set<String> hidden,
+    required Map<String, TemplateModel> edited,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.setString(
+      _exampleTemplatesKey,
+      jsonEncode({
+        'hidden': hidden.toList(),
+        'edited': edited.values.map((template) => template.toJson()).toList(),
+      }),
+    );
   }
 
   /// Yedekleme hatırlatmasına "sonra" dendiği gün (yyyy-aa-gg).
@@ -616,6 +658,7 @@ class StorageService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tablesKey);
       await prefs.remove(_templatesKey);
+      await prefs.remove(_exampleTemplatesKey);
       await prefs.remove(_lastOpenedTableIndexKey);
       await prefs.remove(_tallyTablesKey);
       await prefs.remove(_lastOpenedTallyIndexKey);

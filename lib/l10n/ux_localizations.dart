@@ -15,10 +15,6 @@ extension UxLocalizations on AppLocalizations {
   String get draftRestored => _english
       ? 'Your unfinished draft has been restored.'
       : 'Yarım kalan taslağın geri getirildi.';
-  String get draftSavedLocally => _english
-      ? 'Your draft is kept on this device.'
-      : 'Taslağın bu cihazda saklanır.';
-  String get draftSaved => draftSavedLocally;
   String get discardDraft => _english ? 'Discard draft' : 'Taslağı sil';
   String get draftSaveFailed => _english
       ? 'Could not save the draft. Keep this screen open and try again.'

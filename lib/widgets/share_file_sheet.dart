@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/export_service.dart';
 import '../theme/app_theme.dart';
-import '../utils/app_feedback.dart';
 import 'ledger.dart';
 
 /// Paylaşılabilecek bir dosya türü ve onu üreten işlem.
@@ -32,7 +31,9 @@ class ShareFileFormat {
 /// oluşturulur, sonra ayrı bir adımda "paylaş" ya da "cihaza kaydet"
 /// denirdi. Çoğu kişi dosyayı cihazına indirmek değil birine göndermek
 /// istiyor; bu yüzden türe dokunmak doğrudan paylaşım penceresini açar.
-/// Cihaza kaydetmek satırın sonundaki küçük düğmede durur.
+/// Cihaza kaydetmek isteyen de oradan yapar ("Dosyalara kaydet", Drive):
+/// ayrı bir kaydet düğmesi iPhone'da dosyayı kullanıcının göremediği
+/// uygulama klasörüne bırakıyordu.
 class ShareFileSheet extends StatefulWidget {
   const ShareFileSheet({
     super.key,
@@ -41,7 +42,6 @@ class ShareFileSheet extends StatefulWidget {
     required this.icon,
     required this.formats,
     this.shareFile = ExportService.shareFile,
-    this.saveFile = ExportService.saveToDownloads,
   });
 
   final String name;
@@ -54,9 +54,6 @@ class ShareFileSheet extends StatefulWidget {
   @visibleForTesting
   final Future<bool> Function(String path, String subject, {Rect? origin})
   shareFile;
-
-  @visibleForTesting
-  final Future<String?> Function(String path) saveFile;
 
   static Future<void> show(
     BuildContext context, {
@@ -127,25 +124,8 @@ class _ShareFileSheetState extends State<ShareFileSheet> {
     if (!mounted) return;
     setState(() => _working = null);
     // Gönderildiyse kâğıdın işi bitti. Paylaşım penceresi kapatıldıysa
-    // kâğıt açık kalır: başka bir tür ya da cihaza kaydetme seçilebilir.
+    // kâğıt açık kalır: başka bir tür seçilebilir.
     if (shared) navigator.pop();
-  }
-
-  Future<void> _save(ShareFileFormat format) async {
-    final loc = AppLocalizations.of(context);
-    final path = await _create(format);
-    if (path == null) {
-      if (mounted) setState(() => _working = null);
-      return;
-    }
-    final saved = await widget.saveFile(path);
-    if (!mounted) return;
-    setState(() => _working = null);
-    if (saved == null) {
-      AppFeedback.showError(context, loc.fileSaveFailed);
-    } else {
-      AppFeedback.showSuccess(context, loc.fileSaved(saved.split('/').last));
-    }
   }
 
   @override
@@ -213,7 +193,6 @@ class _ShareFileSheetState extends State<ShareFileSheet> {
                   working: identical(_working, format),
                   enabled: !busy,
                   onShare: (rowContext) => _share(format, rowContext),
-                  onSave: () => _save(format),
                 ),
             ],
           ),
@@ -233,7 +212,7 @@ class _ShareFileSheetState extends State<ShareFileSheet> {
   }
 }
 
-/// Bir dosya türü: satıra dokunmak paylaşır, sondaki düğme cihaza kaydeder.
+/// Bir dosya türü: satıra dokunmak paylaşır.
 class _FormatRow extends StatelessWidget {
   const _FormatRow({
     super.key,
@@ -241,14 +220,12 @@ class _FormatRow extends StatelessWidget {
     required this.working,
     required this.enabled,
     required this.onShare,
-    required this.onSave,
   });
 
   final ShareFileFormat format;
   final bool working;
   final bool enabled;
   final void Function(BuildContext rowContext) onShare;
-  final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -306,11 +283,14 @@ class _FormatRow extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              key: ValueKey('save-file-${format.label}'),
-              tooltip: loc.saveToDevice,
-              onPressed: enabled ? onSave : null,
-              icon: const Icon(Icons.save_alt_rounded),
+            // Ayrı bir düğme değil: satırın tamamı paylaşır, ikon bunu
+            // gösterir. iPhone'da ve Android'de kendi paylaş işareti çıkar.
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Icon(
+                Icons.adaptive.share,
+                color: enabled ? colors.onSurfaceVariant : colors.outline,
+              ),
             ),
           ],
         ),

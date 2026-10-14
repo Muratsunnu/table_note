@@ -204,6 +204,7 @@ class AppLocalizations {
   String get quickEmptyHint => _t('quickEmptyHint');
   String get quickMoreHint => _t('quickMoreHint');
   String get quickReorderHint => _t('quickReorderHint');
+  String get sharedColumnOrderHint => _t('sharedColumnOrderHint');
   String get editColumnTitle => _t('editColumnTitle');
   String get startFromExample => _t('startFromExample');
   String kindConstantNote(String value) =>
@@ -222,6 +223,10 @@ class AppLocalizations {
   String get kindTimeNote => _t('kindTimeNote');
   String get exampleTemplates => _t('exampleTemplates');
   String get exampleTemplatesHint => _t('exampleTemplatesHint');
+  String exampleRemoved(String name) =>
+      _t('exampleRemoved').replaceAll('{name}', name);
+  String get restoreExamples => _t('restoreExamples');
+  String get undo => _t('undo');
   String get templates => _t('templates');
   String get addRecord => _t('addRecord');
   String get searchInTable => _t('searchInTable');
@@ -398,11 +403,8 @@ class AppLocalizations {
   String get pdfDesc => _t('pdfDesc');
   String fileCreated(String f) => _t('fileCreated').replaceAll('{format}', f);
   String get shareWhatsApp => _t('shareWhatsApp');
-  String get saveToDevice => _t('saveToDevice');
   String get selectAnotherFormat => _t('selectAnotherFormat');
   String get creatingFile => _t('creatingFile');
-  String fileSaved(String n) => _t('fileSaved').replaceAll('{name}', n);
-  String get fileSaveFailed => _t('fileSaveFailed');
   String get tableData => _t('tableData');
 
   // ============== TABLE SELECTOR ==============
@@ -429,23 +431,16 @@ class AppLocalizations {
   // ============== CREATE/EDIT TEMPLATE ==============
   String get createNewTemplateTitle => _t('createNewTemplateTitle');
   String get templateName => _t('templateName');
-  String get templateNameHint => _t('templateNameHint');
   String get templateCreate => _t('templateCreate');
   String get templateNameEmpty => _t('templateNameEmpty');
   String get templateCreateFailed => _t('templateCreateFailed');
   String get editTemplate => _t('editTemplate');
-  String get templateNameEmptyError => _t('templateNameEmptyError');
   String columnNameEmpty(int n) =>
       _t('columnNameEmpty').replaceAll('{n}', n.toString());
-  String get templateUpdated => _t('templateUpdated');
   String get templateUpdateFailed => _t('templateUpdateFailed');
 
   // ============== EDIT TABLE STRUCTURE ==============
   String get editTableStructure => _t('editTableStructure');
-  String get newColumn => _t('newColumn');
-  String get newBadge => _t('newBadge');
-  String get removeColumn => _t('removeColumn');
-  String get columnNameLabel => _t('columnNameLabel');
   String typeName(String n) => _t('typeName').replaceAll('{name}', n);
   String get cannotChange => _t('cannotChange');
   String get tableStructureUpdated => _t('tableStructureUpdated');
@@ -461,10 +456,6 @@ class AppLocalizations {
   ).replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
 
   // ============== MISC ==============
-  String get autoNumberDescShort => _t('autoNumberDescShort');
-  String get dateAutoDescShort => _t('dateAutoDescShort');
-  String get timeAutoDescShort => _t('timeAutoDescShort');
-  String get addColumnLabel => _t('addColumnLabel');
 
   // ============== TALLY ==============
   String get tallyTable => _t('tallyTable');
@@ -858,6 +849,8 @@ class AppLocalizations {
     'quickMoreHint':
         'Yeni sütun için + düğmesine, bir sütunu değiştirmek için başlığına dokun.',
     'quickReorderHint': 'Sırayı değiştirmek için başlığa basılı tutup sürükle.',
+    'sharedColumnOrderHint':
+        'Ortak tabloda sütunların yeri değişmez; yeni sütun sona eklenir.',
     'editColumnTitle': 'Sütunu Düzenle',
     'startFromExample': 'Hazır örnekten ya da şablondan başla',
     'kindConstantNote': 'sabit: {value}',
@@ -877,6 +870,9 @@ class AppLocalizations {
     'exampleTemplates': 'Hazır örnekler',
     'exampleTemplatesHint':
         'Dokun, adını ver, tablo hazır. Sonradan istediğin gibi değiştirebilirsin.',
+    'exampleRemoved': '"{name}" örneği kaldırıldı.',
+    'restoreExamples': 'Kaldırılan örnekleri geri getir',
+    'undo': 'Geri al',
     'templates': 'Şablonlar',
     'addRecord': 'Kayıt Ekle',
     'searchInTable': 'Tabloda ara...',
@@ -1024,11 +1020,8 @@ class AppLocalizations {
     'pdfDesc': 'Yazdırılabilir profesyonel rapor',
     'fileCreated': '{format} dosyası oluşturuldu!',
     'shareWhatsApp': 'Paylaş (WhatsApp, Mail, vb.)',
-    'saveToDevice': 'Cihaza Kaydet',
     'selectAnotherFormat': 'Başka format seç',
     'creatingFile': 'Dosya oluşturuluyor...',
-    'fileSaved': 'Dosya kaydedildi: {name}',
-    'fileSaveFailed': 'Dosya kaydedilemedi. Depolama izni gerekebilir.',
     'tableData': 'Tablo Verisi',
     'selectTable': 'Tablo Seç',
     'deleteTableConfirmFull':
@@ -1048,20 +1041,13 @@ class AppLocalizations {
     'columnsLabel': 'Sütunlar:',
     'createNewTemplateTitle': 'Yeni Şablon Oluştur',
     'templateName': 'Şablon Adı',
-    'templateNameHint': 'Örn: Günlük Kayıt Şablonu',
     'templateCreate': 'Şablon Oluştur',
     'templateNameEmpty': 'Şablon adı boş olamaz',
     'templateCreateFailed': 'Şablon oluşturulamadı',
     'editTemplate': 'Şablonu Düzenle',
-    'templateNameEmptyError': 'Şablon adı boş olamaz',
     'columnNameEmpty': 'Sütun {n} adı boş olamaz',
-    'templateUpdated': 'Şablon güncellendi',
     'templateUpdateFailed': 'Şablon güncellenirken hata oluştu',
     'editTableStructure': 'Tablo Yapısını Düzenle',
-    'newColumn': 'Yeni Sütun',
-    'newBadge': 'Yeni',
-    'removeColumn': 'Sütunu Kaldır',
-    'columnNameLabel': 'Sütun Adı',
     'typeName': 'Tip: {name}',
     'cannotChange': '(değiştirilemez)',
     'tableStructureUpdated': 'Tablo yapısı güncellendi',
@@ -1070,13 +1056,6 @@ class AppLocalizations {
     'totalNRecords': 'Toplam: {n} kayıt',
     'totalsLabel': 'TOPLAMLAR',
     'pageNofM': 'Sayfa {n} / {m}',
-    'autoNumberDescShort':
-        'Her yeni kayıt için otomatik artan numara (1, 2, 3...) atanır.',
-    'dateAutoDescShort':
-        'Kayıt eklerken bugünün tarihi otomatik gelir, değiştirilebilir.',
-    'timeAutoDescShort':
-        'Kayıt eklerken şu anki saat otomatik gelir, değiştirilebilir.',
-    'addColumnLabel': 'Sütun ekle:',
     'tallyTable': 'Çetele Tablosu',
     'tallyEmptyTitle': 'Çetele Tablosu Yok',
     'tallyEmptySubtitle': 'Yeni tablo oluşturarak\nçetele tutmaya başlayın',
@@ -1498,6 +1477,8 @@ class AppLocalizations {
     'quickMoreHint':
         'Press + for a new column; tap a header to change that column.',
     'quickReorderHint': 'To reorder, press and hold a header, then drag it.',
+    'sharedColumnOrderHint':
+        'In a shared table columns keep their place; new columns go at the end.',
     'editColumnTitle': 'Edit Column',
     'startFromExample': 'Start from an example or a template',
     'kindConstantNote': 'constant: {value}',
@@ -1517,6 +1498,9 @@ class AppLocalizations {
     'exampleTemplates': 'Ready-made examples',
     'exampleTemplatesHint':
         'Tap one, name it, and the table is ready. You can change it any way you like afterwards.',
+    'exampleRemoved': '"{name}" example removed.',
+    'restoreExamples': 'Bring back removed examples',
+    'undo': 'Undo',
     'templates': 'Templates',
     'addRecord': 'Add Record',
     'searchInTable': 'Search in table...',
@@ -1663,12 +1647,8 @@ class AppLocalizations {
     'pdfDesc': 'Printable professional report',
     'fileCreated': '{format} file created!',
     'shareWhatsApp': 'Share (WhatsApp, Email, etc.)',
-    'saveToDevice': 'Save to Device',
     'selectAnotherFormat': 'Select another format',
     'creatingFile': 'Creating file...',
-    'fileSaved': 'File saved: {name}',
-    'fileSaveFailed':
-        'Could not save file. Storage permission may be required.',
     'tableData': 'Table Data',
     'selectTable': 'Select Table',
     'deleteTableConfirmFull':
@@ -1687,20 +1667,13 @@ class AppLocalizations {
     'columnsLabel': 'Columns:',
     'createNewTemplateTitle': 'Create New Template',
     'templateName': 'Template Name',
-    'templateNameHint': 'e.g. Daily Record Template',
     'templateCreate': 'Create Template',
     'templateNameEmpty': 'Template name cannot be empty',
     'templateCreateFailed': 'Failed to create template',
     'editTemplate': 'Edit Template',
-    'templateNameEmptyError': 'Template name cannot be empty',
     'columnNameEmpty': 'Column {n} name cannot be empty',
-    'templateUpdated': 'Template updated',
     'templateUpdateFailed': 'Error updating template',
     'editTableStructure': 'Edit Table Structure',
-    'newColumn': 'New Column',
-    'newBadge': 'New',
-    'removeColumn': 'Remove Column',
-    'columnNameLabel': 'Column Name',
     'typeName': 'Type: {name}',
     'cannotChange': '(cannot change)',
     'tableStructureUpdated': 'Table structure updated',
@@ -1709,11 +1682,6 @@ class AppLocalizations {
     'totalNRecords': 'Total: {n} records',
     'totalsLabel': 'TOTALS',
     'pageNofM': 'Page {n} / {m}',
-    'autoNumberDescShort':
-        'Auto-incrementing number (1, 2, 3...) for each new record.',
-    'dateAutoDescShort': "Today's date auto-fills when adding, can be changed.",
-    'timeAutoDescShort': 'Current time auto-fills when adding, can be changed.',
-    'addColumnLabel': 'Add column:',
     'tallyTable': 'Tally Table',
     'tallyEmptyTitle': 'No Tally Tables',
     'tallyEmptySubtitle': 'Create a new table\nto start tracking',

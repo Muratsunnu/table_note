@@ -43,7 +43,9 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
   bool _completed = false;
   bool restored = false;
 
-  bool get hasDraft => _edited || restored;
+  /// Taslak yazarken sessizce saklanır; kullanıcıya yalnızca yarım kalan bir
+  /// taslak geri getirildiğinde ya da saklanamadığında haber verilir.
+  bool get showNotice => restored || (_edited && hasError);
   bool get hasError => _store.lastError != null;
 
   Future<void> _restore() async {
@@ -86,7 +88,6 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
     if (serialized == _lastValues) return;
     _lastValues = serialized;
     _edited = true;
-    restored = false;
     _store.schedule({
       'schema': _schema,
       'originalRow': originalRow,
@@ -141,7 +142,7 @@ class RowDraftNotice extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: draft,
     builder: (context, _) {
-      if (!draft.hasDraft) return const SizedBox.shrink();
+      if (!draft.showNotice) return const SizedBox.shrink();
       final loc = AppLocalizations.of(context);
       final colors = Theme.of(context).colorScheme;
       return Padding(
@@ -155,11 +156,7 @@ class RowDraftNotice extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  draft.hasError
-                      ? loc.draftSaveFailed
-                      : draft.restored
-                      ? loc.draftRestored
-                      : loc.draftSavedLocally,
+                  draft.hasError ? loc.draftSaveFailed : loc.draftRestored,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 TextButton.icon(

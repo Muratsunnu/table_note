@@ -826,56 +826,65 @@ class TableProvider extends ChangeNotifier {
     }
   }
 
-  // Tablo yapısını güncelle (mevcut projede kullanılan imza)
+  // Tablo yapısını güncelle: eski sütunlar yerinde, yeniler sonda.
   Future<bool> updateTableStructure(
     String newName,
     List<ColumnModel> newColumns,
     int originalColumnCount,
+  ) => restructureTable(newName, newColumns, [
+    for (var index = 0; index < newColumns.length; index++)
+      index < originalColumnCount ? index : null,
+  ]);
+
+  /// Tablonun adını ve sütunlarını değiştirir. [origins] her yeni sütunun
+  /// eski tablodaki sırasını tutar; yeni eklenen sütun için null. Satırlar
+  /// buna göre taşınır: sütunun yeri değişse de kayıtları onunla gider.
+  ///
+  /// Ortak tabloda sunucu hücreleri sırayla eşler; orada eski sütunlar
+  /// yerinde kalmalı, hiçbiri çıkmamalı ve yeni sütunlar sona eklenmelidir.
+  Future<bool> restructureTable(
+    String newName,
+    List<ColumnModel> newColumns,
+    List<int?> origins,
   ) async {
     try {
       if (currentTable == null || !canEditCurrent) return false;
+      if (origins.length != newColumns.length) return false;
 
       final table = currentTable!;
+      final oldCount = table.columns.length;
+      if (origins.any((origin) => origin != null && origin >= oldCount)) {
+        return false;
+      }
+      if (isSharedTable(table.id)) {
+        for (var index = 0; index < newColumns.length; index++) {
+          final expected = index < oldCount ? index : null;
+          if (origins[index] != expected) return false;
+        }
+        if (newColumns.length < oldCount) return false;
+      }
 
       // Tablo adını güncelle
       table.tableName = newName.trim();
 
-      // Mevcut sütunların eşleştirilmesi
-      Map<int, int> columnMapping = {};
-      for (
-        int newIdx = 0;
-        newIdx < newColumns.length && newIdx < originalColumnCount;
-        newIdx++
-      ) {
-        columnMapping[newIdx] = newIdx;
-      }
-
       // Satırları yeni yapıya göre düzenle
       List<List<String>> newRows = [];
       for (var oldRow in table.rows) {
-        List<String> newRow = List.filled(newColumns.length, '');
-
-        // Mevcut sütunları kopyala
-        for (
-          int i = 0;
-          i < originalColumnCount && i < oldRow.length && i < newColumns.length;
-          i++
-        ) {
-          newRow[i] = oldRow[i];
-        }
-
-        // Yeni sütunlar için varsayılan değerler
-        for (int i = originalColumnCount; i < newColumns.length; i++) {
-          final col = newColumns[i];
-          if (col.isConstant && col.constantValue != null) {
-            newRow[i] = col.constantValue.toString();
-          } else if (col.isAutoNumber) {
-            newRow[i] = (newRows.length + 1).toString();
-          } else {
-            newRow[i] = '';
-          }
-        }
-
+        final newRow = <String>[
+          for (var index = 0; index < newColumns.length; index++)
+            switch (origins[index]) {
+              final int origin => origin < oldRow.length ? oldRow[origin] : '',
+              // Yeni sütun: sabit değer ve sıra numarası eski kayıtlara da
+              // yazılır, ötekiler boş kalır.
+              null =>
+                newColumns[index].isConstant &&
+                        newColumns[index].constantValue != null
+                    ? newColumns[index].constantValue.toString()
+                    : newColumns[index].isAutoNumber
+                    ? (newRows.length + 1).toString()
+                    : '',
+            },
+        ];
         newRows.add(newRow);
       }
 

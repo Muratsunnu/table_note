@@ -712,37 +712,6 @@ class ExportService {
     return result.status != ShareResultStatus.dismissed;
   }
 
-  /// Dosyayı cihaza kaydet (Downloads klasörüne)
-  static Future<String?> saveToDownloads(String sourcePath) async {
-    try {
-      final fileName = sourcePath.split('/').last;
-
-      // Android için Downloads klasörü
-      Directory? downloadsDir;
-      if (Platform.isAndroid) {
-        downloadsDir = Directory('/storage/emulated/0/Download');
-        if (!await downloadsDir.exists()) {
-          downloadsDir = await getExternalStorageDirectory();
-        }
-      } else {
-        downloadsDir = await getDownloadsDirectory();
-      }
-
-      if (downloadsDir == null) {
-        return null;
-      }
-
-      final newPath = '${downloadsDir.path}/$fileName';
-      final sourceFile = File(sourcePath);
-      await sourceFile.copy(newPath);
-
-      return newPath;
-    } catch (e) {
-      print('Dosya kaydedilirken hata: $e');
-      return null;
-    }
-  }
-
   /// Türkçe karakterleri ASCII'ye çevirir. Yalnızca dosya adları için; gömülü
   /// Roboto bütün Türkçe harfleri taşıdığı için PDF metni olduğu gibi yazılır.
   static String _convertTurkishChars(String text) {

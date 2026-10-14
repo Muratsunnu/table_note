@@ -5,9 +5,11 @@ import '../l10n/app_localizations.dart';
 import '../models/tabel_model.dart';
 import '../providers/subscription_provider.dart';
 import '../providers/table_provider.dart';
+import '../providers/template_provider.dart';
 import '../utils/number_display.dart';
 import 'code_column_note.dart';
 import 'create_table_dialog.dart';
+import 'shared_structure_locked.dart';
 import 'template_management_dialog.dart';
 
 /// Tabloyu tablonun üstünde kurmak: ekranda kurulan tablonun başlık satırı
@@ -18,11 +20,39 @@ import 'template_management_dialog.dart';
 /// görünürken girilir. Başlığa dokunmak o sütunun formunu yeniden açar;
 /// başlığa basılı tutup sürüklemek sütunun yerini değiştirir.
 class QuickTableBuilder extends StatefulWidget {
-  const QuickTableBuilder({super.key});
+  const QuickTableBuilder({super.key})
+    : _target = _BuilderTarget.table,
+      template = null;
+
+  /// Aynı ekranla yeni şablon kurmak.
+  const QuickTableBuilder.template({super.key})
+    : _target = _BuilderTarget.newTemplate,
+      template = null;
+
+  /// Açık tablonun yapısını aynı ekranla düzenlemek. Var olan sütunların
+  /// adı değişir, yeri sürüklenerek değişir (ortak tabloda değişmez); türü
+  /// değişmez ve kaldırılamazlar. Yeni sütunlar eklenip kaldırılabilir.
+  const QuickTableBuilder.editTable({super.key})
+    : _target = _BuilderTarget.editTable,
+      template = null;
+
+  /// Aynı ekranla var olan bir şablonu ya da hazır örneği düzenlemek.
+  const QuickTableBuilder.editTemplate({
+    super.key,
+    required TemplateModel this.template,
+  }) : _target = _BuilderTarget.editTemplate;
+
+  final _BuilderTarget _target;
+
+  /// Düzenlenen şablon.
+  final TemplateModel? template;
 
   @override
   State<QuickTableBuilder> createState() => _QuickTableBuilderState();
 }
+
+/// Ekranın neyi kurduğu: tablo ya da şablon. Kurma biçimi aynıdır.
+enum _BuilderTarget { table, editTable, newTemplate, editTemplate }
 
 class _QuickTableBuilderState extends State<QuickTableBuilder> {
   final _name = TextEditingController();
@@ -30,9 +60,51 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
   final _scroll = ScrollController();
   final _columns = <ColumnModel>[];
 
+  /// Her sütunun düzenlenen tablodaki eski sırası; yeni sütunda null.
+  /// Kayıtlar sütunlarıyla birlikte taşınır.
+  final _origins = <int?>[];
+
+  /// Düzenlenen tablonun en son kaydı: başlıkların altında örnek yerine
+  /// gerçek değer görünür.
+  List<String>? _lastRow;
+
+  /// Ortak tabloda sunucu hücreleri sırayla eşler; sütunların yeri
+  /// değişemez, yeni sütun sona eklenir.
+  bool _fixedOrder = false;
+
   String? _nameError;
   String? _columnError;
   bool _saving = false;
+
+  bool get _isTemplate =>
+      widget._target == _BuilderTarget.newTemplate ||
+      widget._target == _BuilderTarget.editTemplate;
+
+  bool get _isEditing =>
+      widget._target == _BuilderTarget.editTable ||
+      widget._target == _BuilderTarget.editTemplate;
+
+  @override
+  void initState() {
+    super.initState();
+    final template = widget.template;
+    if (template != null) {
+      _name.text = template.templateName;
+      _columns.addAll(template.columns.map((column) => column.copyWith()));
+      _origins.addAll(List.filled(_columns.length, null));
+    }
+    if (widget._target == _BuilderTarget.editTable) {
+      final tables = context.read<TableProvider>();
+      final table = tables.currentTable;
+      if (table != null) {
+        _name.text = table.tableName;
+        _columns.addAll(table.columns.map((column) => column.copyWith()));
+        _origins.addAll([for (var i = 0; i < _columns.length; i++) i]);
+        _lastRow = table.rows.isEmpty ? null : List.of(table.rows.last);
+        _fixedOrder = tables.isSharedTable(table.id);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -52,6 +124,7 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
           if (index != editing) _columns[index],
       ],
       columnNumber: (editing ?? _columns.length) + 1,
+      existing: editing != null && _origins[editing] != null,
     );
   }
 
@@ -61,6 +134,7 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
     if (!mounted || column == null) return;
     setState(() {
       _columns.add(column);
+      _origins.add(null);
       _columnError = null;
     });
     // Yeni başlık ve + görünür kalsın.
@@ -80,10 +154,23 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
     setState(() {
       if (result.removed) {
         _columns.removeAt(index);
+        _origins.removeAt(index);
       } else {
+        final oldName = _columns[index].name;
         _columns[index] = result.column!;
+        _renameInFormulas(oldName, result.column!.name);
       }
     });
+  }
+
+  /// Formüller sütunu adıyla bulur; ad değişince formüller de onu izler.
+  void _renameInFormulas(String oldName, String newName) {
+    if (oldName == newName) return;
+    for (final column in _columns) {
+      final formula = column.formula;
+      if (formula == null || !formula.contains('{$oldName}')) continue;
+      column.formula = formula.replaceAll('{$oldName}', '{$newName}');
+    }
   }
 
   Future<void> _create() async {
@@ -91,7 +178,11 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
     final loc = AppLocalizations.of(context);
     final name = _name.text.trim();
     if (name.isEmpty) {
-      setState(() => _nameError = loc.tableNameEmpty);
+      setState(
+        () => _nameError = _isTemplate
+            ? loc.templateNameEmpty
+            : loc.tableNameEmpty,
+      );
       _nameFocus.requestFocus();
       return;
     }
@@ -99,24 +190,56 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
       setState(() => _columnError = loc.quickNeedColumn);
       return;
     }
-    final tables = context.read<TableProvider>();
-    // Premium ya da sınırlardan önceki sürümden gelen kullanıcı.
-    final isPremium = context.read<SubscriptionProvider>().hasUnlimitedPlan;
+    // Premium ya da sınırlardan önceki sürümden gelen kullanıcı; yalnızca
+    // yeni bir şey kurulurken sorulur.
+    bool isPremium() => context.read<SubscriptionProvider>().hasUnlimitedPlan;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _saving = true);
-    final created = await tables.createTable(
-      name,
-      _columns,
-      isPremium: isPremium,
-    );
+    final Future<bool> saving = switch (widget._target) {
+      _BuilderTarget.table => context.read<TableProvider>().createTable(
+        name,
+        _columns,
+        isPremium: isPremium(),
+      ),
+      _BuilderTarget.editTable =>
+        context.read<TableProvider>().restructureTable(
+          name,
+          _columns,
+          _origins,
+        ),
+      _BuilderTarget.newTemplate =>
+        context.read<TemplateProvider>().createTemplate(
+          name,
+          _columns,
+          isPremium: isPremium(),
+        ),
+      _BuilderTarget.editTemplate =>
+        context.read<TemplateProvider>().updateTemplate(
+          widget.template!.id,
+          name,
+          _columns,
+        ),
+    };
+    final saved = await saving;
     if (!mounted) return;
-    if (created) {
+    if (saved) {
       navigator.pop();
+      if (widget._target == _BuilderTarget.editTable) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(loc.tableStructureUpdated)),
+        );
+      }
     } else {
       setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text(loc.tableCreateFailed)));
+      final message = switch (widget._target) {
+        _BuilderTarget.table => loc.tableCreateFailed,
+        _BuilderTarget.editTable => loc.tableUpdateError,
+        _BuilderTarget.newTemplate => loc.templateCreateFailed,
+        _BuilderTarget.editTemplate => loc.templateUpdateFailed,
+      };
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -219,7 +342,22 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
   }
 
   void _moveColumn(int from, int to) {
-    setState(() => _columns.insert(to, _columns.removeAt(from)));
+    setState(() {
+      _columns.insert(to, _columns.removeAt(from));
+      _origins.insert(to, _origins.removeAt(from));
+    });
+  }
+
+  /// Başlığın altındaki hücre: düzenlenen tabloda son kaydın değeri,
+  /// yoksa örnek.
+  String _cell(AppLocalizations loc, int index) {
+    final origin = _origins[index];
+    final row = _lastRow;
+    if (origin != null && row != null && origin < row.length) {
+      final value = row[origin].trim();
+      if (value.isNotEmpty) return value;
+    }
+    return _sample(loc, _columns[index]);
   }
 
   /// Kurulan tablo: başlıklar, altlarında örnek bir kayıt ve sonda +.
@@ -259,7 +397,7 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
                   // Sütun adları tekildir; sıra değişince öğe adıyla izlenir.
                   key: ValueKey('quick-item-${column.name}'),
                   index: index,
-                  enabled: !_saving && _columns.length > 1,
+                  enabled: !_saving && _columns.length > 1 && !_fixedOrder,
                   child: IntrinsicWidth(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -288,7 +426,7 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
                                   horizontal: 14,
                                 ),
                                 child: Text(
-                                  _sample(loc, column),
+                                  _cell(loc, index),
                                   maxLines: 1,
                                   style: TextStyle(
                                     color: colors.onSurfaceVariant,
@@ -350,16 +488,26 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
+    if (widget._target == _BuilderTarget.editTable) {
+      // Ortak tablonun yapısını yalnızca paylaşan kişi değiştirir.
+      final tables = context.watch<TableProvider>();
+      final id = tables.currentTable?.id;
+      if (id != null && tables.isSharedTable(id) && !tables.isSharedOwner(id)) {
+        return const SharedStructureLocked();
+      }
+    }
     return Scaffold(
       appBar: AppBar(
         // Uygulamadaki diğer form ekranlarıyla aynı görünüm.
         backgroundColor: colors.surface,
         foregroundColor: colors.onSurface,
         titleSpacing: 0,
-        title: Text(
-          loc.newTable,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        title: Text(switch (widget._target) {
+          _BuilderTarget.table => loc.newTable,
+          _BuilderTarget.editTable => loc.editTableStructure,
+          _BuilderTarget.newTemplate => loc.createNewTemplateTitle,
+          _BuilderTarget.editTemplate => loc.editTemplate,
+        }, style: Theme.of(context).textTheme.titleLarge),
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
           onPressed: () => Navigator.of(context).maybePop(),
@@ -377,15 +525,18 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
                     key: const ValueKey('quick-table-name'),
                     controller: _name,
                     focusNode: _nameFocus,
-                    autofocus: true,
+                    // Düzenlerken ad zaten dolu; klavye kendiliğinden açılmaz.
+                    autofocus: !_isEditing,
                     textCapitalization: TextCapitalization.sentences,
                     textInputAction: TextInputAction.done,
                     onChanged: (_) {
                       if (_nameError != null) setState(() => _nameError = null);
                     },
                     decoration: InputDecoration(
-                      labelText: loc.tableName,
-                      hintText: loc.tableNameHint,
+                      labelText: _isTemplate ? loc.templateName : loc.tableName,
+                      hintText: _isTemplate || _isEditing
+                          ? null
+                          : loc.tableNameHint,
                       errorText: _nameError,
                     ),
                   ),
@@ -405,6 +556,8 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
                     Text(
                       _columns.isEmpty
                           ? loc.quickEmptyHint
+                          : _fixedOrder
+                          ? loc.sharedColumnOrderHint
                           : _columns.length == 1
                           ? loc.quickMoreHint
                           : '${loc.quickMoreHint} ${loc.quickReorderHint}',
@@ -414,19 +567,23 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
                         color: colors.onSurfaceVariant,
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      key: const ValueKey('quick-templates'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                  // Şablon kurarken ya da tabloyu düzenlerken şablona
+                  // yönlendirmek anlamsızdır.
+                  if (widget._target == _BuilderTarget.table) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        key: const ValueKey('quick-templates'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                        ),
+                        onPressed: _saving ? null : _openTemplates,
+                        icon: const Icon(Icons.article_outlined, size: 18),
+                        label: Text(loc.startFromExample),
                       ),
-                      onPressed: _saving ? null : _openTemplates,
-                      icon: const Icon(Icons.article_outlined, size: 18),
-                      label: Text(loc.startFromExample),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -439,7 +596,12 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
                 ),
                 onPressed: _saving ? null : _create,
                 icon: const Icon(Icons.check_rounded),
-                label: Text(loc.createTable),
+                label: Text(switch (widget._target) {
+                  _BuilderTarget.table => loc.createTable,
+                  _BuilderTarget.editTable => loc.save,
+                  _BuilderTarget.newTemplate => loc.templateCreate,
+                  _BuilderTarget.editTemplate => loc.save,
+                }),
               ),
             ),
           ],
