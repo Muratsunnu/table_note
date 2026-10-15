@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/plan_limits.dart';
 import '../l10n/app_localizations.dart';
 import '../models/tabel_model.dart';
 import '../providers/subscription_provider.dart';
@@ -9,6 +10,7 @@ import '../providers/template_provider.dart';
 import '../utils/number_display.dart';
 import 'code_column_note.dart';
 import 'create_table_dialog.dart';
+import 'premium_gate.dart';
 import 'shared_structure_locked.dart';
 import 'template_management_dialog.dart';
 
@@ -190,6 +192,13 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
       setState(() => _columnError = loc.quickNeedColumn);
       return;
     }
+    // Ücretsiz sınır doluysa kayıt denenmez; Premium ekranı açılır.
+    if (_quota case (
+      final used,
+      final limit,
+    ) when freeLimitReached(context, used: used, limit: limit)) {
+      return;
+    }
     // Premium ya da sınırlardan önceki sürümden gelen kullanıcı; yalnızca
     // yeni bir şey kurulurken sorulur.
     bool isPremium() => context.read<SubscriptionProvider>().hasUnlimitedPlan;
@@ -242,6 +251,33 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
       messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
+
+  /// Yeni bir tablo ya da şablon kurulurken ücretsiz kullanımın durumu;
+  /// düzenlemede sınır yoktur.
+  (int, int)? get _quota => switch (widget._target) {
+    _BuilderTarget.table => (
+      context.read<TableProvider>().ownedTableCount,
+      PlanLimits.freeTables,
+    ),
+    _BuilderTarget.newTemplate => (
+      context.read<TemplateProvider>().templates.length,
+      PlanLimits.freeTemplates,
+    ),
+    _ => null,
+  };
+
+  /// Oluşturma düğmesinin altındaki "4/5 ücretsiz".
+  Widget? get _quotaNote => switch (widget._target) {
+    _BuilderTarget.table => FreeQuotaNote(
+      used: context.watch<TableProvider>().ownedTableCount,
+      limit: PlanLimits.freeTables,
+    ),
+    _BuilderTarget.newTemplate => FreeQuotaNote(
+      used: context.watch<TemplateProvider>().templates.length,
+      limit: PlanLimits.freeTemplates,
+    ),
+    _ => null,
+  };
 
   void _openTemplates() {
     Navigator.of(context).pushReplacement(
@@ -589,19 +625,26 @@ class _QuickTableBuilderState extends State<QuickTableBuilder> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: FilledButton.icon(
-                key: const ValueKey('quick-create'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                ),
-                onPressed: _saving ? null : _create,
-                icon: const Icon(Icons.check_rounded),
-                label: Text(switch (widget._target) {
-                  _BuilderTarget.table => loc.createTable,
-                  _BuilderTarget.editTable => loc.save,
-                  _BuilderTarget.newTemplate => loc.templateCreate,
-                  _BuilderTarget.editTemplate => loc.save,
-                }),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FilledButton.icon(
+                    key: const ValueKey('quick-create'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                    onPressed: _saving ? null : _create,
+                    icon: const Icon(Icons.check_rounded),
+                    label: Text(switch (widget._target) {
+                      _BuilderTarget.table => loc.createTable,
+                      _BuilderTarget.editTable => loc.save,
+                      _BuilderTarget.newTemplate => loc.templateCreate,
+                      _BuilderTarget.editTemplate => loc.save,
+                    }),
+                  ),
+                  if (_quotaNote case final note?) note,
+                ],
               ),
             ),
           ],

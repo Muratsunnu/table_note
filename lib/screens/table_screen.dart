@@ -23,6 +23,8 @@ import '../widgets/template_management_dialog.dart';
 import '../widgets/column_sums_widget.dart';
 import '../widgets/share_file_sheet.dart';
 import '../widgets/table_drawer.dart';
+import '../widgets/premium_features.dart';
+import '../widgets/premium_gate.dart';
 import '../widgets/quick_table_builder.dart';
 import '../services/export_service.dart';
 import '../services/storage_service.dart';
@@ -271,7 +273,10 @@ class _TableScreenState extends State<TableScreen> {
         IconButton.filledTonal(
           tooltip: loc.voiceFill,
           onPressed: () => _startVoiceAdd(isPremium),
-          icon: Icon(isPremium ? Icons.mic_rounded : Icons.lock_rounded),
+          icon: PremiumFeatureIcon(
+            icon: Icons.mic_rounded,
+            locked: !isPremium,
+          ),
         ),
       ],
     );
@@ -281,10 +286,7 @@ class _TableScreenState extends State<TableScreen> {
     if (isPremium) {
       _showVoiceAddRowDialog(context);
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const PremiumScreen()),
-      );
+      showPremiumFeatureSheet(context, PremiumFeature.voice);
     }
   }
 
@@ -774,8 +776,9 @@ class _TableScreenState extends State<TableScreen> {
                     onPressed: () => _startVoiceAdd(isPremium),
                     padding: const EdgeInsets.all(14),
                     tooltip: AppLocalizations.of(context).voiceFill,
-                    icon: Icon(
-                      isPremium ? Icons.mic_rounded : Icons.lock_rounded,
+                    icon: PremiumFeatureIcon(
+                      icon: Icons.mic_rounded,
+                      locked: !isPremium,
                     ),
                   ),
                 ],

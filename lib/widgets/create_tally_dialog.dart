@@ -15,6 +15,8 @@ import '../providers/tally_template_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_feedback.dart';
 import 'form_draft_guard.dart';
+import 'premium_gate.dart';
+import '../config/plan_limits.dart';
 
 class CreateTallyDialog extends StatefulWidget {
   const CreateTallyDialog({Key? key}) : super(key: key);
@@ -607,34 +609,43 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
                     top: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _isSaving
-                            ? null
-                            : () => Navigator.pop(context),
-                        child: Text(loc.cancel),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: _isSaving
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.check),
-                        label: Text(
-                          _isSaving ? loc.savingProgress : loc.create,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _isSaving
+                                ? null
+                                : () => Navigator.pop(context),
+                            child: Text(loc.cancel),
+                          ),
                         ),
-                        onPressed: !_isSaving && _tabController.index == 0
-                            ? _create
-                            : null,
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: _isSaving
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.check),
+                            label: Text(
+                              _isSaving ? loc.savingProgress : loc.create,
+                            ),
+                            onPressed: !_isSaving && _tabController.index == 0
+                                ? _create
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    FreeQuotaNote(
+                      used: context.watch<TallyProvider>().ownedTallyCount,
+                      limit: PlanLimits.freeTallies,
                     ),
                   ],
                 ),
@@ -1009,6 +1020,14 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
     );
 
     final provider = Provider.of<TallyProvider>(context, listen: false);
+    // Ücretsiz sınır doluysa kayıt denenmez; Premium ekranı açılır.
+    if (freeLimitReached(
+      context,
+      used: provider.ownedTallyCount,
+      limit: PlanLimits.freeTallies,
+    )) {
+      return;
+    }
     // Premium ya da sınırlardan önceki sürümden gelen kullanıcı.
     final isPremium = context.read<SubscriptionProvider>().hasUnlimitedPlan;
     FocusManager.instance.primaryFocus?.unfocus();

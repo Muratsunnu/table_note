@@ -6,14 +6,16 @@ import '../providers/subscription_provider.dart';
 import '../providers/table_provider.dart';
 import '../providers/tally_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/csv_import_dialog.dart';
 import '../widgets/ledger.dart';
+import '../widgets/premium_features.dart';
 import '../widgets/share_table_sheet.dart';
 import '../widgets/voice_add_row_dialog.dart';
 import 'cloud_backup_screen.dart';
 
 /// Satın alma tamamlandığı an açılan ekran: teşekkür, ne zamana kadar geçerli
-/// olduğu ve az önce açılan özelliklere kısa yollar. Kısa yollar bu ekranın
-/// üstünde açılır; kişi dönünce bir başkasını deneyebilir.
+/// olduğu ve Premium'un açtığı bütün özellikler. Hemen denenebilenler kısa
+/// yoldur ve bu ekranın üstünde açılır; kişi dönünce bir başkasını dener.
 class PremiumWelcomeScreen extends StatelessWidget {
   const PremiumWelcomeScreen({super.key});
 
@@ -27,7 +29,8 @@ class PremiumWelcomeScreen extends StatelessWidget {
     final tallies = context.watch<TallyProvider?>();
     final table = tables?.currentTable;
     final tally = tallies?.currentTable;
-    // Paylaşılacak ya da sesle doldurulacak bir tablo yoksa o kısa yol çizilmez.
+    // Paylaşılacak ya da sesle doldurulacak tablo yoksa o özellik yalnızca
+    // listede yazar, kısa yol olmaz.
     final shareId = table?.id ?? tally?.id;
     final canFillByVoice = table != null && table.columns.isNotEmpty;
 
@@ -83,45 +86,42 @@ class PremiumWelcomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    // Premium'un açtığı her şey; hemen denenebilenler
+                    // dokununca açılır.
                     LedgerCard(
                       children: [
-                        _Shortcut(
-                          key: const ValueKey('welcome-backup'),
-                          icon: Icons.cloud_upload_outlined,
-                          title: loc.welcomeBackup,
-                          hint: loc.welcomeBackupHint,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CloudBackupScreen(),
-                            ),
-                          ),
-                        ),
-                        if (shareId != null)
+                        for (final feature in PremiumFeature.values)
                           _Shortcut(
-                            key: const ValueKey('welcome-share'),
-                            icon: Icons.group_add_outlined,
-                            title: loc.welcomeShare,
-                            hint: loc.welcomeShareHint,
-                            onTap: () => ShareTableSheet.show(
-                              context,
-                              tableId: shareId,
-                              isTally: table == null,
-                            ),
-                          ),
-                        if (canFillByVoice)
-                          _Shortcut(
-                            key: const ValueKey('welcome-voice'),
-                            icon: Icons.mic_none_rounded,
-                            title: loc.welcomeVoice,
-                            hint: loc.welcomeVoiceHint,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                fullscreenDialog: true,
-                                builder: (_) => const VoiceAddRowDialog(),
+                            key: ValueKey('welcome-${feature.name}'),
+                            icon: feature.icon,
+                            title: feature.label(loc),
+                            onTap: switch (feature) {
+                              PremiumFeature.cloud => () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const CloudBackupScreen(),
+                                ),
                               ),
-                            ),
+                              PremiumFeature.share when shareId != null =>
+                                () => ShareTableSheet.show(
+                                  context,
+                                  tableId: shareId,
+                                  isTally: table == null,
+                                ),
+                              PremiumFeature.voice when canFillByVoice =>
+                                () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    fullscreenDialog: true,
+                                    builder: (_) => const VoiceAddRowDialog(),
+                                  ),
+                                ),
+                              PremiumFeature.csv => () => showDialog<void>(
+                                context: context,
+                                builder: (_) => const CsvImportDialog(),
+                              ),
+                              _ => null,
+                            },
                           ),
                       ],
                     ),
@@ -186,14 +186,14 @@ class _Shortcut extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
-    required this.hint,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String hint;
-  final VoidCallback onTap;
+
+  /// Hemen denenebilen özellikte dokununca açılır; yoksa yalnızca yazar.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -201,34 +201,28 @@ class _Shortcut extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         child: Row(
           children: [
             Icon(icon, color: colors.primary),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hint,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+            if (onTap != null)
+              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant)
+            else
+              Icon(
+                Icons.check_rounded,
+                size: 20,
+                color: AppTheme.readableAccent(context, AppTheme.success),
+              ),
           ],
         ),
       ),

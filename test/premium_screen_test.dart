@@ -84,6 +84,12 @@ class _FakeSubscription extends ChangeNotifier implements SubscriptionProvider {
   Future<void> reloadPlans() async => reloads++;
 
   @override
+  void clearProblem() {
+    failure = null;
+    notifyListeners();
+  }
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -329,6 +335,29 @@ void main() {
 
     expect(find.text(_en.purchaseNoConnection), findsOneWidget);
     expect(find.text(_en.purchaseNotVerified), findsNothing);
+  });
+
+  testWidgets('the problem sits right above the buy button', (tester) async {
+    subscription = _FakeSubscription()
+      ..failure = PurchaseProblem.verification
+      ..offers = [
+        _offer(PlanPeriod.yearly, '₺199,99', 199.99, trial: 7),
+        _offer(PlanPeriod.monthly, '₺29,99', 29.99),
+      ];
+    await open(tester);
+
+    final problem = tester.getRect(
+      find.byKey(const ValueKey('purchase-problem')),
+    );
+    final buy = tester.getRect(find.byKey(const ValueKey('plan-buy')));
+    // Düğmeye bakan hatayı da görür: hemen üstündedir, araya bir şey girmez.
+    expect(problem.bottom, lessThanOrEqualTo(buy.top));
+    expect(buy.top - problem.bottom, lessThan(24));
+
+    // Başka paket seçen kişi yeniden deneyecek; eski hata kalkar.
+    await tester.tap(find.byKey(const ValueKey('plan-monthly')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('purchase-problem')), findsNothing);
   });
 
   testWidgets('a completed purchase opens the welcome screen once', (

@@ -1,4 +1,6 @@
 import 'example_templates_header.dart';
+import 'premium_gate.dart';
+import '../config/plan_limits.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
@@ -433,20 +435,25 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
           bottomRight: Radius.circular(16),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: FilledButton.icon(
-              icon: const Icon(Icons.add_rounded),
-              label: Text(AppLocalizations.of(context).createNewTemplate),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          FilledButton.icon(
+            icon: const Icon(Icons.add_rounded),
+            label: Text(AppLocalizations.of(context).createNewTemplate),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              onPressed: () => _showCreateTemplateDialog(context),
             ),
+            onPressed: () => _showCreateTemplateDialog(context),
+          ),
+          // Hazır örnekler sınıra sayılmaz; yalnızca kendi şablonları.
+          FreeQuotaNote(
+            used: context.watch<TemplateProvider>().templates.length,
+            limit: PlanLimits.freeTemplates,
           ),
         ],
       ),
@@ -491,6 +498,13 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
   }
 
   void _showCreateTemplateDialog(BuildContext context) {
+    if (freeLimitReached(
+      context,
+      used: context.read<TemplateProvider>().templates.length,
+      limit: PlanLimits.freeTemplates,
+    )) {
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -514,6 +528,14 @@ class _TemplateManagementDialogState extends State<TemplateManagementDialog> {
     BuildContext context,
     TemplateModel template,
   ) async {
+    // Tablo sınırı doluysa ad sorulmadan Premium ekranı açılır.
+    if (freeLimitReached(
+      context,
+      used: context.read<TableProvider>().ownedTableCount,
+      limit: PlanLimits.freeTables,
+    )) {
+      return;
+    }
     final managementRoute = ModalRoute.of(context);
     final managementNavigator = Navigator.of(context);
     final tableNameController = TextEditingController(

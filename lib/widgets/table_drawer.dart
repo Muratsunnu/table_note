@@ -6,6 +6,7 @@ import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../config/plan_limits.dart';
 import '../theme/app_theme.dart';
+import 'premium_gate.dart';
 import 'quick_table_builder.dart';
 import 'table_search_dialog.dart';
 import 'edit_tally_dialog.dart';
@@ -29,6 +30,9 @@ class TableDrawer extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(context),
+            // Premium'u olmayan herkes, tablolar arasında geçerken görür.
+            if (!context.watch<SubscriptionProvider>().isPremium)
+              _buildPremiumBanner(context),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -105,6 +109,72 @@ class TableDrawer extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Kısa ve tek satırlık tanıtım: dokununca Premium ekranı açılır.
+  Widget _buildPremiumBanner(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final colors = Theme.of(context).colorScheme;
+    const gold = Color(0xFFFBBF24);
+    final radius = BorderRadius.circular(14);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Material(
+        color: AppTheme.tintedSurface(context, gold),
+        borderRadius: radius,
+        child: InkWell(
+          key: const ValueKey('drawer-premium'),
+          borderRadius: radius,
+          onTap: () {
+            final navigator = Navigator.of(context);
+            navigator.pop();
+            navigator.push(
+              MaterialPageRoute(builder: (_) => const PremiumScreen()),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.workspace_premium_rounded,
+                  size: 28,
+                  color: AppTheme.readableAccent(context, gold),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        loc.goPremium,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        loc.premiumDescription,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: colors.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -740,21 +810,6 @@ class TableDrawer extends StatelessWidget {
   // ============== FOOTER ==============
 
   /// "3/5 ücretsiz": üstündeki düğmeyle açılan türden kaç tane kullanıldı.
-  Widget _quota(BuildContext context, int used, int limit) {
-    final colors = Theme.of(context).colorScheme;
-    final full = used >= limit;
-    return Text(
-      AppLocalizations.of(context).freeQuotaUsed(used, limit),
-      key: ValueKey('quota-$limit-$used'),
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 11.5,
-        fontWeight: full ? FontWeight.w700 : FontWeight.w400,
-        color: full ? colors.primary : colors.onSurfaceVariant,
-      ),
-    );
-  }
-
   Widget _buildFooter(BuildContext context) {
     final loc = AppLocalizations.of(context);
     return Container(
@@ -850,29 +905,24 @@ class TableDrawer extends StatelessWidget {
           ),
           // Ücretsiz kullanımda ne kadar yer kaldığı, sınıra çarpmadan önce
           // görünür. Sınırsız kullanıcıda hiç çizilmez.
-          if (!context.watch<SubscriptionProvider>().hasUnlimitedPlan)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _quota(
-                      context,
-                      context.watch<TableProvider>().ownedTableCount,
-                      PlanLimits.freeTables,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _quota(
-                      context,
-                      context.watch<TallyProvider>().ownedTallyCount,
-                      PlanLimits.freeTallies,
-                    ),
-                  ),
-                ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: FreeQuotaNote(
+                  used: context.watch<TableProvider>().ownedTableCount,
+                  limit: PlanLimits.freeTables,
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FreeQuotaNote(
+                  used: context.watch<TallyProvider>().ownedTallyCount,
+                  limit: PlanLimits.freeTallies,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             children: [

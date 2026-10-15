@@ -64,6 +64,7 @@ class AppLocalizations {
   String get onboardingPremiumDescription => _t('onboardingPremiumDescription');
   String get premium => _t('premium');
   String get unlockPremium => _t('unlockPremium');
+  String get goPremium => _t('goPremium');
   String get premiumDescription => _t('premiumDescription');
   String get premiumActive => _t('premiumActive');
   String get premiumActiveDescription => _t('premiumActiveDescription');
@@ -107,12 +108,6 @@ class AppLocalizations {
   String get premiumWelcomeTitle => _t('premiumWelcomeTitle');
   String get premiumWelcomeBody => _t('premiumWelcomeBody');
   String get premiumWelcomeNext => _t('premiumWelcomeNext');
-  String get welcomeBackup => _t('welcomeBackup');
-  String get welcomeBackupHint => _t('welcomeBackupHint');
-  String get welcomeShare => _t('welcomeShare');
-  String get welcomeShareHint => _t('welcomeShareHint');
-  String get welcomeVoice => _t('welcomeVoice');
-  String get welcomeVoiceHint => _t('welcomeVoiceHint');
   String get welcomeClose => _t('welcomeClose');
   String get manageSubscription => _t('manageSubscription');
   String premiumValidUntil(String date) =>
@@ -152,6 +147,10 @@ class AppLocalizations {
   String freeQuotaUsed(int used, int limit) => _t(
     'freeQuotaUsed',
   ).replaceAll('{used}', '$used').replaceAll('{limit}', '$limit');
+  String freeQuotaFull(int limit) =>
+      _t('freeQuotaFull').replaceAll('{limit}', '$limit');
+  String get premiumFeature => _t('premiumFeature');
+  String get notNow => _t('notNow');
   String get cloudPremiumMessage => _t('cloudPremiumMessage');
   String get viewPremium => _t('viewPremium');
   String get connectAccount => _t('connectAccount');
@@ -708,16 +707,16 @@ class AppLocalizations {
         'Sesle kayıt gir, tabloları ortak kullan ve verilerini buluta yedekle.',
     'premium': 'Premium',
     'unlockPremium': 'Table Note Premium',
-    'premiumDescription':
-        'Tüm gelişmiş özellikleri aç ve kayıtlarını güvenle yönet.',
+    'goPremium': 'Premium\'a geç',
+    'premiumDescription': 'Gelirini, giderini, işini düzenli tut.',
     'premiumActive': 'Premium Aktif',
-    'premiumActiveDescription': 'Tüm Premium özelliklere erişebilirsin.',
-    'premiumVoiceFeature': 'Konuşarak tablo doldurma',
-    'premiumCloudFeature': 'Bulut yedekleme ve geri yükleme',
-    'premiumShareFeature': 'Güvenli tablo paylaşımı',
-    'premiumImportFeature': 'CSV dosyasından içe aktarma',
-    'premiumUnlimitedFeature': 'Sınırsız tablo, çetele ve şablon',
-    'premiumTallyFeature': 'Gelişmiş çetele araçları',
+    'premiumActiveDescription': 'Tüm özellikler açık.',
+    'premiumVoiceFeature': 'Sesle kayıt',
+    'premiumCloudFeature': 'Bulut yedekleme',
+    'premiumShareFeature': 'Tabloyu ekibinle paylaş',
+    'premiumImportFeature': 'CSV\'den içe aktar',
+    'premiumUnlimitedFeature': 'Sınırsız tablo, çetele, şablon',
+    'premiumTallyFeature': 'Çetele özeti ve sıralama',
     'planYearly': 'Yıllık',
     'planMonthly': 'Aylık',
     'perYear': 'yıl',
@@ -732,40 +731,30 @@ class AppLocalizations {
     'trialChargeText': '{price} çekilir; her {unit} kendiliğinden yenilenir.',
     'trialCancelLabel': 'İstediğin zaman',
     'trialCancelText':
-        '{store} aboneliklerinden iptal edebilirsin. Deneme bitmeden en az 24 saat önce iptal edersen ücret alınmaz.',
-    'premiumKeepsData':
-        'Premium biterse cihazındaki tabloların ve çetelelerin silinmez.',
-    'signInToSubscribeHint':
-        'Premium hesabına bağlanır. Satın almadan önce giriş yapman ya da hesap açman gerekiyor.',
+        '{store} aboneliklerinden iptal et. Deneme bitmeden 24 saat önce iptal edersen ücret alınmaz.',
+    'premiumKeepsData': 'Premium bitse de cihazındaki verilerin silinmez.',
+    'signInToSubscribeHint': 'Premium hesabına bağlanır; önce giriş yap.',
     'renewalTerms':
-        'Bugün {price} ödersin; her {unit} kendiliğinden yenilenir. {store} aboneliklerinden istediğin zaman iptal edebilirsin.',
+        'Bugün {price}; her {unit} yenilenir. {store} üzerinden istediğin zaman iptal et.',
     'priceUnavailable': 'Fiyat şu anda mağazadan alınamıyor.',
     'retry': 'Yeniden dene',
     'billingPreparing': 'Abonelik bağlantısı hazırlanıyor',
     'verifyingPurchase': 'Satın alma doğrulanıyor…',
-    'purchasePending':
-        'Ödemen mağazada onay bekliyor. Onaylanınca Premium kendiliğinden açılır.',
+    'purchasePending': 'Ödeme onay bekliyor; onaylanınca Premium açılır.',
     'premiumWelcomeTitle': 'Premium açıldı',
     'premiumWelcomeBody': 'Teşekkürler! Bütün özellikler artık senin.',
     'premiumWelcomeNext': 'Şimdi ne yapabilirsin',
-    'welcomeBackup': 'İlk yedeğini al',
-    'welcomeBackupHint': 'Tablolarının bir kopyası hesabında dursun.',
-    'welcomeShare': 'Bir tabloyu paylaş',
-    'welcomeShareHint': 'Kod ver, başkaları da aynı tabloya baksın.',
-    'welcomeVoice': 'Sesle kayıt dene',
-    'welcomeVoiceHint': 'Sütunu ve değeri söyle, alanlar dolsun.',
     'welcomeClose': 'Uygulamaya dön',
     'manageSubscription': 'Aboneliği yönet',
     'premiumValidUntil':
-        'Premium {date} tarihine kadar geçerli. Mağaza aboneliğin sürdükçe kendiliğinden yenilenir.',
+        '{date} tarihine kadar geçerli, kendiliğinden yenilenir.',
     'manageSubscriptionFailed':
         '{store} açılamadı. Aboneliğini {store} uygulamasındaki Abonelikler bölümünden yönetebilirsin.',
     'restorePurchases': 'Satın Almaları Geri Yükle',
     'signInToSubscribe': 'Giriş yap ve devam et',
     'purchaseNotVerified':
-        'Satın alman mağazada duruyor ama şu an doğrulanamadı. Ödemen kaybolmaz: biraz sonra “Satın Almaları Geri Yükle”ye dokun.',
-    'purchaseNoConnection':
-        'İnternete ulaşılamadı. Bağlantını kontrol edip tekrar dene.',
+        'Satın alma doğrulanamadı. Ödemen kaybolmaz; biraz sonra “Satın Almaları Geri Yükle”ye dokun.',
+    'purchaseNoConnection': 'İnternete ulaşılamadı. Bağlantını kontrol et.',
     'purchaseFailed': 'İşlem tamamlanamadı. Biraz sonra tekrar dene.',
     'account': 'Hesap',
     'noAccountConnected': 'Bağlı hesap yok',
@@ -795,6 +784,9 @@ class AppLocalizations {
     'addSharedTable': 'Paylaşılmış tabloyu ekle',
     'premiumRequired': 'Premium gerekli',
     'freeQuotaUsed': '{used}/{limit} ücretsiz',
+    'freeQuotaFull': '{limit}/{limit} doldu · Premium\'la sınırsız',
+    'premiumFeature': 'Premium özelliği',
+    'notNow': 'Şimdi değil',
     'cloudPremiumMessage': 'Bulut yedekleme ve paylaşım Premium özelliğidir.',
     'viewPremium': 'Premium’u Gör',
     'connectAccount': 'Hesabını bağla',
@@ -1336,16 +1328,16 @@ class AppLocalizations {
         'Add records by voice, share tables and backup to the cloud.',
     'premium': 'Premium',
     'unlockPremium': 'Table Note Premium',
-    'premiumDescription':
-        'Unlock every advanced feature and manage your records securely.',
+    'goPremium': 'Go Premium',
+    'premiumDescription': 'Keep your income, expenses and work in order.',
     'premiumActive': 'Premium Active',
-    'premiumActiveDescription': 'You have access to all Premium features.',
-    'premiumVoiceFeature': 'Fill tables by speaking',
-    'premiumCloudFeature': 'Cloud backup and restore',
-    'premiumShareFeature': 'Secure table sharing',
-    'premiumImportFeature': 'Import from CSV files',
-    'premiumUnlimitedFeature': 'Unlimited tables, tallies, and templates',
-    'premiumTallyFeature': 'Advanced tally tools',
+    'premiumActiveDescription': 'Every feature is unlocked.',
+    'premiumVoiceFeature': 'Add by voice',
+    'premiumCloudFeature': 'Cloud backup',
+    'premiumShareFeature': 'Share tables with your team',
+    'premiumImportFeature': 'Import from CSV',
+    'premiumUnlimitedFeature': 'Unlimited tables, tallies, templates',
+    'premiumTallyFeature': 'Tally overview and sorting',
     'planYearly': 'Yearly',
     'planMonthly': 'Monthly',
     'perYear': 'year',
@@ -1361,40 +1353,30 @@ class AppLocalizations {
         'You are charged {price}. It renews automatically every {unit}.',
     'trialCancelLabel': 'Anytime',
     'trialCancelText':
-        'Cancel in your {store} subscriptions. If you cancel at least 24 hours before the trial ends, you are not charged.',
-    'premiumKeepsData':
-        'If Premium ends, the tables and tallies on your device are not deleted.',
-    'signInToSubscribeHint':
-        'Premium is tied to your account. Sign in or create an account before purchasing.',
+        'Cancel in your {store} subscriptions. Cancel 24 hours before the trial ends and you pay nothing.',
+    'premiumKeepsData': 'If Premium ends, the data on your device stays.',
+    'signInToSubscribeHint': 'Premium is tied to your account; sign in first.',
     'renewalTerms':
-        'You pay {price} today. It renews automatically every {unit}; cancel anytime in your {store} subscriptions.',
+        '{price} today; renews every {unit}. Cancel anytime in {store}.',
     'priceUnavailable': 'The price is not available from the store right now.',
     'retry': 'Try again',
     'billingPreparing': 'Subscription connection is being prepared',
     'verifyingPurchase': 'Verifying your purchase…',
-    'purchasePending':
-        'Your payment is awaiting approval in the store. Premium unlocks automatically once it is approved.',
+    'purchasePending': 'Payment pending; Premium unlocks once approved.',
     'premiumWelcomeTitle': 'Premium is on',
     'premiumWelcomeBody': 'Thank you! Every feature is now yours.',
     'premiumWelcomeNext': 'What you can do now',
-    'welcomeBackup': 'Take your first backup',
-    'welcomeBackupHint': 'Keep a copy of your tables in your account.',
-    'welcomeShare': 'Share a table',
-    'welcomeShareHint': 'Give a code so others can see the same table.',
-    'welcomeVoice': 'Try adding by voice',
-    'welcomeVoiceHint': 'Say the column and its value to fill the fields.',
     'welcomeClose': 'Back to the app',
     'manageSubscription': 'Manage subscription',
-    'premiumValidUntil':
-        'Premium is valid until {date}. It renews automatically while your store subscription is active.',
+    'premiumValidUntil': 'Valid until {date}; renews automatically.',
     'manageSubscriptionFailed':
         'Could not open {store}. You can manage your subscription in the Subscriptions section of the {store} app.',
     'restorePurchases': 'Restore Purchases',
     'signInToSubscribe': 'Sign in to continue',
     'purchaseNotVerified':
-        'Your purchase is in the store but could not be verified right now. Your payment is not lost: tap “Restore Purchases” in a little while.',
+        'Purchase could not be verified. Your payment is safe; tap “Restore Purchases” in a little while.',
     'purchaseNoConnection':
-        'Could not reach the internet. Check your connection and try again.',
+        'Could not reach the internet. Check your connection.',
     'purchaseFailed':
         'This could not be completed. Please try again in a little while.',
     'account': 'Account',
@@ -1425,6 +1407,9 @@ class AppLocalizations {
     'addSharedTable': 'Add shared table',
     'premiumRequired': 'Premium required',
     'freeQuotaUsed': '{used}/{limit} free',
+    'freeQuotaFull': '{limit}/{limit} used · unlimited with Premium',
+    'premiumFeature': 'Premium feature',
+    'notNow': 'Not now',
     'cloudPremiumMessage': 'Cloud backup and sharing are Premium features.',
     'viewPremium': 'View Premium',
     'connectAccount': 'Connect your account',

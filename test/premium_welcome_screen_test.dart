@@ -9,6 +9,7 @@ import 'package:table_note/providers/subscription_provider.dart';
 import 'package:table_note/providers/table_provider.dart';
 import 'package:table_note/screens/premium_welcome_screen.dart';
 import 'package:table_note/services/storage_service.dart';
+import 'package:table_note/widgets/premium_features.dart';
 
 class _Subscription extends ChangeNotifier implements SubscriptionProvider {
   @override
@@ -78,26 +79,41 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('teşekkür eder, geçerlilik tarihini ve üç kısa yolu gösterir', (
-    tester,
-  ) async {
+  // Kısa yol olan satırda ok, yalnızca yazan satırda onay işareti durur.
+  bool isShortcut(WidgetTester tester, String name) => tester
+      .widgetList(
+        find.descendant(
+          of: find.byKey(ValueKey('welcome-$name')),
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+      )
+      .isNotEmpty;
+
+  testWidgets('teşekkür eder, geçerlilik tarihini ve bütün özellikleri '
+      'gösterir', (tester) async {
     await pumpWelcome(tester);
 
     expect(find.text(tr.premiumWelcomeTitle), findsOneWidget);
     expect(find.textContaining('17 Eki 2026'), findsOneWidget);
-    expect(find.text(tr.welcomeBackup), findsOneWidget);
-    expect(find.text(tr.welcomeShare), findsOneWidget);
-    expect(find.text(tr.welcomeVoice), findsOneWidget);
+    for (final feature in PremiumFeature.values) {
+      expect(find.text(feature.label(tr)), findsOneWidget);
+    }
+    expect(isShortcut(tester, 'cloud'), isTrue);
+    expect(isShortcut(tester, 'share'), isTrue);
+    expect(isShortcut(tester, 'voice'), isTrue);
+    expect(isShortcut(tester, 'csv'), isTrue);
+    expect(isShortcut(tester, 'unlimited'), isFalse);
   });
 
-  testWidgets('tablosu olmayan kişiye paylaşma ve sesle kayıt önerilmez', (
-    tester,
-  ) async {
+  testWidgets('tablosu olmayan kişiye paylaşma ve sesle kayıt kısa yol '
+      'olmaz, ama listede yazar', (tester) async {
     await pumpWelcome(tester, withTable: false);
 
-    expect(find.text(tr.welcomeBackup), findsOneWidget);
-    expect(find.text(tr.welcomeShare), findsNothing);
-    expect(find.text(tr.welcomeVoice), findsNothing);
+    expect(find.text(tr.premiumShareFeature), findsOneWidget);
+    expect(find.text(tr.premiumVoiceFeature), findsOneWidget);
+    expect(isShortcut(tester, 'cloud'), isTrue);
+    expect(isShortcut(tester, 'share'), isFalse);
+    expect(isShortcut(tester, 'voice'), isFalse);
   });
 
   testWidgets('"Uygulamaya dön" ekranı kapatır', (tester) async {

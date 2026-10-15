@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config/plan_limits.dart';
 import '../l10n/app_localizations.dart';
 import '../models/tally_model.dart';
 import '../providers/tally_provider.dart';
@@ -7,6 +8,7 @@ import '../providers/subscription_provider.dart';
 import '../providers/tally_template_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_feedback.dart';
+import 'premium_gate.dart';
 import 'tally_template_form_dialog.dart';
 
 class TallyTemplateManagementDialog extends StatelessWidget {
@@ -137,6 +139,14 @@ class TallyTemplateManagementDialog extends StatelessWidget {
   }
 
   void _createFromTemplate(BuildContext context, TallyTemplateModel tpl) {
+    // Çetele sınırı doluysa ad sorulmadan Premium ekranı açılır.
+    if (freeLimitReached(
+      context,
+      used: context.read<TallyProvider>().ownedTallyCount,
+      limit: PlanLimits.freeTallies,
+    )) {
+      return;
+    }
     showDialog(
       context: context,
       builder: (_) => _CreateFromTallyTemplateDialog(template: tpl),
@@ -212,28 +222,39 @@ class _Footer extends StatelessWidget {
           bottomRight: Radius.circular(16),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: FilledButton.icon(
-              icon: const Icon(Icons.add_rounded),
-              label: Text(loc.tallyCreateNewTemplate),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          FilledButton.icon(
+            icon: const Icon(Icons.add_rounded),
+            label: Text(loc.tallyCreateNewTemplate),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    fullscreenDialog: true,
-                    builder: (_) => const TallyTemplateFormDialog(),
-                  ),
-                );
-              },
             ),
+            onPressed: () {
+              if (freeLimitReached(
+                context,
+                used: context.read<TallyTemplateProvider>().templates.length,
+                limit: PlanLimits.freeTemplates,
+              )) {
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder: (_) => const TallyTemplateFormDialog(),
+                ),
+              );
+            },
+          ),
+          FreeQuotaNote(
+            used: context.watch<TallyTemplateProvider>().templates.length,
+            limit: PlanLimits.freeTemplates,
           ),
         ],
       ),

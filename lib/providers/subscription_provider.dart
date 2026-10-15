@@ -230,6 +230,14 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
+  /// Ekrandaki hatayı kaldırır: kişi başka bir paket seçip yeniden
+  /// deneyecek.
+  void clearProblem() {
+    if (_errorMessage == null) return;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Future<bool> startPurchase(PlanOffer plan) async {
     if (_isLoading || !_auth.hasAccount || showsSamplePlans) return false;
     _isLoading = true;
@@ -297,6 +305,8 @@ class SubscriptionProvider extends ChangeNotifier {
             await _billing.complete(purchase);
           }
         } catch (error) {
+          // Sunucunun cevabı (durum kodu ve nedeni) geliştirirken görünsün.
+          debugPrint('Satın alma doğrulanamadı: $error');
           _fail(error, verifying: true);
         } finally {
           _isVerifying = false;

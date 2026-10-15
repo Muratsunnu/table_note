@@ -7,6 +7,7 @@ import '../models/plan_offer.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ledger.dart';
+import '../widgets/premium_features.dart';
 import '../utils/store_links.dart';
 import 'account_screen.dart';
 import 'premium_welcome_screen.dart';
@@ -97,14 +98,6 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final loc = AppLocalizations.of(context);
     final subscription = context.watch<SubscriptionProvider>();
     final isPremium = subscription.isPremium;
-    final features = [
-      (Icons.mic_rounded, loc.premiumVoiceFeature),
-      (Icons.cloud_done_rounded, loc.premiumCloudFeature),
-      (Icons.ios_share_rounded, loc.premiumShareFeature),
-      (Icons.upload_file_rounded, loc.premiumImportFeature),
-      (Icons.all_inclusive_rounded, loc.premiumUnlimitedFeature),
-      (Icons.grid_view_rounded, loc.premiumTallyFeature),
-    ];
 
     return Scaffold(
       appBar: AppBar(title: Text(loc.premium)),
@@ -211,7 +204,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
           // Tek kart, sıkı satırlar: fiyat ve düğme aşağıda kaybolmasın.
           LedgerCard(
             children: [
-              for (final feature in features)
+              for (final feature in PremiumFeature.values)
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -219,11 +212,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(feature.$1, size: 20, color: AppTheme.primaryBlue),
+                      Icon(feature.icon, size: 20, color: AppTheme.primaryBlue),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          feature.$2,
+                          feature.label(loc),
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -246,17 +239,6 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   : subscription.restorePurchases,
               child: Text(loc.restorePurchases),
             ),
-            if (subscription.problem case final problem?)
-              Text(
-                switch (problem) {
-                  PurchaseProblem.network => loc.purchaseNoConnection,
-                  PurchaseProblem.verification => loc.purchaseNotVerified,
-                  PurchaseProblem.other => loc.purchaseFailed,
-                },
-                key: const ValueKey('purchase-problem'),
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
           ] else ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -272,6 +254,56 @@ class _PremiumScreenState extends State<PremiumScreen> {
     );
   }
 
+  /// Satın alma ya da geri yükleme hatası. Abone ol düğmesinin hemen üstünde
+  /// durur: kişi düğmeye bakarken görür, aşağı kaydırması gerekmez.
+  List<Widget> _problem(
+    BuildContext context,
+    SubscriptionProvider subscription,
+  ) {
+    final problem = subscription.problem;
+    if (problem == null) return const [];
+    final loc = AppLocalizations.of(context);
+    final colors = Theme.of(context).colorScheme;
+    return [
+      Semantics(
+        liveRegion: true,
+        child: Container(
+          key: const ValueKey('purchase-problem'),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colors.errorContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 20,
+                color: colors.onErrorContainer,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  switch (problem) {
+                    PurchaseProblem.network => loc.purchaseNoConnection,
+                    PurchaseProblem.verification => loc.purchaseNotVerified,
+                    PurchaseProblem.other => loc.purchaseFailed,
+                  },
+                  style: TextStyle(
+                    height: 1.35,
+                    color: colors.onErrorContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 10),
+    ];
+  }
+
   /// Paket seçimi ve satın alma. Fiyatlar ve deneme süresi mağazadan gelir;
   /// mağazaya ulaşılamıyorsa uygulama kendi başına fiyat yazmaz.
   List<Widget> _purchase(
@@ -284,6 +316,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
     if (plans.isEmpty) {
       return [
+        ..._problem(context, subscription),
         if (subscription.isLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
@@ -352,7 +385,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
               selected: identical(plan, selected),
               onTap: subscription.isLoading
                   ? null
-                  : () => setState(() => _selected = plan.period),
+                  : () {
+                      // Başka paket seçen kişi yeniden deneyecek; eski hata
+                      // ekranda kalmaz.
+                      subscription.clearProblem();
+                      setState(() => _selected = plan.period);
+                    },
             ),
         ],
       ),
@@ -388,6 +426,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
         LedgerNote(loc.purchasePending),
         const SizedBox(height: 10),
       ],
+      ..._problem(context, subscription),
       FilledButton(
         key: const ValueKey('plan-buy'),
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),

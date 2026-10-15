@@ -6,9 +6,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_note/data/example_templates.dart';
 import 'package:table_note/l10n/app_localizations.dart';
 import 'package:table_note/models/tabel_model.dart';
+import 'package:table_note/providers/subscription_provider.dart';
+import 'package:table_note/providers/table_provider.dart';
 import 'package:table_note/providers/template_provider.dart';
 import 'package:table_note/services/storage_service.dart';
 import 'package:table_note/widgets/template_management_dialog.dart';
+
+/// Ücretsiz kullanıcı; sınır notları görünür.
+class _FreeUser extends ChangeNotifier implements SubscriptionProvider {
+  @override
+  bool get hasUnlimitedPlan => false;
+  @override
+  bool get isPremium => false;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 /// Uygulamayla gelen hazır örnekler: şablonlar gibi kullanılır ama cihaza
 /// yazılmaz.
@@ -58,9 +70,19 @@ void main() {
         }
       });
       addTearDown(templates.dispose);
+      final tables = TableProvider();
+      final subscription = _FreeUser();
+      addTearDown(tables.dispose);
+      addTearDown(subscription.dispose);
       await tester.pumpWidget(
-        ChangeNotifierProvider<TemplateProvider>.value(
-          value: templates,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TemplateProvider>.value(value: templates),
+            ChangeNotifierProvider<TableProvider>.value(value: tables),
+            ChangeNotifierProvider<SubscriptionProvider>.value(
+              value: subscription,
+            ),
+          ],
           child: MaterialApp(
             locale: locale,
             supportedLocales: const [Locale('tr'), Locale('en')],

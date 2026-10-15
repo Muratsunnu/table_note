@@ -42,6 +42,7 @@ Deno.serve(async (request) => {
         .filter((id) => id.length > 0),
     );
     if (source !== "google_play" || !allowedProductIds.has(productId) || !purchaseToken) {
+      console.error("Gecersiz satin alma verisi", { source, productId, hasToken: !!purchaseToken });
       return json({ error: "Invalid purchase data" }, 400);
     }
 
@@ -58,13 +59,25 @@ Deno.serve(async (request) => {
     const playResponse = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!playResponse.ok) return json({ error: "Google Play verification failed" }, 400);
+    if (!playResponse.ok) {
+      // Google'in cevabi gizli deger icermez; nedeni (yetki, paket adi,
+      // gecersiz token) gormek icin kayda yazilir.
+      const detail = await playResponse.text();
+      console.error("Google Play reddetti", playResponse.status, detail.slice(0, 500));
+      return json(
+        { error: "Google Play verification failed", playStatus: playResponse.status },
+        400,
+      );
+    }
 
     const playPurchase = await playResponse.json();
     const matchingItem = (playPurchase.lineItems ?? []).find(
       (item: Record<string, unknown>) => item.productId === productId,
     );
-    if (!matchingItem?.expiryTime) return json({ error: "Product mismatch" }, 400);
+    if (!matchingItem?.expiryTime) {
+      console.error("Urun eslesmedi", productId, playPurchase.subscriptionState);
+      return json({ error: "Product mismatch" }, 400);
+    }
 
     const expiresAt = new Date(matchingItem.expiryTime);
     const state = String(playPurchase.subscriptionState ?? "");
@@ -101,7 +114,9 @@ Deno.serve(async (request) => {
 
     return json({ isPremium, expiresAt: expiresAt.toISOString(), status });
   } catch (error) {
-    console.error(error);
+    // Anahtar JSON'u bozuksa ya da Google'dan erisim jetonu alinamazsa
+    // buraya duser; hata metni gizli deger icermez.
+    console.error("Dogrulama hatasi", error instanceof Error ? error.message : String(error));
     return json({ error: "Verification failed" }, 500);
   }
 });
