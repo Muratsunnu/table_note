@@ -20,4 +20,9 @@ for lang in tr en; do
     --dart-define=SHOT_FONTS="$FONTS"
   python3 tool/store_screenshots/compose.py "$RAW/$lang" "store/play/$lang" "$lang" "$FONTS"
 done
-echo "Hazır: store/play/tr ve store/play/en"
+# Uygulamanın arayüzü yalnızca Türkçe ve İngilizce; öteki dillerin görselleri
+# İngilizce ekranlarla, o dilin başlıklarıyla üretilir.
+for lang in de fr es pt ru id ar; do
+  python3 tool/store_screenshots/compose.py "$RAW/en" "store/play/$lang" "$lang" "$FONTS"
+done
+echo "Hazır: store/play/<dil>"

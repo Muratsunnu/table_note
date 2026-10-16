@@ -1,0 +1,1 @@
+Catat pemasukan, pengeluaran, utang, absensi, dan stok dalam tabel sederhana.

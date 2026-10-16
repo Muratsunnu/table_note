@@ -1,0 +1,34 @@
+Table Note ile işini tabloya dök. Gelirini, giderini, borcunu, işçilerinin puantajını ve stoğunu tek uygulamada düzenli tut. Excel bilmene gerek yok.
+
+📋 KENDİ TABLONU KUR
+• Sütunları sen seç: yazı, sayı, tarih, saat, sıra no, numara, sabit değer, formül
+• Hazır örneklerle hemen başla: gelir gider, borç alacak, satış kaydı, stok sayımı, sevkiyat, müşteri listesi, yapılacaklar
+• Toplam ve kalan tutar kendiliğinden hesaplanır
+• Sık yazdığın değerler tek dokunuşluk seçime dönüşür
+• Arama, filtre ve sıralama
+
+✅ ÇETELE VE PUANTAJ
+• İşçi puantajı, yevmiye, mesai, yoklama ve devam takibi
+• Her gün için durumu işaretle: geldi, gelmedi, izinli…
+• Durumları kendin belirle
+
+🎙️ SESLE KAYIT (Premium)
+• Sütunu ve değeri söyle, kayıt kendiliğinden yazılsın
+
+☁️ YEDEKLE VE PAYLAŞ (Premium)
+• Tablolarını buluta yedekle, telefon değişse de kaybolmasın
+• Tabloyu ekibinle paylaş, aynı tabloya birlikte kayıt girin
+
+📄 RAPOR VE WIDGET
+• Yazıcıya uygun A4 PDF rapor ve Excel'de açılan CSV dosyası
+• Sadece istediğin kayıtları ya da bir işçinin ayını PDF olarak gönder (Premium)
+• CSV'den içe aktar (Premium)
+• Ana ekran widget'ı ile tablonun özeti hep önünde
+
+KİMLER İÇİN?
+Esnaf, şantiye ve usta ekipleri, nakliyeciler, küçük işletmeler, serbest çalışanlar ve kişisel bütçesini takip edenler.
+
+ÜCRETSİZ BAŞLA
+5 tablo, 5 çetele ve 3 şablon ücretsiz. Premium ile sınırsız kullan; sesle kayıt, bulut yedekleme, paylaşım, seçerek PDF/CSV, CSV içe aktarma ve çetele özeti açılır.
+
+Verilerin cihazında durur; hesap açmadan da kullanabilirsin.
