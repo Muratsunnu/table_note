@@ -1,0 +1,1 @@
+Ingresos, gastos, deudas, asistencia y stock en tablas sencillas.

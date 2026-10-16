@@ -52,3 +52,6 @@ hatalar.txt
 *.keystore
 key.properties
 **/key.properties
+
+# Yerel backend yapılandırması
+dart_defines.json

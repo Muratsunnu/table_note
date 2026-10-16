@@ -1,0 +1,1 @@
+Recettes, dépenses, dettes, présences et stock dans des tableaux simples.

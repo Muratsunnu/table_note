@@ -1,0 +1,35 @@
+Atur pekerjaanmu dalam tabel sederhana. Catat pemasukan, pengeluaran, utang, absensi karyawan, dan stok dalam satu aplikasi. Tidak perlu jago spreadsheet.
+
+📋 BUAT TABEL SENDIRI
+• Pilih kolom sendiri: teks, angka, tanggal, jam, no. urut, nomor ID, nilai tetap, rumus
+• Mulai cepat dengan contoh: pemasukan dan pengeluaran, utang, catatan penjualan, stok opname, pengiriman, daftar pelanggan, daftar tugas
+• Total dan sisa dihitung otomatis
+• Nilai yang sering diketik jadi pilihan sekali ketuk
+• Cari, filter, dan urutkan
+
+✅ CATATAN DAN ABSENSI
+• Absensi karyawan, upah harian, lembur, dan apel
+• Tandai setiap hari: hadir, tidak hadir, cuti…
+• Atur status sendiri
+
+🎙️ INPUT SUARA (Premium)
+• Sebutkan kolom dan nilainya, data terisi sendiri
+
+☁️ CADANGKAN DAN BAGIKAN (Premium)
+• Cadangkan tabel ke cloud, ganti HP pun tidak ada yang hilang
+• Bagikan tabel ke tim dan isi bersama
+
+📄 LAPORAN DAN WIDGET
+• Laporan PDF A4 siap cetak dan file CSV yang bisa dibuka di Excel
+• Kirim PDF hanya untuk catatan yang kamu perlukan atau absensi sebulan satu karyawan (Premium)
+• Impor dari CSV (Premium)
+• Widget layar utama menampilkan ringkasan tabel
+
+UNTUK SIAPA?
+Pemilik toko, tim proyek dan tukang, sopir, usaha kecil, pekerja lepas, dan siapa pun yang mencatat anggaran pribadi.
+
+MULAI GRATIS
+5 tabel, 5 catatan absensi, dan 3 template gratis. Dengan Premium, pakai tanpa batas plus input suara, cadangan cloud, berbagi, ekspor PDF/CSV pilihan, impor CSV, dan ringkasan absensi.
+
+Datamu tetap di perangkatmu; bisa dipakai tanpa akun.
+Tampilan aplikasi tersedia dalam bahasa Inggris dan Turki.

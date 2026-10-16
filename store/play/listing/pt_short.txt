@@ -1,0 +1,1 @@
+Receitas, despesas, dívidas, presença e estoque em tabelas simples.

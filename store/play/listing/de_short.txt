@@ -1,0 +1,1 @@
+Einnahmen, Ausgaben, Schulden, Anwesenheit und Lager in einfachen Tabellen.

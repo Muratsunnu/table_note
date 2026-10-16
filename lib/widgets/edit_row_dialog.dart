@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
@@ -5,6 +7,10 @@ import 'package:table_note/services/formula_service.dart';
 import '../providers/table_provider.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/ux_localizations.dart';
+import 'app_form_scaffold.dart';
+import 'code_column_note.dart';
+import 'quick_option_chips.dart';
 
 class EditRowDialog extends StatefulWidget {
   final int rowIndex;
@@ -23,12 +29,21 @@ class EditRowDialog extends StatefulWidget {
 class _EditRowDialogState extends State<EditRowDialog> {
   List<TextEditingController> _controllers = [];
   late List<ColumnModel> _columns;
+  late final String _tableId;
+  late final String _schema;
+  late final List<String> _originalRow;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     final provider = Provider.of<TableProvider>(context, listen: false);
-    _columns = provider.currentTable!.columns;
+    _columns = provider.currentTable!.columns
+        .map((column) => column.copyWith())
+        .toList();
+    _tableId = provider.currentTable!.id;
+    _schema = jsonEncode(_columns.map((c) => c.toJson()).toList());
+    _originalRow = List<String>.from(widget.currentData);
 
     // Mevcut verilerle controller'ları oluştur
     _controllers = widget.currentData
@@ -39,16 +54,18 @@ class _EditRowDialogState extends State<EditRowDialog> {
     while (_controllers.length < _columns.length) {
       final col = _columns[_controllers.length];
       final controller = TextEditingController();
-      
+
       if (col.isConstant && col.constantValue != null) {
         controller.text = _formatNumber(col.constantValue!);
       }
-      
+
       _controllers.add(controller);
     }
 
     // Formülleri hesapla
     _recalculateFormulas();
+    // Var olan bir kayıt düzenlenirken taslak tutulmaz: kaydedilmemiş bir
+    // değişiklik sessizce geri gelse kaydın gerçek değeri sanılır.
   }
 
   @override
@@ -64,15 +81,19 @@ class _EditRowDialogState extends State<EditRowDialog> {
   void _recalculateFormulas() {
     // Formül sütunu sayısı kadar geçiş yap (en kötü durumda zincir uzunluğu)
     final formulaCount = _columns.where((c) => c.isFormula).length;
-    
+
     for (int pass = 0; pass < formulaCount; pass++) {
       // Her geçişte güncel rowData'yı al
       final rowData = _controllers.map((c) => c.text).toList();
-      
+
       for (int i = 0; i < _columns.length; i++) {
         final col = _columns[i];
         if (col.isFormula && col.formula != null) {
-          final result = FormulaService.calculate(col.formula!, rowData, _columns);
+          final result = FormulaService.calculate(
+            col.formula!,
+            rowData,
+            _columns,
+          );
           if (result != null) {
             _controllers[i].text = _formatNumber(result);
           }
@@ -90,57 +111,26 @@ class _EditRowDialogState extends State<EditRowDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
+    final loc = AppLocalizations.of(context);
+    return AppFormScaffold(
+      title: loc.recordN(widget.rowIndex + 1),
+      subtitle: context.read<TableProvider>().currentTable?.tableName,
+      icon: Icons.edit_rounded,
+      cancelLabel: loc.cancel,
+      primaryLabel: loc.update,
+      primaryIcon: Icons.check_rounded,
+      onPrimary: _updateRow,
+      isSaving: _isSaving,
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.lightBlue,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.edit_rounded, color: AppTheme.primaryBlue, size: 20),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              AppLocalizations.of(context).recordN(widget.rowIndex + 1),
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
+          ..._columns.asMap().entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildInputField(entry.key, entry.value),
+            );
+          }),
         ],
       ),
-      content: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: _columns.asMap().entries.map((entry) {
-              final colIndex = entry.key;
-              final column = entry.value;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: _buildInputField(colIndex, column),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(AppLocalizations.of(context).cancel),
-        ),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.check_rounded, size: 20),
-          label: Text(AppLocalizations.of(context).update),
-          onPressed: _updateRow,
-        ),
-      ],
     );
   }
 
@@ -182,30 +172,22 @@ class _EditRowDialogState extends State<EditRowDialog> {
             labelText: column.name,
             border: const OutlineInputBorder(),
             prefixIcon: Icon(
-              column.isNumeric ? Icons.numbers : Icons.text_fields,
-              color: column.isNumeric ? Colors.green : Colors.blue,
+              column.isCode
+                  ? codeColumnIcon
+                  : column.isNumeric
+                  ? Icons.numbers
+                  : Icons.text_fields,
+              color: column.isCode
+                  ? codeColumnColor
+                  : column.isNumeric
+                  ? Colors.green
+                  : Colors.blue,
             ),
-            suffixIcon: column.autoFillOptions.isNotEmpty
-                ? PopupMenuButton<String>(
-                    icon: const Icon(Icons.arrow_drop_down),
-                    tooltip: AppLocalizations.of(context).quickSelect,
-                    onSelected: (value) {
-                      _controllers[colIndex].text = value;
-                      _recalculateFormulas();
-                      setState(() {});
-                    },
-                    itemBuilder: (context) {
-                      return column.autoFillOptions.map((option) {
-                        return PopupMenuItem<String>(
-                          value: option,
-                          child: Text(option),
-                        );
-                      }).toList();
-                    },
-                  )
-                : null,
           ),
-          keyboardType: column.isNumeric
+          // Numara: yalnızca rakam klavyesi; değer yazıldığı gibi saklanır.
+          keyboardType: column.isCode
+              ? TextInputType.number
+              : column.isNumeric
               ? const TextInputType.numberWithOptions(decimal: true)
               : TextInputType.text,
           onChanged: (value) {
@@ -213,39 +195,16 @@ class _EditRowDialogState extends State<EditRowDialog> {
             setState(() {});
           },
         ),
-        if (column.autoFillOptions.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: column.autoFillOptions.map((option) {
-              final isSelected = _controllers[colIndex].text == option;
-              return GestureDetector(
-                onTap: () {
-                  _controllers[colIndex].text = option;
-                  _recalculateFormulas();
-                  setState(() {});
-                },
-                child: Chip(
-                  label: Text(
-                    option, 
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isSelected ? AppTheme.primaryBlue : AppTheme.textPrimary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                  backgroundColor: isSelected ? AppTheme.lightBlue : AppTheme.background,
-                  side: BorderSide(
-                    color: isSelected ? AppTheme.primaryBlue : Colors.grey[300]!,
-                  ),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-              );
-            }).toList(),
-          ),
-        ],
+        // Hızlı seçim: elle tanımlananlar ve sık girilen değerler.
+        QuickOptionChips(
+          columnIndex: colIndex,
+          selected: _controllers[colIndex].text,
+          onSelected: (option) {
+            _controllers[colIndex].text = option;
+            _recalculateFormulas();
+            setState(() {});
+          },
+        ),
       ],
     );
   }
@@ -258,18 +217,24 @@ class _EditRowDialogState extends State<EditRowDialog> {
         border: const OutlineInputBorder(),
         prefixIcon: const Icon(Icons.pin, color: Colors.orange),
         suffixIcon: Tooltip(
-          message: 'Varsayılan: ${_formatNumber(column.constantValue ?? 0)}',
+          message:
+              '${AppLocalizations.of(context).defaultValue}: ${_formatNumber(column.constantValue ?? 0)}',
           child: IconButton(
             icon: const Icon(Icons.refresh, color: Colors.orange),
             onPressed: () {
-              _controllers[colIndex].text = _formatNumber(column.constantValue ?? 0);
+              _controllers[colIndex].text = _formatNumber(
+                column.constantValue ?? 0,
+              );
               _recalculateFormulas();
               setState(() {});
             },
           ),
         ),
-        helperText: 'Varsayılan: ${_formatNumber(column.constantValue ?? 0)}',
-        helperStyle: TextStyle(color: Colors.orange[700]),
+        helperText:
+            '${AppLocalizations.of(context).defaultValue}: ${_formatNumber(column.constantValue ?? 0)}',
+        helperStyle: TextStyle(
+          color: AppTheme.readableAccent(context, Colors.orange),
+        ),
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       onChanged: (value) {
@@ -283,13 +248,16 @@ class _EditRowDialogState extends State<EditRowDialog> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.purple[50],
+        color: AppTheme.tintedSurface(context, Colors.purple),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.purple[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
-          Icon(Icons.functions, color: Colors.purple[700]),
+          Icon(
+            Icons.functions,
+            color: AppTheme.readableAccent(context, Colors.purple),
+          ),
           SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -299,7 +267,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
                   column.name,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.purple[800],
+                    color: AppTheme.readableAccent(context, Colors.purple),
                   ),
                 ),
                 SizedBox(height: 4),
@@ -310,7 +278,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.purple[900],
+                    color: AppTheme.readableAccent(context, Colors.purple),
                   ),
                 ),
                 SizedBox(height: 2),
@@ -318,7 +286,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
                   '${AppLocalizations.of(context).formulaLabel}: ${FormulaService.formatFormula(column.formula ?? '')}',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.purple[600],
+                    color: AppTheme.readableAccent(context, Colors.purple),
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -328,14 +296,14 @@ class _EditRowDialogState extends State<EditRowDialog> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.purple[100],
+              color: AppTheme.tintedSurface(context, Colors.purple),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               AppLocalizations.of(context).autoLabel,
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.purple[700],
+                color: AppTheme.readableAccent(context, Colors.purple),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -411,13 +379,16 @@ class _EditRowDialogState extends State<EditRowDialog> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.brown[50],
+        color: AppTheme.tintedSurface(context, Colors.brown),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.brown[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
-          Icon(Icons.format_list_numbered, color: Colors.brown[700]),
+          Icon(
+            Icons.format_list_numbered,
+            color: AppTheme.readableAccent(context, Colors.brown),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -427,7 +398,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
                   column.name,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.brown[800],
+                    color: AppTheme.readableAccent(context, Colors.brown),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -436,7 +407,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.brown[900],
+                    color: AppTheme.readableAccent(context, Colors.brown),
                   ),
                 ),
               ],
@@ -445,14 +416,14 @@ class _EditRowDialogState extends State<EditRowDialog> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.brown[100],
+              color: AppTheme.tintedSurface(context, Colors.brown),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Sıra No',
+              AppLocalizations.of(context).orderNo,
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.brown[700],
+                color: AppTheme.readableAccent(context, Colors.brown),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -471,7 +442,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
       locale: Localizations.localeOf(context),
     );
     if (picked != null) {
-      _controllers[colIndex].text = 
+      _controllers[colIndex].text =
           '${picked.day.toString().padLeft(2, '0')}.${picked.month.toString().padLeft(2, '0')}.${picked.year}';
       setState(() {});
     }
@@ -483,7 +454,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
       initialTime: TimeOfDay.now(),
     );
     if (picked != null) {
-      _controllers[colIndex].text = 
+      _controllers[colIndex].text =
           '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
       setState(() {});
     }
@@ -500,19 +471,44 @@ class _EditRowDialogState extends State<EditRowDialog> {
   }
 
   Future<void> _updateRow() async {
+    if (_isSaving) return;
+    FocusScope.of(context).unfocus();
+    final provider = context.read<TableProvider>();
+    final table = provider.currentTable;
+    final loc = AppLocalizations.of(context);
+    if (table?.id != _tableId ||
+        jsonEncode(table!.columns.map((c) => c.toJson()).toList()) != _schema ||
+        widget.rowIndex < 0 ||
+        widget.rowIndex >= table.rows.length ||
+        jsonEncode(table.rows[widget.rowIndex]) != jsonEncode(_originalRow)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(loc.recordChanged)));
+      return;
+    }
+    setState(() => _isSaving = true);
     _recalculateFormulas();
+    final newRowData = _controllers
+        .map((controller) => controller.text.trim())
+        .toList();
 
-    final provider = Provider.of<TableProvider>(context, listen: false);
-    final newRowData = _controllers.map((controller) => controller.text.trim()).toList();
-
-    final success = await provider.updateRow(widget.rowIndex, newRowData);
-
-    if (success) {
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).updateFailed)),
-      );
+    try {
+      final success = await provider.updateRow(widget.rowIndex, newRowData);
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      if (success) {
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(loc.updateFailed)));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(loc.updateFailed)));
     }
   }
 }
