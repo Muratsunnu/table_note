@@ -54,7 +54,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
   bool _saving = false;
   bool _restoringDraft = true;
   bool _draftTouched = false;
-  bool _draftRestored = false;
   bool _saveFailed = false;
   bool _tableChanged = false;
   _SpeechProblem? _problem;
@@ -103,10 +102,7 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
     }
     _transcript.text = data['transcript']?.toString() ?? '';
     _recalculateFormulas();
-    setState(() {
-      _draftRestored = true;
-      _restoringDraft = false;
-    });
+    setState(() => _restoringDraft = false);
   }
 
   void _saveDraft() {
@@ -379,31 +375,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
   bool _typedNumber(ColumnModel column) =>
       column.isEffectivelyNumeric && !column.isFormula && !column.isAutoNumber;
 
-  Future<void> _discardDraft() async {
-    if (_saving || _restoringDraft || _starting) return;
-    _acceptResults = false;
-    _draftTouched = true;
-    FocusScope.of(context).unfocus();
-    setState(() => _restoringDraft = true);
-    await _stopListening();
-    if (!mounted) return;
-    final table = context.read<TableProvider>().currentTable;
-    if (table == null) return;
-    for (var i = 0; i < _columns.length; i++) {
-      _controllers[i].text = _defaultValue(i, table);
-    }
-    _transcript.clear();
-    _unreadNumbers = {};
-    _invalidNumbers.clear();
-    _recalculateFormulas();
-    await _draft.clear();
-    if (!mounted) return;
-    setState(() {
-      _draftRestored = false;
-      _restoringDraft = false;
-    });
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -483,19 +454,6 @@ class _VoiceAddRowDialogState extends State<VoiceAddRowDialog>
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              if (_draftRestored) ...[
-                _boxed(
-                  LedgerNote(
-                    loc.draftRestored,
-                    action: TextButton(
-                      style: _inlineAction,
-                      onPressed: _discardDraft,
-                      child: Text(loc.discardDraft),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
               // Ekranın işi tek bir şey: mikrofona basıp konuşmak.
               Center(
                 child: _MicButton(

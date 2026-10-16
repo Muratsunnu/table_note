@@ -1,5 +1,26 @@
 import '../models/tabel_model.dart';
 
+/// Aramanın tek bir koşulu: bir söz ve varsa sınırlandığı sütun.
+class SearchClause {
+  const SearchClause({required this.term, this.columnIndex, String? rawTerm})
+    : rawTerm = rawTerm ?? term;
+
+  /// Aranan söz; küçük harfe çevrilmiş ve kırpılmış.
+  final String term;
+
+  /// Aranan söz, kullanıcının yazdığı gibi: "Konya". Dosya adına ve
+  /// dosyanın başlığına bu geçer.
+  final String rawTerm;
+
+  /// Koşulun sınırlandığı sütun. null ise her sütunda aranır.
+  final int? columnIndex;
+
+  bool get isEmpty => term.isEmpty;
+
+  /// Bu sütundaki hücreler bu koşula bakar mı.
+  bool covers(int column) => columnIndex == null || columnIndex == column;
+}
+
 /// Tablo içi aramanın çözülmüş hali: ne aranıyor ve nerede.
 ///
 /// Arama kutusuna yalnızca bir söz yazılırsa her sütunda aranır. Söz
@@ -7,40 +28,102 @@ import '../models/tabel_model.dart';
 /// sütunda da aynı değerin geçtiği tablolarda ("yükleme" ve "indirme"
 /// sütunlarının ikisinde de Konya) aranan satırı bulmanın başka yolu yoktu.
 ///
+/// Koşullar virgülle eklenir: "nereden: konya, nereye: ankara" Konya'dan
+/// Ankara'ya gidenleri bulur; satır her koşulu birden sağlamalıdır. Virgül
+/// ancak ardından yeni bir "sütun:" geliyorsa koşulları ayırır; "12,5" gibi
+/// bir ondalık ya da düz bir yazı bölünmez.
+///
 /// İki nokta üst üste şarttır ve öncesindeki söz gerçekten bir sütunu
 /// göstermelidir. Göstermiyorsa yazılanın tamamı sıradan bir arama sayılır;
 /// böylece "10:30" gibi içinde iki nokta geçen bir değer de aranabilir.
 class TableSearch {
-  const TableSearch({required this.term, this.columnIndex});
+  const TableSearch(this.clauses);
 
-  static const none = TableSearch(term: '');
+  static const none = TableSearch([]);
 
-  /// Aranan söz; küçük harfe çevrilmiş ve kırpılmış.
-  final String term;
+  /// Yazılış sırasıyla koşullar; sözü henüz yazılmamış olanlar da dahil.
+  final List<SearchClause> clauses;
 
-  /// Aramanın sınırlandığı sütun. null ise her sütunda aranır.
-  final int? columnIndex;
+  /// Süzmeye katılan koşullar: sözü yazılmış olanlar.
+  Iterable<SearchClause> get active =>
+      clauses.where((clause) => !clause.isEmpty);
 
-  bool get isScoped => columnIndex != null;
-  bool get isEmpty => term.isEmpty;
+  bool get isEmpty => active.isEmpty;
 
-  /// Bu sütundaki hücreler aramaya dahil mi.
-  bool covers(int column) => columnIndex == null || columnIndex == column;
+  /// Aramanın sınırlandığı sütunlar, yazılış sırasıyla ve birer kez.
+  /// "yükleme:" yazılıp söz henüz girilmemişken de sütun bellidir.
+  List<int> get columnIndices => [
+    for (final clause in clauses)
+      if (clause.columnIndex case final index?) index,
+  ].toSet().toList();
+
+  /// Bu sütunun hücrelerinde vurgulanacak söz: sütuna sınırlı bir koşul
+  /// varsa onunki, yoksa her sütunda aranan söz. Aranmayan sütunda boştur.
+  String termFor(int column) {
+    for (final clause in active) {
+      if (clause.columnIndex == column) return clause.term;
+    }
+    for (final clause in active) {
+      if (clause.columnIndex == null) return clause.term;
+    }
+    return '';
+  }
 
   static TableSearch parse(String query, List<ColumnModel> columns) {
-    final text = query.trim().toLowerCase();
-    if (text.isEmpty) return none;
+    final parts = query.trim().split(',');
+    final segments = <String>[];
+    for (var index = 0; index < parts.length; index++) {
+      final part = parts[index];
+      final last = index == parts.length - 1;
+      if (segments.isEmpty || _namesColumn(part, columns)) {
+        segments.add(part);
+      } else if (last && _stillTyping(part, columns)) {
+        // "nereden: konya, ner" — ikinci sütunun adı yazılıyor; o bitene
+        // kadar tablo boşalmasın.
+      } else {
+        // Virgül yeni bir koşul başlatmıyor: sözün kendisine aittir.
+        segments[segments.length - 1] = '${segments.last},$part';
+      }
+    }
+    final clauses = [
+      for (final segment in segments)
+        if (segment.trim().isNotEmpty) _clause(segment, columns),
+    ];
+    return clauses.isEmpty ? none : TableSearch(clauses);
+  }
+
+  static SearchClause _clause(String segment, List<ColumnModel> columns) {
+    final original = segment.trim();
+    final text = original.toLowerCase();
     final colon = text.indexOf(':');
     if (colon > 0) {
       final index = _columnNamed(text.substring(0, colon), columns);
       if (index != null) {
-        return TableSearch(
+        // Küçük harfe çevirmek bazı harflerin uzunluğunu değiştirir ("İ");
+        // yazılan hâlin iki noktası ayrıca bulunur.
+        return SearchClause(
           term: text.substring(colon + 1).trim(),
           columnIndex: index,
+          rawTerm: original.substring(original.indexOf(':') + 1).trim(),
         );
       }
     }
-    return TableSearch(term: text);
+    return SearchClause(term: text, rawTerm: original);
+  }
+
+  /// Parça "sütun: …" ile mi başlıyor.
+  static bool _namesColumn(String part, List<ColumnModel> columns) {
+    final text = part.trim().toLowerCase();
+    final colon = text.indexOf(':');
+    return colon > 0 && _columnNamed(text.substring(0, colon), columns) != null;
+  }
+
+  /// Son parça boş mu ya da hâlâ bir sütun adı mı yazılıyor ("ner").
+  static bool _stillTyping(String part, List<ColumnModel> columns) {
+    final name = _fold(part);
+    if (name.isEmpty) return true;
+    if (name.contains(':') || !RegExp(r'^[a-z]').hasMatch(name)) return false;
+    return columns.any((column) => _fold(column.name).startsWith(name));
   }
 
   /// Yazılan adın gösterdiği sütun.

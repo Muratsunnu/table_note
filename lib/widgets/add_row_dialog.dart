@@ -138,7 +138,6 @@ class _AddRowDialogState extends State<AddRowDialog> {
         isRestoring: _draft.isRestoring,
         child: Column(
           children: [
-            RowDraftNotice(draft: _draft),
             ..._columns.asMap().entries.map((entry) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),

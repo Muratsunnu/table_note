@@ -1,5 +1,6 @@
 import '../utils/quick_options.dart';
 import '../utils/column_balance.dart';
+import '../utils/column_sums.dart';
 import '../utils/table_search.dart';
 import 'dart:async';
 
@@ -49,23 +50,37 @@ class TableProvider extends ChangeNotifier {
   /// arama kutusu dolu ama süzülecek bir şey yoktur.
   bool get isFiltering => !_search.isEmpty;
 
-  /// Aramanın sınırlandığı sütun; her sütunda aranıyorsa null.
-  int? get searchColumnIndex => _search.columnIndex;
-
-  /// Aramanın ekranda yazılacak hali: sütuna sınırlıysa sütunun adıyla.
-  String get searchLabel {
-    final column = _search.columnIndex;
+  /// Aramanın sınırlandığı sütunların adları; her sütunda aranıyorsa boş.
+  List<String> get searchColumns {
     final table = currentTable;
-    if (column == null || table == null || column >= table.columns.length) {
-      return _search.term;
-    }
-    return '${table.columns[column].name}: ${_search.term}';
+    if (table == null) return const [];
+    return [
+      for (final index in _search.columnIndices)
+        if (index < table.columns.length) table.columns[index].name,
+    ];
   }
+
+  /// Aramanın ekranda yazılacak hali: sütuna sınırlı koşullar sütunun
+  /// adıyla, virgülle: "yükleme: konya, indirme: ankara".
+  String get searchLabel =>
+      _labelOf(currentTable, _search, (clause) => clause.term);
 
   /// Bu sütundaki hücrelerde vurgulanacak söz. Arama başka bir sütuna
   /// sınırlıysa boştur: aranmayan sütunda eşleşme gösterilmez.
-  String searchTermFor(int columnIndex) =>
-      _search.covers(columnIndex) ? _search.term : '';
+  String searchTermFor(int columnIndex) => _search.termFor(columnIndex);
+
+  static String _labelOf(
+    TableModel? table,
+    TableSearch search,
+    String Function(SearchClause clause) term,
+  ) => [
+    for (final clause in search.active)
+      switch (clause.columnIndex) {
+        final index? when table != null && index < table.columns.length =>
+          '${table.columns[index].name}: ${term(clause)}',
+        _ => term(clause),
+      },
+  ].join(', ');
   List<int> get filteredRowIndices => _filteredRowIndices;
 
   // Filtrelenmiş satırları döndür
@@ -154,6 +169,14 @@ class TableProvider extends ChangeNotifier {
   bool get canEditCurrent {
     final table = currentTable;
     return table == null || !isSharedViewer(table.id);
+  }
+
+  /// Açık tablo dosya olarak dışarı verilebilir mi. Yalnızca görüntüleme
+  /// yetkisiyle katılan kişi veremez: tablo ona bakması için açılmıştır,
+  /// onun eliyle başkalarına dağıtılması için değil.
+  bool get canExportCurrent {
+    final table = currentTable;
+    return table != null && !isSharedViewer(table.id);
   }
 
   /// Bu cihaz kodla katıldığı bir tabloyu tutuyor mu? Hesap ekranı, giriş
@@ -480,7 +503,8 @@ class TableProvider extends ChangeNotifier {
 
   // Arama sorgusunu ayarla ve filtrele
   void setSearchQuery(String query) {
-    _searchQuery = query.toLowerCase().trim();
+    // Yazıldığı gibi tutulur: dosyaya aramanın kendi yazılışı geçer.
+    _searchQuery = query.trim();
     _applyFilter();
     notifyListeners();
   }
@@ -506,40 +530,65 @@ class TableProvider extends ChangeNotifier {
       return;
     }
 
-    _filteredRowIndices = [];
-    final columns = table.columns;
-    final term = _search.term;
+    _filteredRowIndices = _matchingRows(table, _search);
+  }
+
+  /// Bir aramanın tuttuğu satırlar, tablodaki sırasıyla. Satır her koşulu
+  /// birden sağlamalıdır.
+  static List<int> _matchingRows(TableModel table, TableSearch search) {
+    final clauses = search.active.toList();
+    return [
+      for (int rowIndex = 0; rowIndex < table.rows.length; rowIndex++)
+        if (clauses.every(
+          (clause) => _rowMatches(table.columns, table.rows[rowIndex], clause),
+        ))
+          rowIndex,
+    ];
+  }
+
+  /// Koşulun kapsadığı hücrelerden biri sözü içeriyor mu. Koşul bir sütuna
+  /// sınırlıysa yalnızca o sütunun hücresine bakılır.
+  static bool _rowMatches(
+    List<ColumnModel> columns,
+    List<String> row,
+    SearchClause clause,
+  ) {
+    final term = clause.term;
+    for (var c = 0; c < row.length; c++) {
+      if (clause.covers(c) && row[c].toLowerCase().contains(term)) return true;
+    }
     // Sayı sütunları ekranda binlik ayraçlı görünür; "35.000" yazan bir
     // kullanıcı gördüğü satırı bulabilsin diye o biçim de denenir.
-    final tryGrouped = term.contains(RegExp(r'[.,]'));
-
-    for (int rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
-      final row = table.rows[rowIndex];
-
-      // Aramanın kapsadığı hücrelerden biri sözü içeriyor mu? Arama bir
-      // sütuna sınırlıysa yalnızca o sütunun hücresine bakılır.
-      var matches = false;
-      for (var c = 0; c < row.length && !matches; c++) {
-        if (!_search.covers(c)) continue;
-        matches = row[c].toLowerCase().contains(term);
-      }
-      if (!matches && tryGrouped) {
-        for (var c = 0; c < row.length && c < columns.length; c++) {
-          if (matches) break;
-          if (!_search.covers(c) || !showsGroupedNumbers(columns[c])) continue;
-          for (final form in groupedSearchForms(row[c])) {
-            if (form.contains(term)) {
-              matches = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (matches) {
-        _filteredRowIndices.add(rowIndex);
+    if (!term.contains(RegExp(r'[.,]'))) return false;
+    for (var c = 0; c < row.length && c < columns.length; c++) {
+      if (!clause.covers(c) || !showsGroupedNumbers(columns[c])) continue;
+      if (groupedSearchForms(row[c]).any((form) => form.contains(term))) {
+        return true;
       }
     }
+    return false;
+  }
+
+  /// Ekrandaki aramayı değiştirmeden bir aramanın sonucu. Paylaşım kâğıdı
+  /// kendi arama kutusuna yazılanı buna sorar; satırlar ekrandaki sırayla.
+  /// [label] dosyanın başlığına ("nereden: Konya, nereye: Ankara"), [term]
+  /// dosyanın adına ("Konya - Ankara") yazılır; [columns] aramanın
+  /// sınırlandığı sütunlardır. Aranacak söz yoksa null.
+  ({List<int> rows, String label, String term, List<String> columns})?
+  queryRows(String query) {
+    final table = currentTable;
+    if (table == null) return null;
+    final search = TableSearch.parse(query, table.columns);
+    if (search.isEmpty) return null;
+    return (
+      rows: _sortIndices(table, _matchingRows(table, search)),
+      label: _labelOf(table, search, (clause) => clause.rawTerm),
+      term: [for (final clause in search.active) clause.rawTerm].join(' - '),
+      columns: [
+        for (final index in search.columnIndices)
+          if (index < table.columns.length) table.columns[index].name,
+      ],
+    );
   }
 
   /// Başlangıç değeri verilmiş sütunların kalanları. Aramadan bağımsızdır.
@@ -580,47 +629,11 @@ class TableProvider extends ChangeNotifier {
     ], table.columns.length);
   }
 
-  // Filtrelenmiş satırların sayısal sütun toplamlarını hesapla
-  // NOT: Sabit değer ve sıra numarası sütunları toplamdan hariç tutulur
+  /// Ekranda görünen satırların toplamları: arama varsa yalnızca bulunanlar.
   Map<String, double> calculateFilteredColumnSums() {
-    Map<String, double> sums = {};
-
-    if (currentTable == null) return sums;
-
-    // Hangi satırları toplayacağız?
-    final rowsToSum = isFiltering ? filteredRows : currentTable!.rows;
-
-    for (
-      int colIndex = 0;
-      colIndex < currentTable!.columns.length;
-      colIndex++
-    ) {
-      final column = currentTable!.columns[colIndex];
-
-      // Sabit değer sütunlarını toplama dahil etme
-      if (column.isConstant) {
-        continue;
-      }
-
-      // Sıra numarası sütunlarını toplama dahil etme
-      if (column.isAutoNumber) {
-        continue;
-      }
-
-      // Normal sayısal sütunlar ve formül sütunları toplanabilir
-      if (column.isNumeric || column.isFormula) {
-        double sum = 0;
-        for (var row in rowsToSum) {
-          if (colIndex < row.length) {
-            final value = double.tryParse(row[colIndex]) ?? 0;
-            sum += value;
-          }
-        }
-        sums[column.name] = sum;
-      }
-    }
-
-    return sums;
+    final table = currentTable;
+    if (table == null) return {};
+    return columnSums(table, isFiltering ? filteredRows : table.rows);
   }
 
   // Yeni tablo oluştur

@@ -12,13 +12,6 @@ extension UxLocalizations on AppLocalizations {
       _english ? 'Type and advanced settings' : 'Tür ve gelişmiş ayarlar';
   String get hideAdvancedSettings =>
       _english ? 'Hide settings' : 'Ayarları gizle';
-  String get draftRestored => _english
-      ? 'Your unfinished draft has been restored.'
-      : 'Yarım kalan taslağın geri getirildi.';
-  String get discardDraft => _english ? 'Discard draft' : 'Taslağı sil';
-  String get draftSaveFailed => _english
-      ? 'Could not save the draft. Keep this screen open and try again.'
-      : 'Taslak saklanamadı. Bu ekranı açık tutup yeniden dene.';
   String get voiceStepSpeak => _english ? 'Speak' : 'Konuş';
   String get voiceStepReview => _english ? 'Review' : 'Kontrol et';
   String get voiceStepAdd => _english ? 'Add' : 'Ekle';

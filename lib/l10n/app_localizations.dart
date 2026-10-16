@@ -74,6 +74,7 @@ class AppLocalizations {
   String get premiumImportFeature => _t('premiumImportFeature');
   String get premiumUnlimitedFeature => _t('premiumUnlimitedFeature');
   String get premiumTallyFeature => _t('premiumTallyFeature');
+  String get premiumExportFeature => _t('premiumExportFeature');
   String get planYearly => _t('planYearly');
   String get planMonthly => _t('planMonthly');
   String get perYear => _t('perYear');
@@ -233,6 +234,14 @@ class AppLocalizations {
       _t('searchColumnHint').replaceAll('{column}', column);
   String searchingInColumn(String column) =>
       _t('searchingInColumn').replaceAll('{column}', column);
+
+  /// Aramanın sınırlandığı sütunlar: tek sütunsa virgülle başka bir sütunun
+  /// eklenebileceği de söylenir.
+  String searchingIn(List<String> columns) => columns.length == 1
+      ? '${searchingInColumn(columns.single)}. ${_t('searchAddColumn')}'
+      : _t(
+          'searchingInColumns',
+        ).replaceAll('{columns}', columns.map((c) => '“$c”').join(', '));
   String nRecords(int n) => _t('nRecords').replaceAll('{n}', n.toString());
   String nColumns(int n) => _t('nColumns').replaceAll('{n}', n.toString());
   String recordsAndColumns(int r, int c) => '${nRecords(r)} • ${nColumns(c)}';
@@ -447,12 +456,19 @@ class AppLocalizations {
   String get constant => _t('constant');
 
   // ============== PDF ==============
-  String totalNRecords(int n) =>
-      _t('totalNRecords').replaceAll('{n}', n.toString());
-  String get totalsLabel => _t('totalsLabel');
-  String pageNofM(int n, int m) => _t(
-    'pageNofM',
-  ).replaceAll('{n}', n.toString()).replaceAll('{m}', m.toString());
+  /// "Sayfa {n} / {m}"; sayılar PDF dizilirken yerine konur.
+  String get pageNofMTemplate => _t('pageNofM');
+  String get madeWithTableNote => _t('madeWithTableNote');
+  String exportSearchLine(String q) =>
+      _t('exportSearchLine').replaceAll('{q}', q);
+  String get exportWhat => _t('exportWhat');
+  String get exportAll => _t('exportAll');
+  String get exportSome => _t('exportSome');
+  String get exportSomeHint => _t('exportSomeHint');
+  String get exportContinue => _t('exportContinue');
+  String get exportChange => _t('exportChange');
+  String exportMore(int n) => _t('exportMore').replaceAll('{n}', n.toString());
+  String get exportDates => _t('exportDates');
 
   // ============== MISC ==============
 
@@ -704,7 +720,7 @@ class AppLocalizations {
         'Sütunun adını ve değerini söyle, alanlar kendiliğinden dolsun.',
     'onboardingPremiumTitle': 'Sınırları Ortadan Kaldır',
     'onboardingPremiumDescription':
-        'Sesle kayıt gir, tabloları ortak kullan ve verilerini buluta yedekle.',
+        'Sesle kayıt gir, tabloyu ortak kullan, yedekle, istediğini PDF yap.',
     'premium': 'Premium',
     'unlockPremium': 'Table Note Premium',
     'goPremium': 'Premium\'a geç',
@@ -717,6 +733,7 @@ class AppLocalizations {
     'premiumImportFeature': 'CSV\'den içe aktar',
     'premiumUnlimitedFeature': 'Sınırsız tablo, çetele, şablon',
     'premiumTallyFeature': 'Çetele özeti ve sıralama',
+    'premiumExportFeature': 'Sadece istediğini PDF/CSV yap',
     'planYearly': 'Yıllık',
     'planMonthly': 'Aylık',
     'perYear': 'yıl',
@@ -870,6 +887,8 @@ class AppLocalizations {
     'searchInTable': 'Tabloda ara...',
     'searchColumnHint': 'Tek sütunda aramak için “{column}: …” yaz',
     'searchingInColumn': 'Yalnızca “{column}” sütununda aranıyor',
+    'searchingInColumns': 'Yalnızca {columns} sütunlarında aranıyor',
+    'searchAddColumn': 'Virgülle başka sütun ekle',
     'nRecords': '{n} kayıt',
     'nColumns': '{n} sütun',
     'welcome': 'Hoş Geldiniz!',
@@ -1045,9 +1064,17 @@ class AppLocalizations {
     'tableStructureUpdated': 'Tablo yapısı güncellendi',
     'tableUpdateError': 'Tablo güncellenirken hata oluştu',
     'constant': 'Sabit',
-    'totalNRecords': 'Toplam: {n} kayıt',
-    'totalsLabel': 'TOPLAMLAR',
     'pageNofM': 'Sayfa {n} / {m}',
+    'madeWithTableNote': 'Table Note ile hazırlandı',
+    'exportSearchLine': 'Arama: {q}',
+    'exportWhat': 'Ne gönderilsin?',
+    'exportAll': 'Tamamı',
+    'exportSome': 'Sadece bir kısmı',
+    'exportSomeHint': 'Arayıp seç',
+    'exportContinue': 'Devam',
+    'exportChange': 'Değiştir',
+    'exportMore': 've {n} kayıt daha',
+    'exportDates': 'Tarihler',
     'tallyTable': 'Çetele Tablosu',
     'tallyEmptyTitle': 'Çetele Tablosu Yok',
     'tallyEmptySubtitle': 'Yeni tablo oluşturarak\nçetele tutmaya başlayın',
@@ -1325,7 +1352,7 @@ class AppLocalizations {
         'Say the column and its value, and the fields fill themselves.',
     'onboardingPremiumTitle': 'Unlock Premium Features',
     'onboardingPremiumDescription':
-        'Add records by voice, share tables and backup to the cloud.',
+        'Add by voice, share tables, back up, export only what you need.',
     'premium': 'Premium',
     'unlockPremium': 'Table Note Premium',
     'goPremium': 'Go Premium',
@@ -1338,6 +1365,7 @@ class AppLocalizations {
     'premiumImportFeature': 'Import from CSV',
     'premiumUnlimitedFeature': 'Unlimited tables, tallies, templates',
     'premiumTallyFeature': 'Tally overview and sorting',
+    'premiumExportFeature': 'Export only what you need',
     'planYearly': 'Yearly',
     'planMonthly': 'Monthly',
     'perYear': 'year',
@@ -1491,6 +1519,8 @@ class AppLocalizations {
     'searchInTable': 'Search in table...',
     'searchColumnHint': 'To search one column, type “{column}: …”',
     'searchingInColumn': 'Searching only in “{column}”',
+    'searchingInColumns': 'Searching only in {columns}',
+    'searchAddColumn': 'Add another with a comma',
     'nRecords': '{n} records',
     'nColumns': '{n} columns',
     'welcome': 'Welcome!',
@@ -1664,9 +1694,17 @@ class AppLocalizations {
     'tableStructureUpdated': 'Table structure updated',
     'tableUpdateError': 'Error updating table',
     'constant': 'Constant',
-    'totalNRecords': 'Total: {n} records',
-    'totalsLabel': 'TOTALS',
     'pageNofM': 'Page {n} / {m}',
+    'madeWithTableNote': 'Made with Table Note',
+    'exportSearchLine': 'Search: {q}',
+    'exportWhat': 'What to send?',
+    'exportAll': 'Everything',
+    'exportSome': 'Only some',
+    'exportSomeHint': 'Search to pick',
+    'exportContinue': 'Continue',
+    'exportChange': 'Change',
+    'exportMore': 'and {n} more',
+    'exportDates': 'Dates',
     'tallyTable': 'Tally Table',
     'tallyEmptyTitle': 'No Tally Tables',
     'tallyEmptySubtitle': 'Create a new table\nto start tracking',

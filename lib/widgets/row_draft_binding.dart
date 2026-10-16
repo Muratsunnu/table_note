@@ -3,8 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import '../l10n/app_localizations.dart';
-import '../l10n/ux_localizations.dart';
 import '../models/tabel_model.dart';
 import '../services/form_draft_store.dart';
 
@@ -18,7 +16,6 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
     required this.onRestore,
     this.originalRow,
   }) : _store = FormDraftStore(key),
-       _initial = controllers.map((c) => c.text).toList(),
        _lastValues = jsonEncode(controllers.map((c) => c.text).toList()),
        _schema = jsonEncode(columns.map((c) => c.toJson()).toList()) {
     for (final controller in controllers) {
@@ -33,7 +30,6 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
   final List<String>? originalRow;
   final VoidCallback onRestore;
   final FormDraftStore _store;
-  final List<String> _initial;
   final String _schema;
   String _lastValues;
   bool isRestoring = true;
@@ -41,12 +37,6 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
   bool _applying = false;
   bool _edited = false;
   bool _completed = false;
-  bool restored = false;
-
-  /// Taslak yazarken sessizce saklanır; kullanıcıya yalnızca yarım kalan bir
-  /// taslak geri getirildiğinde ya da saklanamadığında haber verilir.
-  bool get showNotice => restored || (_edited && hasError);
-  bool get hasError => _store.lastError != null;
 
   Future<void> _restore() async {
     try {
@@ -70,7 +60,6 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
       }
       onRestore();
       _applying = false;
-      restored = true;
     } finally {
       _applying = false;
       if (!_disposed) {
@@ -96,22 +85,6 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  Future<void> discard() async {
-    _applying = true;
-    // Clear before awaiting I/O so a newer edit is never discarded on completion.
-    for (var i = 0; i < controllers.length; i++) {
-      controllers[i].text = _initial[i];
-    }
-    onRestore();
-    _lastValues = jsonEncode(controllers.map((c) => c.text).toList());
-    _edited = false;
-    restored = false;
-    _applying = false;
-    final removal = _store.clear();
-    notifyListeners();
-    await removal;
-  }
-
   Future<void> complete() async {
     _completed = true;
     await _store.clear();
@@ -132,43 +105,4 @@ class RowDraftBinding extends ChangeNotifier with WidgetsBindingObserver {
     _store.dispose();
     super.dispose();
   }
-}
-
-class RowDraftNotice extends StatelessWidget {
-  const RowDraftNotice({super.key, required this.draft});
-  final RowDraftBinding draft;
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: draft,
-    builder: (context, _) {
-      if (!draft.showNotice) return const SizedBox.shrink();
-      final loc = AppLocalizations.of(context);
-      final colors = Theme.of(context).colorScheme;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Material(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  draft.hasError ? loc.draftSaveFailed : loc.draftRestored,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                TextButton.icon(
-                  onPressed: draft.discard,
-                  icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                  label: Text(loc.discardDraft),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
-  );
 }

@@ -33,7 +33,6 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
   late final String _emptyDraft;
   String? _lastDraftSnapshot;
   bool _restoringDraft = true;
-  bool _restoredDraft = false;
   bool _draftCaptureQueued = false;
   bool _draftCompleted = false;
   bool _isSaving = false;
@@ -141,7 +140,6 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
     if (data != null) {
       try {
         _applyDraft(data);
-        _restoredDraft = true;
       } catch (_) {
         _applyDraft(Map<String, dynamic>.from(jsonDecode(_emptyDraft)));
       }
@@ -186,21 +184,6 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
 
   TextEditingController _draftController([String text = '']) =>
       TextEditingController(text: text)..addListener(_queueDraft);
-
-  Future<void> _discardDraft() async {
-    _restoringDraft = true;
-    setState(() {
-      _applyDraft(Map<String, dynamic>.from(jsonDecode(_emptyDraft)));
-      _nameError = null;
-      _dateError = null;
-      _statusError = null;
-      _codeErrors.clear();
-      _restoredDraft = false;
-      _lastDraftSnapshot = _emptyDraft;
-    });
-    await _draft.clear();
-    if (mounted) setState(() => _restoringDraft = false);
-  }
 
   void _handleTabChanged() {
     if (mounted) setState(() {});
@@ -350,29 +333,6 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_restoredDraft) ...[
-                            Material(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.secondaryContainer,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.restore_rounded, size: 20),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: Text(loc.draftRestored)),
-                                    TextButton(
-                                      onPressed: _discardDraft,
-                                      child: Text(loc.discardDraft),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
                           // Tablo adı
                           TextField(
                             controller: _nameController,

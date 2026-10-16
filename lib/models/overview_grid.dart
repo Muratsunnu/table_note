@@ -212,6 +212,11 @@ OverviewGrid buildTableOverview(
 const _trWeekdays = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 const _enWeekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
+/// Günün iki harflik adı: "Pt", "Mo". Çetelenin tamamı ve PDF'i aynı adları
+/// kullanır.
+String weekdayShort(DateTime day, String language) =>
+    (language == 'en' ? _enWeekdays : _trWeekdays)[day.weekday - 1];
+
 /// Çetelenin tamamı: bütün günler ve her öğenin durum sayıları.
 /// Sayımlar çetelenin tarih aralığındandır; toplamlarla aynı kural.
 OverviewGrid buildTallyOverview(
@@ -233,7 +238,7 @@ OverviewGrid buildTallyOverview(
     OverviewCell(itemHeader, strong: true),
     for (final day in days)
       OverviewCell(
-        '${day.day}\n${(tr ? _trWeekdays : _enWeekdays)[day.weekday - 1]}',
+        '${day.day}\n${weekdayShort(day, language)}',
         strong: true,
         align: OverviewAlign.center,
       ),

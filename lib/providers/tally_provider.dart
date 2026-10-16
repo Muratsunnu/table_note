@@ -16,6 +16,9 @@ class TallyProvider extends ChangeNotifier {
   int _currentIndex = 0;
   bool _isLoading = false;
   String _itemSearchQuery = '';
+
+  /// Arama, yazıldığı gibi: dosyanın başlığına ve adına bu geçer.
+  String _itemSearchText = '';
   final List<List<_TallyCellChange>> _undoStack = [];
 
   /// Filled only by undo, and emptied by the next real edit: redo can only
@@ -38,6 +41,7 @@ class TallyProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get hasTables => _tables.isNotEmpty;
   String get itemSearchQuery => _itemSearchQuery;
+  String get itemSearchText => _itemSearchText;
   bool get canUndo => _undoStack.isNotEmpty;
   bool get canRedo => _redoStack.isNotEmpty;
 
@@ -45,16 +49,27 @@ class TallyProvider extends ChangeNotifier {
   List<int> get filteredItemIndices {
     final table = currentTable;
     if (table == null) return const [];
-    final indices = _itemSearchQuery.isEmpty
-        ? List<int>.generate(table.items.length, (index) => index)
-        : [
-            for (var index = 0; index < table.items.length; index++)
-              if (table.items[index].name.toLowerCase().contains(
-                _itemSearchQuery,
-              ))
-                index,
-          ];
-    return _applySort(table, indices);
+    return _applySort(table, _matchingItems(table, _itemSearchQuery));
+  }
+
+  /// Adında aranan söz geçen öğeler; söz boşsa hepsi.
+  static List<int> _matchingItems(TallyTableModel table, String lowered) => [
+    for (var index = 0; index < table.items.length; index++)
+      if (lowered.isEmpty ||
+          table.items[index].name.toLowerCase().contains(lowered))
+        index,
+  ];
+
+  /// Ekrandaki aramayı değiştirmeden bir aramanın sonucu, ekrandaki sırayla.
+  /// Ayrıntı için [TableProvider.queryRows]. Aranacak söz yoksa null.
+  ({List<int> items, String term})? queryItems(String query) {
+    final table = currentTable;
+    final term = query.trim();
+    if (table == null || term.isEmpty) return null;
+    return (
+      items: _applySort(table, _matchingItems(table, term.toLowerCase())),
+      term: term,
+    );
   }
 
   /// Tüm öğeler, aramadan bağımsız, ekrandaki sıralamayla.
@@ -249,6 +264,13 @@ class TallyProvider extends ChangeNotifier {
     return table == null || !isSharedViewer(table.id);
   }
 
+  /// Açık çetele dosya olarak dışarı verilebilir mi. Ayrıntı için
+  /// [TableProvider.canExportCurrent].
+  bool get canExportCurrent {
+    final table = currentTable;
+    return table != null && !isSharedViewer(table.id);
+  }
+
   bool get hasJoinedTallies =>
       _sharedRoles.values.any((role) => role != 'owner');
 
@@ -390,13 +412,15 @@ class TallyProvider extends ChangeNotifier {
       _undoStack.clear();
       _redoStack.clear();
       _itemSearchQuery = '';
+      _itemSearchText = '';
       _saveIndex();
       notifyListeners();
     }
   }
 
   void setItemSearchQuery(String query) {
-    _itemSearchQuery = query.trim().toLowerCase();
+    _itemSearchText = query.trim();
+    _itemSearchQuery = _itemSearchText.toLowerCase();
     notifyListeners();
   }
 

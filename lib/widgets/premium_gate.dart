@@ -79,7 +79,8 @@ Future<void> showPremiumFeatureSheet(
   builder: (sheetContext) {
     final loc = AppLocalizations.of(sheetContext);
     final colors = Theme.of(sheetContext).colorScheme;
-    return Padding(
+    // Yan çevrilmiş telefonda kâğıdın yüksekliği azdır; içerik kayar.
+    return SingleChildScrollView(
       key: ValueKey('premium-feature-${feature.name}'),
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
       child: Column(

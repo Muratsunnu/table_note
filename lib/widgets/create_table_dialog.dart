@@ -102,7 +102,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
   late final String _emptyDraft;
   String? _lastDraftSnapshot;
   bool _restoringDraft = true;
-  bool _restoredDraft = false;
   bool _draftCaptureQueued = false;
   bool _draftCompleted = false;
   bool _isSaving = false;
@@ -258,7 +257,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     if (data != null) {
       try {
         _applyDraft(data);
-        _restoredDraft = true;
       } catch (_) {
         _applyDraft(Map<String, dynamic>.from(jsonDecode(_emptyDraft)));
       }
@@ -319,18 +317,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
     }
     _retiredControllers.addAll(controllers);
     _retiredFocusNodes.addAll(focusNodes);
-  }
-
-  Future<void> _discardDraft() async {
-    _restoringDraft = true;
-    setState(() {
-      _applyDraft(Map<String, dynamic>.from(jsonDecode(_emptyDraft)));
-      _tableNameError = null;
-      _restoredDraft = false;
-      _lastDraftSnapshot = _emptyDraft;
-    });
-    await _draft.clear();
-    if (mounted) setState(() => _restoringDraft = false);
   }
 
   @override
@@ -567,10 +553,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_restoredDraft) ...[
-                  _buildDraftNotice(),
-                  const SizedBox(height: 12),
-                ],
                 TextField(
                   controller: _tableNameController,
                   focusNode: _tableNameFocus,
@@ -669,25 +651,6 @@ class _CreateTableDialogState extends State<CreateTableDialog>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDraftNotice() {
-    final loc = AppLocalizations.of(context);
-    return Material(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-        child: Row(
-          children: [
-            const Icon(Icons.restore_rounded, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text(loc.draftRestored)),
-            TextButton(onPressed: _discardDraft, child: Text(loc.discardDraft)),
-          ],
-        ),
       ),
     );
   }

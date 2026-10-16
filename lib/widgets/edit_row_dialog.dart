@@ -11,7 +11,6 @@ import '../l10n/ux_localizations.dart';
 import 'app_form_scaffold.dart';
 import 'code_column_note.dart';
 import 'quick_option_chips.dart';
-import 'row_draft_binding.dart';
 
 class EditRowDialog extends StatefulWidget {
   final int rowIndex;
@@ -30,7 +29,6 @@ class EditRowDialog extends StatefulWidget {
 class _EditRowDialogState extends State<EditRowDialog> {
   List<TextEditingController> _controllers = [];
   late List<ColumnModel> _columns;
-  late final RowDraftBinding _draft;
   late final String _tableId;
   late final String _schema;
   late final List<String> _originalRow;
@@ -66,22 +64,12 @@ class _EditRowDialogState extends State<EditRowDialog> {
 
     // Formülleri hesapla
     _recalculateFormulas();
-    _draft = RowDraftBinding(
-      key: 'edit_row_${_tableId}_${widget.rowIndex}',
-      columns: _columns,
-      controllers: _controllers,
-      originalRow: _originalRow,
-      onRestore: () {
-        if (!mounted) return;
-        _recalculateFormulas();
-        setState(() {});
-      },
-    );
+    // Var olan bir kayıt düzenlenirken taslak tutulmaz: kaydedilmemiş bir
+    // değişiklik sessizce geri gelse kaydın gerçek değeri sanılır.
   }
 
   @override
   void dispose() {
-    _draft.dispose();
     for (var controller in _controllers) {
       controller.dispose();
     }
@@ -124,29 +112,24 @@ class _EditRowDialogState extends State<EditRowDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
-    return ListenableBuilder(
-      listenable: _draft,
-      builder: (context, _) => AppFormScaffold(
-        title: loc.recordN(widget.rowIndex + 1),
-        subtitle: context.read<TableProvider>().currentTable?.tableName,
-        icon: Icons.edit_rounded,
-        cancelLabel: loc.cancel,
-        primaryLabel: loc.update,
-        primaryIcon: Icons.check_rounded,
-        onPrimary: _updateRow,
-        isSaving: _isSaving,
-        isRestoring: _draft.isRestoring,
-        child: Column(
-          children: [
-            RowDraftNotice(draft: _draft),
-            ..._columns.asMap().entries.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildInputField(entry.key, entry.value),
-              );
-            }),
-          ],
-        ),
+    return AppFormScaffold(
+      title: loc.recordN(widget.rowIndex + 1),
+      subtitle: context.read<TableProvider>().currentTable?.tableName,
+      icon: Icons.edit_rounded,
+      cancelLabel: loc.cancel,
+      primaryLabel: loc.update,
+      primaryIcon: Icons.check_rounded,
+      onPrimary: _updateRow,
+      isSaving: _isSaving,
+      child: Column(
+        children: [
+          ..._columns.asMap().entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildInputField(entry.key, entry.value),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -488,7 +471,7 @@ class _EditRowDialogState extends State<EditRowDialog> {
   }
 
   Future<void> _updateRow() async {
-    if (_isSaving || _draft.isRestoring) return;
+    if (_isSaving) return;
     FocusScope.of(context).unfocus();
     final provider = context.read<TableProvider>();
     final table = provider.currentTable;
@@ -511,7 +494,6 @@ class _EditRowDialogState extends State<EditRowDialog> {
 
     try {
       final success = await provider.updateRow(widget.rowIndex, newRowData);
-      if (success) await _draft.complete();
       if (!mounted) return;
       setState(() => _isSaving = false);
       if (success) {

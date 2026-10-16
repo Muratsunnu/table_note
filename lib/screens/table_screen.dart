@@ -30,6 +30,7 @@ import '../services/export_service.dart';
 import '../services/storage_service.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/ux_localizations.dart';
+import '../utils/row_preview.dart';
 import 'tally_screen.dart';
 import 'premium_screen.dart';
 import '../services/home_widget_service.dart';
@@ -273,10 +274,7 @@ class _TableScreenState extends State<TableScreen> {
         IconButton.filledTonal(
           tooltip: loc.voiceFill,
           onPressed: () => _startVoiceAdd(isPremium),
-          icon: PremiumFeatureIcon(
-            icon: Icons.mic_rounded,
-            locked: !isPremium,
-          ),
+          icon: PremiumFeatureIcon(icon: Icons.mic_rounded, locked: !isPremium),
         ),
       ],
     );
@@ -371,8 +369,9 @@ class _TableScreenState extends State<TableScreen> {
                     ),
                   ),
                 // İndirme değil paylaşma: çoğu kişi dosyayı cihazına almak
-                // değil birine göndermek istiyor.
-                if (provider.hasTables)
+                // değil birine göndermek istiyor. Yalnızca görüntüleme
+                // yetkisiyle katılan kişi tabloyu dosya olarak dağıtamaz.
+                if (provider.canExportCurrent)
                   IconButton(
                     key: const ValueKey('share-file'),
                     icon: Icon(Icons.adaptive.share_rounded),
@@ -443,7 +442,7 @@ class _TableScreenState extends State<TableScreen> {
                       isTally: true,
                     ),
                   ),
-                if (provider.hasTables)
+                if (provider.canExportCurrent)
                   IconButton(
                     key: const ValueKey('share-file'),
                     icon: Icon(Icons.adaptive.share_rounded),
@@ -458,11 +457,24 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
-  /// Çeteleyi dosya olarak paylaşma kâğıdı.
+  /// Çeteleyi dosya olarak paylaşma kâğıdı. Premium'da kâğıtta aranan
+  /// kişiler ve seçilen günler gönderilebilir.
   void _shareTallyFile(TallyProvider provider) {
     final table = provider.currentTable;
-    if (table == null) return;
+    if (table == null || !provider.canExportCurrent) return;
     final loc = AppLocalizations.of(context);
+
+    ExportSelection selection(ExportChoice choice) {
+      final found = choice.filtered ? provider.queryItems(choice.query) : null;
+      return ExportSelection(
+        order: found?.items ?? provider.sortedItemIndices,
+        search: found?.term,
+        searchTerm: found?.term,
+        from: choice.range?.start,
+        to: choice.range?.end,
+      );
+    }
+
     ShareFileSheet.show(
       context,
       name: table.tableName,
@@ -470,45 +482,31 @@ class _TableScreenState extends State<TableScreen> {
           '${table.items.length} ${loc.tallyItems} • '
           '${table.dayCount} ${loc.tallyDays}',
       icon: Icons.grid_on_rounded,
+      total: table.items.length,
+      initialQuery: provider.itemSearchText,
+      match: (query) {
+        final found = provider.queryItems(query);
+        if (found == null) return null;
+        return ShareMatch(
+          found.items.length,
+          preview: [
+            for (final index in found.items.take(ShareMatch.previewLimit))
+              table.items[index].name.trim(),
+          ],
+        );
+      },
+      searchHint: loc.searchPersonOrItem,
+      period: DateTimeRange(start: table.startDate, end: table.endDate),
       formats: [
         ShareFileFormat(
           label: 'PDF',
           description: loc.pdfDesc,
           icon: Icons.picture_as_pdf_rounded,
           color: AppTheme.error,
-          create: () => ExportService.exportTallyPdf(table, loc: loc),
-        ),
-        ShareFileFormat(
-          label: 'CSV',
-          description: loc.csvDesc,
-          icon: Icons.description_rounded,
-          color: AppTheme.success,
-          create: () => ExportService.exportTallyCsv(table),
-        ),
-      ],
-    );
-  }
-
-  /// Tabloyu dosya olarak paylaşma kâğıdı.
-  void _shareTableFile(TableProvider provider) {
-    final table = provider.currentTable;
-    if (table == null) return;
-    final loc = AppLocalizations.of(context);
-    ShareFileSheet.show(
-      context,
-      name: table.tableName,
-      summary: loc.recordsAndColumns(table.rows.length, table.columns.length),
-      icon: Icons.table_chart_rounded,
-      formats: [
-        ShareFileFormat(
-          label: 'PDF',
-          description: loc.pdfDesc,
-          icon: Icons.picture_as_pdf_rounded,
-          color: AppTheme.error,
-          create: () => ExportService.exportToPdf(
+          create: (choice) => ExportService.exportTallyPdf(
             table,
             loc: loc,
-            columnSums: provider.calculateFilteredColumnSums(),
+            selection: selection(choice),
           ),
         ),
         ShareFileFormat(
@@ -516,7 +514,81 @@ class _TableScreenState extends State<TableScreen> {
           description: loc.csvDesc,
           icon: Icons.description_rounded,
           color: AppTheme.success,
-          create: () => ExportService.exportToCsv(table, loc: loc),
+          create: (choice) => ExportService.exportTallyCsv(
+            table,
+            loc: loc,
+            selection: selection(choice),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tabloyu dosya olarak paylaşma kâğıdı. Satırlar ekrandaki sırayla
+  /// yazılır; Premium'da kâğıtta aranan satırlar gönderilebilir.
+  void _shareTableFile(TableProvider provider) {
+    final table = provider.currentTable;
+    if (table == null || !provider.canExportCurrent) return;
+    final loc = AppLocalizations.of(context);
+
+    ExportSelection selection(ExportChoice choice) {
+      final found = choice.filtered ? provider.queryRows(choice.query) : null;
+      return found == null
+          ? ExportSelection(order: provider.sortedRowIndices)
+          : ExportSelection(
+              order: found.rows,
+              search: found.label,
+              searchTerm: found.term,
+            );
+    }
+
+    ShareFileSheet.show(
+      context,
+      name: table.tableName,
+      summary: loc.recordsAndColumns(table.rows.length, table.columns.length),
+      icon: Icons.table_chart_rounded,
+      total: table.rows.length,
+      initialQuery: provider.searchQuery,
+      match: (query) {
+        final found = provider.queryRows(query);
+        if (found == null) return null;
+        return ShareMatch(
+          found.rows.length,
+          note: found.columns.isEmpty ? null : loc.searchingIn(found.columns),
+          // Neyin gideceği görünsün: ilk birkaç kayıt.
+          preview: [
+            for (final index in found.rows.take(ShareMatch.previewLimit))
+              rowPreview(table, table.rows[index], loc.locale.languageCode),
+          ],
+        );
+      },
+      searchHint: loc.searchInTable,
+      searchHelper: switch (searchExampleColumn(table.columns)) {
+        final column? => loc.searchColumnHint(column.name.toLowerCase()),
+        null => null,
+      },
+      formats: [
+        ShareFileFormat(
+          label: 'PDF',
+          description: loc.pdfDesc,
+          icon: Icons.picture_as_pdf_rounded,
+          color: AppTheme.error,
+          create: (choice) => ExportService.exportToPdf(
+            table,
+            loc: loc,
+            selection: selection(choice),
+          ),
+        ),
+        ShareFileFormat(
+          label: 'CSV',
+          description: loc.csvDesc,
+          icon: Icons.description_rounded,
+          color: AppTheme.success,
+          create: (choice) => ExportService.exportToCsv(
+            table,
+            loc: loc,
+            selection: selection(choice),
+          ),
         ),
       ],
     );
@@ -689,12 +761,13 @@ class _TableScreenState extends State<TableScreen> {
     final loc = AppLocalizations.of(context);
     final table = provider.currentTable;
     if (table == null || table.columns.isEmpty) return null;
-    final scoped = provider.searchColumnIndex;
-    if (scoped != null && scoped < table.columns.length) {
-      return loc.searchingInColumn(table.columns[scoped].name);
-    }
+    final scoped = provider.searchColumns;
+    if (scoped.isNotEmpty) return loc.searchingIn(scoped);
     if (_searchController.text.isNotEmpty) return null;
-    return loc.searchColumnHint(table.columns.first.name.toLowerCase());
+    final example = searchExampleColumn(table.columns);
+    return example == null
+        ? null
+        : loc.searchColumnHint(example.name.toLowerCase());
   }
 
   Widget _buildSearchBar(TableProvider provider) {
