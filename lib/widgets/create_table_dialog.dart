@@ -5,7 +5,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'form_field_reveal.dart';
-import 'add_column_card.dart';
+import 'dashed_add_card.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:table_note/models/tabel_model.dart';
@@ -607,7 +607,11 @@ class _CreateTableDialogState extends State<CreateTableDialog>
                 ..._buildColumnWidgets(),
                 const SizedBox(height: 6),
                 // Listenin sonunda sıradaki sütunun yeri durur; dokununca eklenir.
-                AddColumnCard(onTap: _isSaving ? null : _addColumn),
+                DashedAddCard(
+                  tapKey: const ValueKey('add-column-card'),
+                  label: AppLocalizations.of(context).addColumn,
+                  onTap: _isSaving ? null : _addColumn,
+                ),
               ],
             ),
           ),

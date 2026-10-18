@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'form_field_reveal.dart';
 import 'added_field_focus.dart';
+import 'dashed_add_card.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/ux_localizations.dart';
@@ -428,16 +429,12 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
                                   ),
                                 ),
                               ),
-                              TextButton.icon(
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(loc.add),
-                                onPressed: _addStatus,
-                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           if (_statusCodeControllers.isEmpty)
                             Container(
+                              margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: _statusError == null
@@ -479,6 +476,12 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
                             _statusCodeControllers.length,
                             (i) => _buildStatusRow(i, loc),
                           ),
+                          // Listenin sonunda sıradaki durumun yeri durur.
+                          DashedAddCard(
+                            tapKey: const ValueKey('add-status-card'),
+                            label: loc.tallyAddStatus,
+                            onTap: _addStatus,
+                          ),
                           const SizedBox(height: 20),
 
                           // Öğeler
@@ -498,11 +501,6 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
                                     fontSize: 16,
                                   ),
                                 ),
-                              ),
-                              TextButton.icon(
-                                icon: const Icon(Icons.add, size: 18),
-                                label: Text(loc.add),
-                                onPressed: _addItem,
                               ),
                             ],
                           ),
@@ -553,6 +551,11 @@ class _CreateTallyDialogState extends State<CreateTallyDialog>
                                 ],
                               ),
                             ),
+                          ),
+                          DashedAddCard(
+                            tapKey: const ValueKey('add-item-card'),
+                            label: loc.tallyAddItem,
+                            onTap: _addItem,
                           ),
                         ],
                       ),

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:table_note/l10n/app_localizations.dart';
-import 'package:table_note/widgets/add_column_card.dart';
+import 'package:table_note/widgets/dashed_add_card.dart';
 
-/// Sütun listesinin sonundaki "sıradaki sütun" kartı.
+/// Listelerin sonundaki kesik çizgili "sıradaki" kartı.
 void main() {
   Future<void> pumpCard(WidgetTester tester, VoidCallback? onTap) async {
     await tester.pumpWidget(
@@ -20,7 +20,13 @@ void main() {
         home: Scaffold(
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [AddColumnCard(onTap: onTap)],
+            children: [
+              DashedAddCard(
+                tapKey: const ValueKey('add-column-card'),
+                label: AppLocalizations(const Locale('tr')).addColumn,
+                onTap: onTap,
+              ),
+            ],
           ),
         ),
       ),

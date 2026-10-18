@@ -2,19 +2,26 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../l10n/app_localizations.dart';
+/// Bir listenin sonunda duran boş "sıradaki" kartı: sütun, durum ya da kayıt.
+/// Yeni öğenin nereye geleceğini gösterir; dokununca ekler.
+class DashedAddCard extends StatelessWidget {
+  const DashedAddCard({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.tapKey,
+  });
 
-/// Sütun listesinin sonunda duran boş "sıradaki sütun" kartı. Yeni sütunun
-/// nereye geleceğini gösterir; dokununca ekler.
-class AddColumnCard extends StatelessWidget {
-  const AddColumnCard({super.key, required this.onTap});
+  final String label;
 
   /// Null ise kart soluk durur ve dokunulmaz (örneğin kayıt sürerken).
   final VoidCallback? onTap;
 
+  /// Dokunulan alanın anahtarı; testler karta bununla ulaşır.
+  final Key? tapKey;
+
   @override
   Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
     final ink = onTap == null
         ? colors.onSurfaceVariant.withValues(alpha: 0.5)
@@ -24,10 +31,10 @@ class AddColumnCard extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: onTap != null,
-      label: loc.addColumn,
+      label: label,
       excludeSemantics: true,
       child: InkWell(
-        key: const ValueKey('add-column-card'),
+        key: tapKey,
         borderRadius: radius,
         onTap: onTap,
         child: CustomPaint(
@@ -48,7 +55,7 @@ class AddColumnCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    loc.addColumn,
+                    label,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
