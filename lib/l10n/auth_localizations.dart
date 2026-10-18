@@ -91,6 +91,7 @@ const _authTr = {
   'deleteLocal': 'Bu cihazdaki tabloların ve çetelelerin silinmez.',
   'deleteSubscription':
       'Premium aboneliğin varsa kendiliğinden iptal olmaz. Ücretlendirmeyi durdurmak için {store} aboneliklerinden iptal et.',
+  'deleteApple': 'Son adımda Apple ile onaylaman istenir.',
   'deleteConfirmWord': 'SİL',
   'deleteConfirmLabel': 'Onaylamak için {word} yaz',
   'deleteConfirm': 'Hesabımı kalıcı olarak sil',
@@ -185,6 +186,7 @@ const _authEn = {
   'deleteLocal': 'Tables and tallies on this device are not deleted.',
   'deleteSubscription':
       'A Premium subscription is not cancelled automatically. To stop being charged, cancel it in your {store} subscriptions.',
+  'deleteApple': 'At the last step, you will confirm with Apple.',
   'deleteConfirmWord': 'DELETE',
   'deleteConfirmLabel': 'Type {word} to confirm',
   'deleteConfirm': 'Permanently delete my account',

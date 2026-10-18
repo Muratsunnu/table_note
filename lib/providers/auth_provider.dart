@@ -91,6 +91,13 @@ class AuthProvider extends ChangeNotifier {
   bool get hasEmailIdentity =>
       _user?.identities?.any((identity) => identity.provider == 'email') ??
       false;
+
+  /// Hesap Apple ile bağlı ve Apple onayı bu cihazda alınabiliyor: silinirken
+  /// Apple'ın verdiği izinler de iptal edilir (App Store 5.1.1(v)).
+  bool get deleteNeedsApple =>
+      supportsApple &&
+      (_user?.identities?.any((identity) => identity.provider == 'apple') ??
+          false);
   User? get user => _user;
   String? get email => _user?.email;
   String? get displayName {
@@ -316,6 +323,7 @@ class AuthProvider extends ChangeNotifier {
   /// Sunucudaki kullanici silindikten sonra yerel oturum da birakilir;
   /// sunucuya sorulsa artik var olmayan bir kullanici icin hata donerdi.
   Future<bool> deleteAccount() => _run(() async {
+    if (deleteNeedsApple) await _revokeApple();
     try {
       await _client!.rpc('delete_my_account');
     } on PostgrestException {
@@ -354,6 +362,27 @@ class AuthProvider extends ChangeNotifier {
 
   void _markEmailSent() =>
       _nextEmailAt = DateTime.now().add(const Duration(seconds: 60));
+
+  /// Apple'dan tek kullanımlık bir kod alır, sunucu onunla Apple izinlerini
+  /// iptal eder. Kişi Apple penceresini kapatırsa hata fırlar ve hesap
+  /// silinmez. İptal sunucuda başarısız olursa hesap yine silinir: hesabını
+  /// silmek kişinin hakkıdır, Apple tarafındaki bağ ayarlardan da kaldırılır.
+  Future<void> _revokeApple() async {
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: const [],
+    );
+    try {
+      final response = await _client!.functions.invoke(
+        'revoke-apple-token',
+        body: {'authorizationCode': credential.authorizationCode},
+      );
+      if (response.status < 200 || response.status >= 300) {
+        debugPrint('Apple izinleri iptal edilemedi: ${response.status}');
+      }
+    } catch (error) {
+      debugPrint('Apple izinleri iptal edilemedi: $error');
+    }
+  }
 
   Future<bool> _run(Future<void> Function() operation) async {
     if (_isLoading || _disposed) return false;

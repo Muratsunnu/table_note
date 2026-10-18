@@ -12,6 +12,7 @@ import 'account_screen.dart';
 import 'cloud_backup_screen.dart';
 import 'premium_screen.dart';
 import 'home_widget_help_screen.dart';
+import '../utils/store_links.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -258,6 +259,34 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // İki mağaza da gizlilik politikasının uygulamanın içinden
+          // açılabilmesini ister.
+          Container(
+            decoration: AppTheme.cardDecorationFor(context),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Column(
+                children: [
+                  ListTile(
+                    key: const ValueKey('settings-privacy'),
+                    leading: const Icon(Icons.privacy_tip_outlined),
+                    title: Text(loc.privacyPolicy),
+                    trailing: const Icon(Icons.open_in_new_rounded, size: 20),
+                    onTap: openPrivacyPolicy,
+                  ),
+                  if (showsTermsOfUse)
+                    ListTile(
+                      key: const ValueKey('settings-terms'),
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(loc.termsOfUse),
+                      trailing: const Icon(Icons.open_in_new_rounded, size: 20),
+                      onTap: openTermsOfUse,
+                    ),
+                ],
+              ),
             ),
           ),
           // Yalnızca geliştirme derlemesinde: ücretsiz kullanıcının gördüğünü

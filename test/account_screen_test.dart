@@ -22,7 +22,10 @@ class _FakeAuth extends AuthProvider {
   String? note;
   String? failure;
   bool confirmed = false;
+  bool apple = false;
   final signIns = <String>[];
+  @override
+  bool get deleteNeedsApple => apple;
   @override
   bool get isAvailable => true;
   @override
@@ -639,5 +642,26 @@ void main() {
     expect(auth.deletions, 0);
     expect(find.byKey(const ValueKey('action-delete')), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Apple hesabında silmeden önce Apple onayı istendiği söylenir', (
+    tester,
+  ) async {
+    final en = AppLocalizations(const Locale('en'));
+    for (final apple in [false, true]) {
+      final auth = _FakeAuth()
+        ..signedIn = true
+        ..apple = apple;
+      await tester.pumpWidget(_app(auth));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('action-delete')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(en.authText('deleteApple')),
+        apple ? findsOneWidget : findsNothing,
+      );
+      await tester.pumpWidget(const SizedBox());
+      auth.dispose();
+    }
   });
 }

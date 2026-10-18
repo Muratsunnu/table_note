@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -170,6 +171,27 @@ void main() {
       await tester.pump();
     }
   }
+
+  testWidgets('gizlilik politikası hep, kullanım koşulları App Store\'da', (
+    tester,
+  ) async {
+    subscription = _FakeSubscription()
+      ..offers = [_offer(PlanPeriod.yearly, '₺249,99', 249.99, trial: 7)];
+    await open(tester);
+    expect(find.byKey(const ValueKey('privacy-link')), findsOneWidget);
+    expect(find.byKey(const ValueKey('terms-link')), findsNothing);
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      subscription = _FakeSubscription()
+        ..offers = [_offer(PlanPeriod.yearly, '₺249,99', 249.99, trial: 7)];
+      await open(tester);
+      expect(find.byKey(const ValueKey('privacy-link')), findsOneWidget);
+      expect(find.byKey(const ValueKey('terms-link')), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
 
   testWidgets('prices, trial and saving all come from the store', (
     tester,

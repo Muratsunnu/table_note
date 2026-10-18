@@ -10,6 +10,15 @@ class AppConfig {
   static const String authRedirectUrl =
       'com.muratstudio.tablenote://login-callback';
 
+  /// Gizlilik politikası; iki mağaza da uygulamanın içinden açılmasını ister.
+  static const String privacyPolicyUrl =
+      'https://muratsunnu.github.io/privacy-policy/';
+
+  /// App Store'da otomatik yenilenen aboneliğin kullanım koşulları: Apple'ın
+  /// standart lisans sözleşmesi.
+  static const String appleTermsOfUseUrl =
+      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+
   /// Mağazalarda tanımlı Premium ürünleri. Fiyat burada yazmaz; mağazadan
   /// okunur.
   static const Map<PlanPeriod, String> premiumProductIds = {

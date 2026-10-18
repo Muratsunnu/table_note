@@ -239,6 +239,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   : subscription.restorePurchases,
               child: Text(loc.restorePurchases),
             ),
+            const LegalLinks(),
           ] else ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -632,6 +633,45 @@ class _PlanRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Gizlilik politikası ve (App Store'da) kullanım koşulları. Otomatik
+/// yenilenen abonelik satan ekranda ikisinin de bağlantısı bulunmalı.
+class LegalLinks extends StatelessWidget {
+  const LegalLinks({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final style = TextButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      textStyle: const TextStyle(fontSize: 13),
+    );
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        TextButton(
+          key: const ValueKey('privacy-link'),
+          style: style,
+          onPressed: openPrivacyPolicy,
+          child: Text(loc.privacyPolicy),
+        ),
+        if (showsTermsOfUse) ...[
+          Text(
+            '·',
+            style: TextStyle(color: Theme.of(context).colorScheme.outline),
+          ),
+          TextButton(
+            key: const ValueKey('terms-link'),
+            style: style,
+            onPressed: openTermsOfUse,
+            child: Text(loc.termsOfUse),
+          ),
+        ],
+      ],
     );
   }
 }

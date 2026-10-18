@@ -75,6 +75,8 @@ class AppLocalizations {
   String get premiumUnlimitedFeature => _t('premiumUnlimitedFeature');
   String get premiumTallyFeature => _t('premiumTallyFeature');
   String get premiumExportFeature => _t('premiumExportFeature');
+  String get privacyPolicy => _t('privacyPolicy');
+  String get termsOfUse => _t('termsOfUse');
   String get planYearly => _t('planYearly');
   String get planMonthly => _t('planMonthly');
   String get perYear => _t('perYear');
@@ -734,6 +736,8 @@ class AppLocalizations {
     'premiumUnlimitedFeature': 'Sınırsız tablo, çetele, şablon',
     'premiumTallyFeature': 'Çetele özeti ve sıralama',
     'premiumExportFeature': 'Sadece istediğini PDF/CSV yap',
+    'privacyPolicy': 'Gizlilik Politikası',
+    'termsOfUse': 'Kullanım Koşulları',
     'planYearly': 'Yıllık',
     'planMonthly': 'Aylık',
     'perYear': 'yıl',
@@ -1366,6 +1370,8 @@ class AppLocalizations {
     'premiumUnlimitedFeature': 'Unlimited tables, tallies, templates',
     'premiumTallyFeature': 'Tally overview and sorting',
     'premiumExportFeature': 'Export only what you need',
+    'privacyPolicy': 'Privacy Policy',
+    'termsOfUse': 'Terms of Use',
     'planYearly': 'Yearly',
     'planMonthly': 'Monthly',
     'perYear': 'year',

@@ -1,0 +1,3 @@
+/* Table Note izin açıklamaları: telefon İngilizce olduğunda. */
+"NSMicrophoneUsageDescription" = "Table Note uses the microphone so you can fill in a table by speaking.";
+"NSSpeechRecognitionUsageDescription" = "Speech recognition turns what you say into table entries.";

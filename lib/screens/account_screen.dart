@@ -212,7 +212,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final auth = context.read<AuthProvider>();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => const _DeleteAccountDialog(),
+      builder: (_) => _DeleteAccountDialog(apple: auth.deleteNeedsApple),
     );
     if (confirmed != true || !mounted) return;
     if (await auth.deleteAccount() && mounted) {
@@ -1124,7 +1124,10 @@ class _GoogleMark extends CustomPainter {
 /// Geri alınamayan silme için son onay: neyin gideceği yazar ve onay
 /// sözcüğü elle yazılmadan düğme açılmaz.
 class _DeleteAccountDialog extends StatefulWidget {
-  const _DeleteAccountDialog();
+  const _DeleteAccountDialog({required this.apple});
+
+  /// Silmeden önce Apple ile onay istenecek.
+  final bool apple;
 
   @override
   State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
@@ -1189,6 +1192,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             Icons.receipt_long_outlined,
             loc.authText('deleteSubscription').replaceAll('{store}', store),
           ),
+          if (widget.apple) point(Icons.apple, loc.authText('deleteApple')),
           const SizedBox(height: 4),
           TextField(
             key: const ValueKey('deleteConfirmation'),
