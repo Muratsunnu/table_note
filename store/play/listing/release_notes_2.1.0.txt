@@ -1,0 +1,45 @@
+<en-US>
+• Faster marking in tallies
+• Adding statuses and records in tally and template forms is easier
+• Improvements and fixes
+</en-US>
+<tr-TR>
+• Çetelede daha hızlı işaretleme
+• Çetele ve şablon formlarında durum ve kayıt eklemek daha kolay
+• İyileştirmeler ve düzeltmeler
+</tr-TR>
+<de-DE>
+• Schnelleres Markieren in Strichlisten
+• Status und Einträge in Strichlisten- und Vorlagenformularen leichter hinzufügen
+• Verbesserungen und Fehlerbehebungen
+</de-DE>
+<fr-FR>
+• Marquage plus rapide des pointages
+• Ajout plus simple des statuts et des entrées dans les formulaires de pointage et de modèle
+• Améliorations et corrections
+</fr-FR>
+<es-419>
+• Marcado más rápido en los controles
+• Agregar estados y registros en los formularios de control y de plantilla es más fácil
+• Mejoras y correcciones
+</es-419>
+<pt-BR>
+• Marcação mais rápida nos controles
+• Ficou mais fácil adicionar status e registros nos formulários de controle e de modelo
+• Melhorias e correções
+</pt-BR>
+<ru-RU>
+• Более быстрая отметка в табелях
+• Проще добавлять статусы и записи в формах табеля и шаблона
+• Улучшения и исправления
+</ru-RU>
+<id>
+• Penandaan absensi lebih cepat
+• Menambah status dan catatan di formulir absensi dan template jadi lebih mudah
+• Perbaikan dan peningkatan
+</id>
+<ar>
+• تعليم أسرع في سجلات الحضور
+• إضافة الحالات والسجلات في نماذج الحضور والقوالب أصبحت أسهل
+• تحسينات وإصلاحات
+</ar>
