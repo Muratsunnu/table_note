@@ -6,7 +6,8 @@ import '../theme/app_theme.dart';
 
 class TallySummaryDialog extends StatelessWidget {
   final int itemIndex;
-  const TallySummaryDialog({Key? key, required this.itemIndex}) : super(key: key);
+  const TallySummaryDialog({Key? key, required this.itemIndex})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +19,12 @@ class TallySummaryDialog extends StatelessWidget {
           return AlertDialog(
             title: Text(loc.tallySummary),
             content: Text(loc.error),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(loc.close))],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(loc.close),
+              ),
+            ],
           );
         }
 
@@ -33,11 +39,24 @@ class TallySummaryDialog extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: AppTheme.lightBlue, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.bar_chart_rounded, color: AppTheme.primaryBlue, size: 20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.bar_chart_rounded,
+                  color: AppTheme.primaryBlue,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
-              Expanded(child: Text(item.name, style: const TextStyle(fontSize: 18), overflow: TextOverflow.ellipsis)),
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: const TextStyle(fontSize: 18),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           content: Container(
@@ -48,17 +67,27 @@ class TallySummaryDialog extends StatelessWidget {
                 // Tarih aralığı
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.calendar_today, size: 16, color: AppTheme.textSecondary),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         '${table.startDate.day}/${table.startDate.month}/${table.startDate.year}'
                         ' - ${table.endDate.day}/${table.endDate.month}/${table.endDate.year}'
                         '  ($totalDays ${loc.tallyDays})',
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -68,7 +97,9 @@ class TallySummaryDialog extends StatelessWidget {
                 // Durum istatistikleri
                 ...table.statuses.map((status) {
                   final count = summary[status.code] ?? 0;
-                  final percentage = totalDays > 0 ? (count / totalDays * 100) : 0.0;
+                  final percentage = totalDays > 0
+                      ? (count / totalDays * 100)
+                      : 0.0;
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -76,29 +107,54 @@ class TallySummaryDialog extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Color(status.colorValue).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Color(status.colorValue).withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: Color(status.colorValue).withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 36, height: 36,
-                          decoration: BoxDecoration(color: Color(status.colorValue), borderRadius: BorderRadius.circular(8)),
-                          child: Center(child: Text(status.code, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))),
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Color(status.colorValue),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              status.code,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(status.label, style: TextStyle(fontWeight: FontWeight.w600, color: Color(status.colorValue))),
+                              Text(
+                                status.label,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(status.colorValue),
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               // Progress bar
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: percentage / 100,
-                                  backgroundColor: Colors.grey[200],
-                                  valueColor: AlwaysStoppedAnimation(Color(status.colorValue)),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Color(status.colorValue),
+                                  ),
                                   minHeight: 6,
                                 ),
                               ),
@@ -109,8 +165,21 @@ class TallySummaryDialog extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(status.colorValue))),
-                            Text('${percentage.toStringAsFixed(0)}%', style: TextStyle(fontSize: 11, color: Color(status.colorValue))),
+                            Text(
+                              '$count',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(status.colorValue),
+                              ),
+                            ),
+                            Text(
+                              '${percentage.toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(status.colorValue),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -123,17 +192,51 @@ class TallySummaryDialog extends StatelessWidget {
                   Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: Row(
                       children: [
                         Container(
-                          width: 36, height: 36,
-                          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(8)),
-                          child: const Center(child: Text('-', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey))),
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).dividerColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '-',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(child: Text(loc.tallyEmpty, style: const TextStyle(color: AppTheme.textSecondary))),
-                        Text('$emptyDays', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                        Expanded(
+                          child: Text(
+                            loc.tallyEmpty,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '$emptyDays',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -141,7 +244,10 @@ class TallySummaryDialog extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text(loc.close)),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(loc.close),
+            ),
           ],
         );
       },

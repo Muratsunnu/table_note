@@ -1,0 +1,1 @@
+hoja de cálculo,presupuesto,gastos,inventario,caja,deudas,pdf,csv,nómina,lista,registro

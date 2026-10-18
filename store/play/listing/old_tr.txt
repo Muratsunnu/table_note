@@ -1,0 +1,46 @@
+BAŞLIK: Table Note
+KISA: Hızlı tablo oluştur, formül ekle, PDF/CSV olarak dışa aktar.
+
+Table Note - Hızlı ve Kolay Tablo Yönetimi
+
+Table Note ile verilerinizi düzenlemek artık çok kolay! İster kişisel notlarınızı tutun, ister iş takibi yapın, Table Note her ihtiyacınıza cevap verir.
+
+TABLO OLUŞTURMA
+- Saniyeler içinde yeni tablolar oluşturun
+- İstediğiniz kadar sütun ve satır ekleyin
+- Sütun tiplerini belirleyin: Metin, sayı, tarih, saat
+
+FORMÜL DESTEĞİ
+- Otomatik hesaplama yapın
+- Toplama, çıkarma, çarpma, bölme işlemleri
+- Yüzde hesaplama
+- Sütun toplamlarını anında görün
+
+ŞABLON SİSTEMİ
+- Sık kullandığınız tablo yapılarını şablon olarak kaydedin
+- Tek tıkla şablondan yeni tablo oluşturun
+- Zamandan tasarruf edin
+
+ARAMA VE FİLTRELEME
+- Tablo içinde hızlı arama yapın
+- Aradığınız kayıtları anında bulun
+- Filtrelenmiş sonuçların toplamını görün
+
+DIŞA AKTARMA
+- Tablolarınızı PDF olarak kaydedin
+- CSV formatında dışa aktarın
+- Verilerinizi kolayca paylaşın
+
+KULLANICI DOSTU ARAYÜZ
+- Modern ve şık tasarım
+- Kolay kullanım
+- Türkçe arayüz
+
+GÜVENLİ VE GİZLİ
+- Tüm verileriniz cihazınızda kalır
+- İnternet bağlantısı gerektirmez
+- Hiçbir veri toplanmaz veya paylaşılmaz
+
+Table Note, günlük hayatınızda ve işlerinizde tablo tutmanız gereken her an yanınızda!
+
+Hemen indirin ve verilerinizi düzenlemeye başlayın!

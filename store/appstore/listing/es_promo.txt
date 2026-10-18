@@ -1,0 +1,1 @@
+Nuevo: envía en PDF A4 listo para imprimir solo los registros que necesitas o el mes de un trabajador.

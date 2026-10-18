@@ -1,0 +1,1 @@
+Track income, expenses, debts, staff attendance and stock in simple tables.

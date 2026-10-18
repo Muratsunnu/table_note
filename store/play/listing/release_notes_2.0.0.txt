@@ -1,0 +1,81 @@
+<en-US>
+Table Note 2.0 is here!
+• Table setup rebuilt: ready-made examples, formulas, ID numbers and starting values
+• Share tables and tallies with your team using a join code
+• Add records by voice, back up to the cloud
+• Send only the records you need, or one worker's month, as PDF/CSV
+• Print-ready A4 PDFs
+• Home screen widget, new logo and design
+</en-US>
+<tr-TR>
+Table Note 2.0 yayında!
+• Tablo kurma yenilendi: hazır örnekler, formül, numara ve başlangıç değeri
+• Tablo ve çeteleyi katılım koduyla ekibinle ortak kullan
+• Sesle kayıt, bulut yedekleme
+• Sadece istediğin kayıtları ya da bir işçinin ayını PDF/CSV gönder
+• Yazıcıya uygun A4 PDF
+• Ana ekran widget'ı, yeni logo ve tasarım
+</tr-TR>
+<de-DE>
+Table Note 2.0 ist da!
+• Tabellen neu erstellen: fertige Vorlagen, Formeln, Nummern und Startwerte
+• Tabellen und Strichlisten per Beitrittscode im Team teilen
+• Einträge per Sprache, Sicherung in der Cloud
+• Nur die gewünschten Einträge oder den Monat eines Mitarbeiters als PDF/CSV senden
+• Druckfertige A4-PDFs
+• Startbildschirm-Widget, neues Logo und Design
+</de-DE>
+<fr-FR>
+Table Note 2.0 est là !
+• Création de tableaux repensée : modèles prêts, formules, numéros et valeurs de départ
+• Partagez tableaux et pointages avec votre équipe grâce à un code
+• Saisie vocale, sauvegarde dans le cloud
+• Envoyez en PDF/CSV seulement les entrées voulues ou le mois d'un employé
+• PDF A4 prêts à imprimer
+• Widget d'écran d'accueil, nouveau logo et design
+</fr-FR>
+<es-419>
+¡Llegó Table Note 2.0!
+• Creación de tablas renovada: ejemplos listos, fórmulas, números y valores iniciales
+• Comparte tablas y controles con tu equipo usando un código
+• Registro por voz, respaldo en la nube
+• Envía en PDF/CSV solo los registros que necesitas o el mes de un trabajador
+• PDF en A4 listos para imprimir
+• Widget de pantalla de inicio, nuevo logo y diseño
+</es-419>
+<pt-BR>
+Chegou o Table Note 2.0!
+• Criação de tabelas renovada: exemplos prontos, fórmulas, números e valores iniciais
+• Compartilhe tabelas e controles com a equipe usando um código
+• Registro por voz, backup na nuvem
+• Envie em PDF/CSV só os registros que quiser ou o mês de um funcionário
+• PDF A4 prontos para imprimir
+• Widget na tela inicial, novo logo e design
+</pt-BR>
+<ru-RU>
+Вышел Table Note 2.0!
+• Новое создание таблиц: готовые примеры, формулы, номера и начальные значения
+• Совместные таблицы и табели с командой по коду
+• Ввод голосом, резервная копия в облаке
+• Отправляйте в PDF/CSV только нужные записи или месяц одного сотрудника
+• PDF формата A4, готовые к печати
+• Виджет на главном экране, новый логотип и дизайн
+</ru-RU>
+<id>
+Table Note 2.0 telah hadir!
+• Pembuatan tabel baru: contoh siap pakai, rumus, nomor, dan nilai awal
+• Bagikan tabel dan absensi dengan tim memakai kode
+• Input suara, cadangan cloud
+• Kirim PDF/CSV hanya untuk catatan yang perlu atau absensi sebulan satu karyawan
+• PDF A4 siap cetak
+• Widget layar utama, logo dan desain baru
+</id>
+<ar>
+وصل Table Note 2.0!
+• إنشاء الجداول من جديد: أمثلة جاهزة وصيغ وأرقام وقيم بداية
+• شارك الجداول وسجلات الحضور مع فريقك عبر رمز
+• الإدخال بالصوت والنسخ الاحتياطي السحابي
+• أرسل بصيغة PDF/CSV السجلات التي تحتاجها فقط أو شهر موظف واحد
+• ملفات PDF بمقاس A4 جاهزة للطباعة
+• أداة الشاشة الرئيسية وشعار وتصميم جديدان
+</ar>

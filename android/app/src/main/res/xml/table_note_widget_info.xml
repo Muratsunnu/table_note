@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="240dp" android:minHeight="180dp"
+    android:minResizeWidth="180dp" android:minResizeHeight="160dp"
+    android:targetCellWidth="4" android:targetCellHeight="3"
+    android:initialLayout="@layout/table_note_widget" android:previewLayout="@layout/table_note_widget"
+    android:resizeMode="horizontal|vertical" android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" android:widgetFeatures="reconfigurable"
+    android:configure="com.muratstudio.tablenote.TableNoteWidgetConfigureActivity"/>

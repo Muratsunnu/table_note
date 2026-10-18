@@ -1,0 +1,1 @@
+planilha,orçamento,despesas,ponto,inventário,caixa,dívidas,pdf,csv,folha,lista,registro

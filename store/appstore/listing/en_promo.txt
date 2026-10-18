@@ -1,0 +1,1 @@
+New: send only the records you need, or one worker's month, as a print-ready A4 PDF.

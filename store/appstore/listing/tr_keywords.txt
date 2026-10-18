@@ -1,0 +1,1 @@
+puantaj,bütçe,harcama,mesai,yevmiye,envanter,borç,alacak,defter,pdf,csv,sevkiyat,kasa,işçi,maaş
