@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../widgets/backup_reminder.dart';
 import '../widgets/compact_layout.dart';
@@ -11,6 +14,7 @@ import '../models/tally_sort_preference.dart';
 import '../providers/tally_provider.dart';
 import '../providers/subscription_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/tally_fill.dart';
 import '../widgets/edit_tally_dialog.dart';
 import '../widgets/add_tally_item_dialog.dart';
 import '../widgets/table_section_header.dart';
@@ -37,6 +41,16 @@ class _TallyScreenState extends State<TallyScreen> {
   final FocusNode _itemSearchFocus = FocusNode();
   bool _isSearchOpen = false;
 
+  // Basılı tutup kaydırarak doldurma. Gün şeridi parmağın hangi güne
+  // geldiğini, görünen alanı da kenara yaklaşıp yaklaşmadığını söyler.
+  final GlobalKey _dayStripKey = GlobalKey();
+  final GlobalKey _dayViewportKey = GlobalKey();
+  TallyFill? _fill;
+  Offset? _fillPointer;
+  Timer? _autoScroll;
+  double _dayColWidth = 48;
+  int _dayCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +66,7 @@ class _TallyScreenState extends State<TallyScreen> {
 
   @override
   void dispose() {
+    _autoScroll?.cancel();
     _bodyHScroll.dispose();
     _headerHScroll.dispose();
     _itemSearchController.dispose();
@@ -506,6 +521,8 @@ class _TallyScreenState extends State<TallyScreen> {
       160.0,
     );
     final dayColWidth = 48 * scale.clamp(1.0, 2.0);
+    _dayColWidth = dayColWidth;
+    _dayCount = days.length;
     // Yüksekliği dar ekranda satırlar alçalır; dokunma alanı 44'ün altına inmez.
     final compact = isCompactHeight(context);
     final rowHeight = (compact ? 44 : 52) * scale.clamp(1.0, 3.0);
@@ -605,10 +622,21 @@ class _TallyScreenState extends State<TallyScreen> {
       );
     }
 
-    Widget dayCell(int itemIndex, DateTime day) {
+    Widget dayCell(int itemIndex, int dayIndex, DateTime day) {
       final key = TallyTableModel.dateKey(day);
       final code = items[itemIndex].entries[key];
       final status = code != null ? table.getStatusByCode(code) : null;
+      final fill = _fill;
+      // Kaydırırken dolacak günler durumun soluk hâliyle görünür.
+      final preview = fill != null && fill.previews(itemIndex, dayIndex)
+          ? table.getStatusByCode(fill.code)
+          : null;
+      final anchored =
+          status != null &&
+          fill != null &&
+          fill.itemIndex == itemIndex &&
+          fill.anchor == dayIndex;
+      final shown = preview ?? status;
       final today = DateTime.now();
       final isToday =
           day.year == today.year &&
@@ -623,6 +651,7 @@ class _TallyScreenState extends State<TallyScreen> {
             '${status?.label ?? AppLocalizations.of(context).tallyClear}',
         onTap: () =>
             _editCell(provider, () => provider.cycleCellStatus(itemIndex, day)),
+        // Ekran okuyucuda kaydırılamaz; basılı tutma durum listesini açar.
         onLongPress: () => _editCell(
           provider,
           () => _showStatusPicker(context, provider, itemIndex, day),
@@ -633,35 +662,40 @@ class _TallyScreenState extends State<TallyScreen> {
             provider,
             () => provider.cycleCellStatus(itemIndex, day),
           ),
-          onLongPress: () => _editCell(
-            provider,
-            () => _showStatusPicker(context, provider, itemIndex, day),
-          ),
+          // Basılı tutup kaydırmak yan günleri aynı durumla doldurur.
+          onLongPressStart: (_) =>
+              _startFill(provider, itemIndex, dayIndex, code),
+          onLongPressMoveUpdate: (details) => _moveFill(details.globalPosition),
+          onLongPressEnd: (_) => _endFill(provider),
+          onLongPressCancel: _cancelFill,
           behavior: HitTestBehavior.opaque,
           child: Container(
             width: dayColWidth,
             height: rowHeight,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: gridLineColor, width: 0.6),
-              ),
-              color: status != null
-                  ? Color(status.colorValue).withValues(alpha: 0.15)
+              // Doldurmanın başladığı gün çerçeveyle belli olur.
+              border: anchored
+                  ? Border.all(color: Color(status.colorValue), width: 2)
+                  : Border(left: BorderSide(color: gridLineColor, width: 0.6)),
+              color: shown != null
+                  ? Color(
+                      shown.colorValue,
+                    ).withValues(alpha: preview != null ? 0.07 : 0.15)
                   : isToday
                   ? Colors.amber.withValues(alpha: 0.12)
                   : null,
             ),
-            child: status != null
+            child: shown != null
                 ? Text(
-                    status.code,
+                    shown.code,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                       color: AppTheme.readableAccent(
                         context,
-                        Color(status.colorValue),
-                      ),
+                        Color(shown.colorValue),
+                      ).withValues(alpha: preview != null ? 0.45 : 1),
                     ),
                   )
                 : null,
@@ -812,6 +846,7 @@ class _TallyScreenState extends State<TallyScreen> {
                         // Sağ: günler (yatay scroll). Dikey scroll dışarıdan geliyor.
                         Expanded(
                           child: Scrollbar(
+                            key: _dayViewportKey,
                             controller: _bodyHScroll,
                             thumbVisibility: days.length > 5,
                             scrollbarOrientation: ScrollbarOrientation.bottom,
@@ -819,6 +854,7 @@ class _TallyScreenState extends State<TallyScreen> {
                               scrollDirection: Axis.horizontal,
                               controller: _bodyHScroll,
                               child: SizedBox(
+                                key: _dayStripKey,
                                 width: days.length * dayColWidth,
                                 child: Column(
                                   children: [
@@ -838,14 +874,18 @@ class _TallyScreenState extends State<TallyScreen> {
                                           ),
                                         ),
                                         child: Row(
-                                          children: days
-                                              .map(
-                                                (day) => dayCell(
-                                                  itemIndices[i],
-                                                  day,
-                                                ),
-                                              )
-                                              .toList(),
+                                          children: [
+                                            for (
+                                              var d = 0;
+                                              d < days.length;
+                                              d++
+                                            )
+                                              dayCell(
+                                                itemIndices[i],
+                                                d,
+                                                days[d],
+                                              ),
+                                          ],
                                         ),
                                       ),
                                   ],
@@ -911,6 +951,125 @@ class _TallyScreenState extends State<TallyScreen> {
     } else {
       showViewOnlyNotice(context, tableId: provider.currentTable!.id);
     }
+  }
+
+  // ============== KAYDIRARAK DOLDURMA ==============
+
+  void _startFill(
+    TallyProvider provider,
+    int itemIndex,
+    int dayIndex,
+    String? code,
+  ) {
+    if (!provider.canEditCurrent) {
+      showViewOnlyNotice(context, tableId: provider.currentTable!.id);
+      return;
+    }
+    // Boş günün yayacağı bir durum yok.
+    if (code == null || provider.currentTable!.getStatusByCode(code) == null) {
+      return;
+    }
+    HapticFeedback.mediumImpact();
+    setState(
+      () =>
+          _fill = TallyFill(itemIndex: itemIndex, anchor: dayIndex, code: code),
+    );
+  }
+
+  void _moveFill(Offset pointer) {
+    if (_fill == null) return;
+    _fillPointer = pointer;
+    _followPointer();
+    if (_autoScrollStep() == 0) {
+      _stopAutoScroll();
+    } else {
+      _autoScroll ??= Timer.periodic(
+        const Duration(milliseconds: 16),
+        (_) => _autoScrollTick(),
+      );
+    }
+  }
+
+  /// Parmağın altındaki gün doldurmanın ucu olur.
+  void _followPointer() {
+    final fill = _fill;
+    final pointer = _fillPointer;
+    final strip = _dayStripKey.currentContext?.findRenderObject();
+    if (fill == null || pointer == null || strip is! RenderBox) return;
+    final day = tallyDayAt(
+      strip.globalToLocal(pointer).dx,
+      dayWidth: _dayColWidth,
+      dayCount: _dayCount,
+    );
+    if (day == fill.current) return;
+    HapticFeedback.selectionClick();
+    setState(() => fill.current = day);
+  }
+
+  /// Parmak görünen günlerin kenarındaysa tablonun bu karede kayacağı yol.
+  double _autoScrollStep() {
+    final viewport = _dayViewportKey.currentContext?.findRenderObject();
+    final pointer = _fillPointer;
+    if (pointer == null || viewport is! RenderBox) return 0;
+    return tallyAutoScrollStep(
+      viewport.globalToLocal(pointer).dx,
+      viewport.size.width,
+    );
+  }
+
+  void _autoScrollTick() {
+    final step = _autoScrollStep();
+    if (_fill == null || step == 0 || !_bodyHScroll.hasClients) {
+      _stopAutoScroll();
+      return;
+    }
+    final position = _bodyHScroll.position;
+    final target = (position.pixels + step).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (target == position.pixels) return;
+    _bodyHScroll.jumpTo(target);
+    // Parmak durduğu yerde kalsa da altından yeni günler geçer.
+    _followPointer();
+  }
+
+  void _stopAutoScroll() {
+    _autoScroll?.cancel();
+    _autoScroll = null;
+  }
+
+  Future<void> _endFill(TallyProvider provider) async {
+    _stopAutoScroll();
+    final fill = _fill;
+    if (fill == null) return;
+    final days = provider.currentTable?.allDays ?? const <DateTime>[];
+    // Günler hemen yazılır, kayıt arkadan gelir: önizleme kalkınca asıl
+    // renkler araya boş bir an girmeden görünür. Tek adımda geri alınır.
+    final saving = fill.isEmpty || fill.last >= days.length
+        ? null
+        : provider.setBulkStatus(
+            itemIndices: [fill.itemIndex],
+            startDate: days[fill.first],
+            endDate: days[fill.last],
+            statusCode: fill.code,
+          );
+    setState(() {
+      _fill = null;
+      _fillPointer = null;
+    });
+    if (saving == null) return;
+    HapticFeedback.lightImpact();
+    await saving;
+  }
+
+  void _cancelFill() {
+    _stopAutoScroll();
+    if (_fill == null) return;
+    setState(() {
+      _fill = null;
+      _fillPointer = null;
+    });
   }
 
   // ============== DİALOGLAR ==============
