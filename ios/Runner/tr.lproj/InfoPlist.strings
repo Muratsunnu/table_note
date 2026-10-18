@@ -1,3 +1,4 @@
 /* Table Note izin açıklamaları: telefon Türkçe olduğunda. */
 "NSMicrophoneUsageDescription" = "Konuşarak tablo doldurmak için mikrofon erişimi gerekir.";
 "NSSpeechRecognitionUsageDescription" = "Söylediklerinizi tablo alanlarına dönüştürmek için konuşma tanıma kullanılır.";
+"NSPhotoLibraryUsageDescription" = "Table Note, yalnızca oradan bir dosya içe aktarmayı seçersen fotoğraf arşivini açar.";

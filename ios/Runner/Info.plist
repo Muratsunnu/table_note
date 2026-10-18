@@ -50,6 +50,8 @@
 	<string>Table Note uses the microphone so you can fill in a table by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Speech recognition turns what you say into table entries.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Table Note opens your photo library only if you choose to import a file from it.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
