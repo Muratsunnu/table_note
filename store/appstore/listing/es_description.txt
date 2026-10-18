@@ -1,0 +1,40 @@
+Organiza tu trabajo en tablas sencillas. Lleva ingresos, gastos, deudas, asistencia del personal y stock en una sola app. No necesitas saber de hojas de cálculo.
+
+CREA TU PROPIA TABLA
+• Elige tus columnas: texto, número, fecha, hora, n.º de fila, número de ID, valor fijo, fórmula
+• Empieza rápido con ejemplos: ingresos y gastos, deudas, registro de ventas, inventario, entregas, lista de clientes, tareas
+• Totales y saldos pendientes calculados automáticamente
+• Los valores que escribes seguido se vuelven opciones de un toque
+• Buscar, filtrar y ordenar
+
+CONTROL Y ASISTENCIA
+• Asistencia del personal, jornales, horas extra y pase de lista
+• Marca cada día: presente, ausente, de permiso…
+• Define tus propios estados
+
+REGISTRO POR VOZ (Premium)
+• Di la columna y el valor, y el registro se completa solo
+
+RESPALDO Y COMPARTIR (Premium)
+• Respalda tus tablas en la nube; al cambiar de teléfono no pierdes nada
+• Comparte una tabla con tu equipo y registren juntos
+
+REPORTES Y WIDGET
+• Reportes PDF en A4 listos para imprimir y archivos CSV que se abren en Excel
+• Envía en PDF solo los registros que necesitas o el mes de un trabajador (Premium)
+• Importar desde CSV (Premium)
+• Widget de pantalla de inicio con el resumen de una tabla
+
+¿PARA QUIÉN?
+Comerciantes, equipos de obra y técnicos, conductores, pequeñas empresas, independientes y quien lleva su presupuesto personal.
+
+EMPIEZA GRATIS
+5 tablas, 5 controles y 3 plantillas gratis. Con Premium, uso ilimitado más registro por voz, respaldo en la nube, compartir, exportación PDF/CSV selectiva, importación CSV y resumen de controles.
+
+Tus datos se quedan en tu dispositivo; puedes usarla sin cuenta.
+La interfaz de la app está disponible en inglés y turco.
+
+Premium es una suscripción mensual o anual con renovación automática. El pago se carga a tu cuenta de Apple y se renueva salvo que la canceles al menos 24 horas antes de que termine el periodo. Adminístrala o cancélala en los ajustes de tu cuenta de App Store.
+
+Términos de uso: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Política de privacidad: https://muratsunnu.github.io/privacy-policy/

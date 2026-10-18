@@ -8,14 +8,17 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:in_app_purchase/in_app_purchase.dart' show ProductDetails;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import 'package:table_note/main.dart';
+import 'package:table_note/models/plan_offer.dart';
 import 'package:table_note/models/tabel_model.dart';
 import 'package:table_note/models/tally_model.dart';
 import 'package:table_note/providers/auth_provider.dart';
@@ -25,6 +28,7 @@ import 'package:table_note/providers/table_provider.dart';
 import 'package:table_note/providers/theme_provider.dart';
 import 'package:table_note/screens/app_launch_gate.dart';
 import 'package:table_note/screens/cloud_backup_screen.dart';
+import 'package:table_note/screens/premium_screen.dart';
 import 'package:table_note/services/cloud_repository.dart';
 import 'package:table_note/services/storage_service.dart';
 import 'package:table_note/widgets/share_table_sheet.dart';
@@ -36,9 +40,21 @@ const lang = String.fromEnvironment('SHOT_LANG', defaultValue: 'tr');
 const fonts = String.fromEnvironment('SHOT_FONTS');
 const tr = lang == 'tr';
 
-/// Kart 1080 genişlikteki görselde 792 piksel yer tutar.
-const ratio = 2.2;
-const logical = Size(360, 680);
+/// Hangi mağazanın görseli: `play` (1080x1920), `iphone` (1320x2868) ya da
+/// `ipad` (2064x2752). Ekranın mantıksal boyutu ve ölçeği, kartın görselde
+/// tutacağı yere göre seçilir (Play'de 1080 genişlikte 792 piksel).
+const device = String.fromEnvironment('SHOT_DEVICE', defaultValue: 'play');
+const apple = device != 'play';
+const ratio = device == 'iphone'
+    ? 2.42
+    : device == 'ipad'
+    ? 2.07
+    : 2.2;
+const logical = device == 'iphone'
+    ? Size(400, 930)
+    : device == 'ipad'
+    ? Size(820, 1040)
+    : Size(360, 680);
 const shotKey = ValueKey('store-shot');
 const userId = 'demo-user';
 
@@ -186,6 +202,66 @@ class _Subscription extends ChangeNotifier implements SubscriptionProvider {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Satın alma ekranı için: Premium'u olmayan, hesabı açık kullanıcı. Fiyatlar
+/// mağazadaki gibi; App Store incelemesine konan görsel bundan üretilir.
+class _Paywall extends ChangeNotifier implements SubscriptionProvider {
+  static PlanOffer _offer(
+    PlanPeriod period,
+    String price,
+    double raw,
+    int? trial,
+  ) => PlanOffer(
+    period: period,
+    product: ProductDetails(
+      id: period.name,
+      title: period.name,
+      description: '',
+      price: price,
+      rawPrice: raw,
+      currencyCode: tr ? 'TRY' : 'USD',
+    ),
+    price: price,
+    rawPrice: raw,
+    trialDays: trial,
+  );
+
+  @override
+  final List<PlanOffer> plans = [
+    _offer(PlanPeriod.yearly, tr ? '₺199,99' : r'$3.99', tr ? 199.99 : 3.99, 7),
+    _offer(
+      PlanPeriod.monthly,
+      tr ? '₺29,99' : r'$0.99',
+      tr ? 29.99 : 0.99,
+      null,
+    ),
+  ];
+  @override
+  PlanOffer? plan(PlanPeriod period) =>
+      plans.where((offer) => offer.period == period).firstOrNull;
+  @override
+  bool get isPremium => false;
+  @override
+  bool get isLoading => false;
+  @override
+  bool get isVerifying => false;
+  @override
+  bool get hasPendingPurchase => false;
+  @override
+  bool get requiresSignIn => false;
+  @override
+  bool get showsSamplePlans => false;
+  @override
+  PurchaseProblem? get problem => null;
+  @override
+  String? get errorMessage => null;
+  @override
+  DateTime? get validUntil => null;
+  @override
+  bool takePurchaseCompleted() => false;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Repository implements CloudRepository {
   @override
   Future<String?> sharedTableJoinCode(String tableId) async => '463404';
@@ -306,6 +382,31 @@ void main() {
         (_) async => null,
       );
     }
+    // App Store satın alma eklentisi test ortamında yok; iOS görünümünde
+    // uygulama mağazaya bağlanmaya çalışır. Mağaza kapalıymış gibi cevap
+    // verilir: ürün yok, ödeme yapılamaz.
+    const codec = StandardMessageCodec();
+    const storeKit = 'dev.flutter.pigeon.in_app_purchase_storekit.';
+    final replies = <String, Object?>{
+      'InAppPurchase2API.canMakePayments': false,
+      'InAppPurchaseAPI.canMakePayments': false,
+      'InAppPurchaseAPI.supportsStoreKit': true,
+      'InAppPurchase2API.products': <Object?>[],
+      'InAppPurchase2API.transactions': <Object?>[],
+      'InAppPurchase2API.unfinishedTransactions': <Object?>[],
+      'InAppPurchaseAPI.transactions': <Object?>[],
+      'InAppPurchase2API.startListeningToTransactions': null,
+      'InAppPurchase2API.stopListeningToTransactions': null,
+      'InAppPurchaseAPI.startObservingPaymentQueue': null,
+      'InAppPurchaseAPI.stopObservingPaymentQueue': null,
+      'InAppPurchaseAPI.registerPaymentQueueDelegate': null,
+    };
+    replies.forEach((name, value) {
+      messenger.setMockMessageHandler(
+        '$storeKit$name',
+        (_) async => codec.encodeMessage(<Object?>[value]),
+      );
+    });
     Future<ByteData> read(String path) async => ByteData.view(
       Uint8List.fromList(await File(path).readAsBytes()).buffer,
     );
@@ -378,10 +479,14 @@ void main() {
   void shadowed(String name, Future<void> Function(WidgetTester) body) {
     testWidgets(name, (tester) async {
       debugDisableShadows = false;
+      // App Store görselleri uygulamanın iOS'taki hâlini gösterir: paylaş
+      // simgesi, ortalanmış başlık.
+      if (apple) debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         await body(tester);
       } finally {
         debugDisableShadows = true;
+        debugDefaultTargetPlatformOverride = null;
       }
     });
   }
@@ -478,9 +583,17 @@ void main() {
     await shot(tester, 'paylasim');
   });
 
+  // Paylaş penceresinde yalnızca bir kısmı: aranır, bulunanlar görünür.
   shadowed('dosya paylaşma', (tester) async {
     await open(tester, tab: 0);
-    await tester.tap(find.byIcon(Icons.share_rounded).first);
+    await tester.tap(find.byIcon(Icons.adaptive.share_rounded).first);
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('export-some')));
+    await settle(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('export-query')),
+      tr ? 'tarih: 02.10' : 'date: 02.10',
+    );
     await settle(tester);
     await shot(tester, 'dosya');
   });
@@ -500,4 +613,31 @@ void main() {
     await settle(tester);
     await shot(tester, 'yedek');
   });
+
+  // App Store incelemesi abonelik başına satın alma ekranının görüntüsünü
+  // ister; iPhone 6.9 inç ölçüsünde (1320x2868) çizilir.
+  if (apple) {
+    shadowed('satın alma', (tester) async {
+      await open(tester, tab: 0);
+      tester.view.devicePixelRatio = 3;
+      tester.view.physicalSize = const Size(1320, 2868);
+      Navigator.of(screen(tester)).push(
+        themed(
+          ChangeNotifierProvider<SubscriptionProvider>(
+            create: (_) => _Paywall(),
+            child: const PremiumScreen(),
+          ),
+        ),
+      );
+      await settle(tester);
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byKey(shotKey),
+      );
+      await tester.runAsync(() async {
+        final image = await boundary.toImage(pixelRatio: 3);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        File('$out/premium.png').writeAsBytesSync(bytes!.buffer.asUint8List());
+      });
+    });
+  }
 }

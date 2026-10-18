@@ -1,0 +1,1 @@
+tableur,budget,dépenses,feuille de temps,inventaire,caisse,dettes,pdf,csv,pointage,paie,liste

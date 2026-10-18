@@ -1,10 +1,11 @@
 """Ham ekranları mağaza görsellerine çevirir.
 
-Telefon görselleri 1080x1920: üstte başlık, altında uygulama ekranı. Google
+Google Play görselleri 1080x1920: üstte başlık, altında uygulama ekranı.
 Play'in önerisine uyar: telefon çerçevesi yok, başlık görselin beşte birini
-geçmez. Öne çıkan görsel 1024x500.
+geçmez. Öne çıkan görsel 1024x500. App Store için aynı düzen iPhone 6.9 inç
+(1320x2868) ve iPad 13 inç (2064x2752) ölçüsünde üretilir.
 
-    python3 compose.py <ham_klasör> <çıktı_klasör> <dil> <yazı_tipi_klasörü>
+    python3 compose.py <ham_klasör> <çıktı_klasör> <dil> <yazı_tipi_klasörü> [play|iphone|ipad]
 
 Diller CAPTIONS'ta; Türkçe dışındakiler İngilizce ham ekranları kullanır.
 """
@@ -15,10 +16,17 @@ import tempfile
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-W, H = 1080, 1920
 TOP, BOTTOM = (0x3B, 0x82, 0xF6), (0x1D, 0x4E, 0xD8)  # logonun geçişi
-CARD_Y, RADIUS = 368, 44
-CAPTION_TOP, CAPTION_MAX = 96, 92
+# Mağazaya göre görsel ölçüsü, kartın yeri ve başlığın en büyük boyu.
+# Kartın genişliği ham ekrandan gelir (shots_test.dart'taki ölçek).
+DEVICES = {
+    'play': dict(size=(1080, 1920), card_y=368, radius=44, caption_top=96, caption_max=92),
+    'iphone': dict(size=(1320, 2868), card_y=470, radius=54, caption_top=118, caption_max=112),
+    'ipad': dict(size=(2064, 2752), card_y=500, radius=60, caption_top=120, caption_max=130),
+}
+W, H = DEVICES['play']['size']
+CARD_Y, RADIUS = DEVICES['play']['card_y'], DEVICES['play']['radius']
+CAPTION_TOP, CAPTION_MAX = DEVICES['play']['caption_top'], DEVICES['play']['caption_max']
 
 # Sıra mağazadaki sıradır; ilk üçü arama sonucunda görünür.
 SHOTS = ['tablo', 'ses', 'cetele', 'paylasim', 'dosya', 'sablon', 'yedek']
@@ -28,39 +36,39 @@ SHOTS = ['tablo', 'ses', 'cetele', 'paylasim', 'dosya', 'sablon', 'yedek']
 CAPTIONS = {
     'tr': ['Tablonu kur,|hesabı o yapsın', 'Konuş,|satır dolsun',
            'Çetele tut,|gün gün işaretle', 'Kodu ver,|birlikte doldurun',
-           'PDF ya da CSV|olarak paylaş', 'Şablonunu kaydet,|yeni tablo hazır',
+           'Sadece istediğini|PDF olarak gönder', 'Şablonunu kaydet,|yeni tablo hazır',
            'Buluta yedekle,|verin kaybolmasın'],
     'en': ['Build your table,|it does the math', 'Just speak,|the row fills in',
            'Keep a tally,|mark each day', 'Share a code,|work together',
-           'PDF or CSV,|shared in one tap', 'Save a template,|new table ready',
+           'Send only what|you need as PDF', 'Save a template,|new table ready',
            'Back it up,|keep tables safe'],
     'de': ['Erstelle deine Tabelle,|sie rechnet für dich', 'Einfach sprechen,|die Zeile füllt sich',
            'Strichliste führen,|jeden Tag abhaken', 'Code teilen,|gemeinsam arbeiten',
-           'PDF oder CSV,|mit einem Tipp geteilt', 'Vorlage speichern,|neue Tabelle fertig',
+           'Nur das Nötige|als PDF senden', 'Vorlage speichern,|neue Tabelle fertig',
            'Sichern,|Tabellen bleiben sicher'],
     'fr': ['Créez votre tableau,|il fait les calculs', 'Parlez,|la ligne se remplit',
            'Tenez un pointage,|cochez chaque jour', 'Partagez un code,|travaillez ensemble',
-           'PDF ou CSV,|partagé en un geste', 'Enregistrez un modèle,|nouveau tableau prêt',
+           'Envoyez en PDF|juste l’essentiel', 'Enregistrez un modèle,|nouveau tableau prêt',
            'Sauvegardez,|vos tableaux en sécurité'],
     'es': ['Crea tu tabla,|ella hace las cuentas', 'Solo habla,|la fila se llena',
            'Lleva un control,|marca cada día', 'Comparte un código,|trabajen juntos',
-           'PDF o CSV,|compartido al instante', 'Guarda una plantilla,|nueva tabla lista',
+           'Envía en PDF|solo lo que necesitas', 'Guarda una plantilla,|nueva tabla lista',
            'Haz una copia,|tus tablas a salvo'],
     'pt': ['Monte sua tabela,|ela faz as contas', 'É só falar,|a linha se preenche',
            'Controle de presença,|marque cada dia', 'Compartilhe um código,|trabalhem juntos',
-           'PDF ou CSV,|compartilhado num toque', 'Salve um modelo,|nova tabela pronta',
+           'Envie em PDF|só o que precisa', 'Salve um modelo,|nova tabela pronta',
            'Faça backup,|suas tabelas seguras'],
     'ru': ['Создайте таблицу,|она всё посчитает', 'Просто скажите,|строка заполнится',
            'Ведите табель,|отмечайте каждый день', 'Поделитесь кодом,|работайте вместе',
-           'PDF или CSV|одним касанием', 'Сохраните шаблон,|новая таблица готова',
+           'Отправляйте в PDF|только нужное', 'Сохраните шаблон,|новая таблица готова',
            'Резервная копия,|таблицы в сохранности'],
     'id': ['Buat tabelmu,|hitungannya otomatis', 'Cukup bicara,|baris terisi sendiri',
            'Catat absensi,|tandai setiap hari', 'Bagikan kode,|kerja bareng',
-           'PDF atau CSV,|bagikan sekali ketuk', 'Simpan template,|tabel baru siap',
+           'Kirim PDF|hanya yang perlu', 'Simpan template,|tabel baru siap',
            'Cadangkan,|tabel tetap aman'],
     'ar': ['أنشئ جدولك،|والحساب عليه', 'تحدّث فقط،|ويمتلئ الصف',
            'سجّل الحضور،|علّم كل يوم', 'شارك رمزًا،|واعملوا معًا',
-           'PDF أو CSV|بلمسة واحدة', 'احفظ قالبًا،|وجدول جديد جاهز',
+           'أرسل بصيغة PDF|ما تحتاجه فقط', 'احفظ قالبًا،|وجدول جديد جاهز',
            'انسخ احتياطيًا،|وجداولك بأمان'],
 }
 TAGLINE = {
@@ -89,7 +97,7 @@ def render_rtl(lines, width, size, out_path):
     return int(w), int(h)
 
 
-def background(width, height, rows=6, fade=4.6):
+def background(width, height, rows=6, fade=4.6, scale=1.0):
     column = Image.new('RGB', (1, height))
     for y in range(height):
         t = y / (height - 1)
@@ -98,15 +106,16 @@ def background(width, height, rows=6, fade=4.6):
     # Logodaki soluk hücreler: üstte belirgin, aşağı doğru kaybolur.
     cells = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(cells)
-    size, gap = 138, 32
-    count = (width - 44) // (size + gap)
+    size, gap, edge = round(138 * scale), round(32 * scale), round(44 * scale)
+    count = (width - edge) // (size + gap)
     left = (width - (count * size + (count - 1) * gap)) // 2
     for row in range(rows):
-        y = 44 + row * (size + gap)
+        y = edge + row * (size + gap)
         alpha = max(0, round(17 * (1 - row / fade)))
         for col in range(count):
             x = left + col * (size + gap)
-            draw.rounded_rectangle((x, y, x + size, y + size), 32, fill=(255, 255, 255, alpha))
+            draw.rounded_rectangle((x, y, x + size, y + size), round(32 * scale),
+                                   fill=(255, 255, 255, alpha))
     return Image.alpha_composite(image, cells)
 
 
@@ -135,7 +144,9 @@ def fit_font(path, lines, width, largest):
 def phone_shot(shot_path, caption, out_path, font, rtl=False):
     shot = Image.open(shot_path).convert('RGB')
     x = (W - shot.width) // 2
-    image = place_card(background(W, H), shot, x, CARD_Y, RADIUS)
+    scale = W / 1080
+    image = place_card(background(W, H, scale=scale), shot, x, CARD_Y, RADIUS,
+                       shadow_offset=round(34 * scale), blur=round(40 * scale))
     lines = caption.split('|')
     if rtl:
         # Sağa yaslı: metnin sağ kenarı kartın sağ kenarıyla hizalanır.
@@ -191,7 +202,13 @@ def feature_graphic(raw_dir, tagline, out_path, font_dir, mark_path, rtl=False):
 
 
 def main():
+    global W, H, CARD_Y, RADIUS, CAPTION_TOP, CAPTION_MAX
     raw_dir, out_dir, lang, font_dir = sys.argv[1:5]
+    device = sys.argv[5] if len(sys.argv) > 5 else 'play'
+    layout = DEVICES[device]
+    W, H = layout['size']
+    CARD_Y, RADIUS = layout['card_y'], layout['radius']
+    CAPTION_TOP, CAPTION_MAX = layout['caption_top'], layout['caption_max']
     os.makedirs(out_dir, exist_ok=True)
     captions = CAPTIONS[lang]
     rtl = lang in RTL
@@ -211,6 +228,8 @@ def main():
         phone_shot(
             os.path.join(raw_dir, name + '.png'), caption,
             os.path.join(out_dir, f'{index:02d}_{name}.png'), font, rtl)
+    if device != 'play':
+        return  # Öne çıkan görsel yalnızca Google Play'de var.
     here = os.path.dirname(os.path.abspath(__file__))
     mark = os.path.join(here, '..', '..', 'assets', 'logo', 'table_note_mark_white_1024.png')
     feature_graphic(raw_dir, TAGLINE[lang], os.path.join(out_dir, 'one_cikan_1024x500.png'),

@@ -1,0 +1,1 @@
+spreadsheet,anggaran,pengeluaran,inventaris,utang,pdf,csv,gaji,daftar,catatan,toko,kasir

@@ -1,0 +1,1 @@
+Tabelle,Budget,Ausgaben,Stundenzettel,Inventur,Kasse,Schulden,PDF,CSV,Strichliste,Lohn,Liste
